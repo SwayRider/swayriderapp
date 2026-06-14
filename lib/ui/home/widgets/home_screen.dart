@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
 import '../../core/ui/branded_app_bar.dart';
 import '../view_models/home_viewmodel.dart';
@@ -15,6 +16,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final localization = AppLocalization.of(context);
 
     return Scaffold(
       backgroundColor: colorScheme.surfaceContainer,
@@ -33,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 Expanded(
                   child: Text(
-                    'Dashboard',
+                    localization.dashboard,
                     textAlign: TextAlign.center,
                     style: textTheme.titleLarge?.copyWith(
                       color: colorScheme.secondary,
@@ -52,14 +54,14 @@ class HomeScreen extends StatelessWidget {
                         viewModel.logout.execute();
                     }
                   },
-                  itemBuilder: (context) => const [
+                  itemBuilder: (context) => [
                     PopupMenuItem(
                       value: _ProfileMenuAction.profile,
                       child: Row(
                         children: [
-                          Icon(Icons.person_outline, color: AppColors.white),
-                          SizedBox(width: 12),
-                          Text('Profile', style: TextStyle(color: AppColors.white)),
+                          const Icon(Icons.person_outline, color: AppColors.white),
+                          const SizedBox(width: 12),
+                          Text(localization.profile, style: const TextStyle(color: AppColors.white)),
                         ],
                       ),
                     ),
@@ -67,9 +69,9 @@ class HomeScreen extends StatelessWidget {
                       value: _ProfileMenuAction.logout,
                       child: Row(
                         children: [
-                          Icon(Icons.logout, color: AppColors.white),
-                          SizedBox(width: 12),
-                          Text('Logout', style: TextStyle(color: AppColors.white)),
+                          const Icon(Icons.logout, color: AppColors.white),
+                          const SizedBox(width: 12),
+                          Text(localization.logout, style: const TextStyle(color: AppColors.white)),
                         ],
                       ),
                     ),
@@ -80,7 +82,7 @@ class HomeScreen extends StatelessWidget {
           ),
           Expanded(
             child: Center(
-              child: Text('Coming soon', style: textTheme.bodyLarge),
+              child: Text(localization.comingSoon, style: textTheme.bodyLarge),
             ),
           ),
         ],

@@ -1,0 +1,56 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../routing/routes.dart';
+import '../../core/localization/applocalization.dart';
+import '../../core/themes/dimens.dart';
+import '../../core/ui/auth_prompt.dart';
+import '../../core/ui/branded_scaffold.dart';
+import '../../core/ui/primary_button.dart';
+import '../../core/ui/screen_title.dart';
+
+class VerifyEmailScreen extends StatelessWidget {
+  const VerifyEmailScreen({super.key, this.email});
+
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bodyStyle = theme.textTheme.bodyLarge?.copyWith(
+      color: theme.colorScheme.primary,
+    );
+    final localization = AppLocalization.of(context);
+
+    return BrandedScaffold(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: Dimens.paddingVertical * 2),
+          ScreenTitle(text: localization.verifyEmail),
+          const SizedBox(height: Dimens.paddingVertical * 2),
+          Text(
+            localization.verificationEmailSentTo(
+              email ?? localization.yourEmailAddress,
+            ),
+            style: bodyStyle,
+          ),
+          const SizedBox(height: Dimens.paddingVertical),
+          Text(localization.noEmailReceived, style: bodyStyle),
+          const SizedBox(height: Dimens.paddingVertical / 2),
+          PrimaryButton(
+            label: localization.resendEmail,
+            // Placeholder until a resend-verification API exists.
+            onPressed: () {},
+          ),
+          const SizedBox(height: Dimens.paddingVertical * 4),
+          AuthPrompt(
+            text: localization.alreadyVerified,
+            buttonLabel: localization.login,
+            onPressed: () => context.go(Routes.login),
+          ),
+        ],
+      ),
+    );
+  }
+}
