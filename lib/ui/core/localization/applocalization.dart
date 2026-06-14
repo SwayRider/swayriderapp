@@ -17,6 +17,46 @@ class AppLocalization {
 
   String get close => _get('close');
   String get confirm => _get('confirm');
+
+  String get email => _get('email');
+  String get password => _get('password');
+  String get confirmPassword => _get('confirmPassword');
+  String get show => _get('show');
+  String get hide => _get('hide');
+
+  String get login => _get('login');
+  String get signup => _get('signup');
+
+  String get invalidLogin => _get('invalidLogin');
+  String get forgotPassword => _get('forgotPassword');
+  String get resetPassword => _get('resetPassword');
+  String get noAccount => _get('noAccount');
+
+  String get passwordNotStrongEnough => _get('passwordNotStrongEnough');
+  String get passwordsDoNotMatch => _get('passwordsDoNotMatch');
+  String get signupFailed => _get('signupFailed');
+  String get haveAccount => _get('haveAccount');
+
+  String get dashboard => _get('dashboard');
+  String get profile => _get('profile');
+  String get logout => _get('logout');
+  String get comingSoon => _get('comingSoon');
+
+  String get verified => _get('verified');
+  String get emailVerifiedMessage => _get('emailVerifiedMessage');
+  String get clickBelowToLogin => _get('clickBelowToLogin');
+
+  String get invitationOnly => _get('invitationOnly');
+  String get invitationOnlyMessage => _get('invitationOnlyMessage');
+  String get visitHomepage => _get('visitHomepage');
+
+  String get verifyEmail => _get('verifyEmail');
+  String get yourEmailAddress => _get('yourEmailAddress');
+  String verificationEmailSentTo(String email) =>
+      _get('verificationEmailSentTo').replaceFirst('{email}', email);
+  String get noEmailReceived => _get('noEmailReceived');
+  String get resendEmail => _get('resendEmail');
+  String get alreadyVerified => _get('alreadyVerified');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

@@ -155,6 +155,26 @@ void main() {
 
         expect((result as Error<RegisterResponse>).error.toString(), contains('Register error'));
       });
+
+      test('403 returns Result.error(InvitationRequiredException)', () async {
+        final client = errorClient(403);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.register(request);
+
+        expect((result as Error<RegisterResponse>).error, isA<InvitationRequiredException>());
+      });
+
+      test('400 with weak-password body returns Result.error(WeakPasswordException)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(400, jsonEncode({
+          'error': 'rpc error: code = InvalidArgument desc = password is too weak: needs at least 8 characters',
+        })));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.register(request);
+
+        expect((result as Error<RegisterResponse>).error, isA<WeakPasswordException>());
+      });
     });
 
     group('refresh', () {
@@ -431,7 +451,7 @@ void main() {
       const request = CheckPasswordStrengthRequest(password: 'pw');
 
       test('200 returns Ok(CheckPasswordStrengthResponse) with mapped fields', () async {
-        final client = okClient({'isStrong': true, 'message': 'strong'});
+        final client = okClient({'is_strong': true, 'message': 'strong'});
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.checkPasswordStrength(request);
@@ -442,7 +462,7 @@ void main() {
       });
 
       test('sends POST /check-password-strength with mapped body', () async {
-        final client = okClient({'isStrong': true, 'message': 'strong'});
+        final client = okClient({'is_strong': true, 'message': 'strong'});
         final api = AuthApiClient(clientFactory: () => client);
 
         await api.checkPasswordStrength(request);

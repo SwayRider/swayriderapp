@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../localization/applocalization.dart';
 import 'app_text_field.dart';
 
 class PasswordField extends StatefulWidget {
@@ -33,7 +34,11 @@ class _PasswordFieldState extends State<PasswordField> {
       onSubmitted: widget.onSubmitted,
       suffixIcon: TextButton(
         onPressed: () => setState(() => _obscureText = !_obscureText),
-        child: Text(_obscureText ? 'Show' : 'Hide'),
+        child: Text(
+          _obscureText
+              ? AppLocalization.of(context).show
+              : AppLocalization.of(context).hide,
+        ),
       ),
     );
   }

@@ -9,13 +9,13 @@ part of 'check_password_strength_response.dart';
 _CheckPasswordStrengthResponse _$CheckPasswordStrengthResponseFromJson(
   Map<String, dynamic> json,
 ) => _CheckPasswordStrengthResponse(
-  isStrong: json['isStrong'] as bool,
+  isStrong: json['is_strong'] as bool,
   message: json['message'] as String,
 );
 
 Map<String, dynamic> _$CheckPasswordStrengthResponseToJson(
   _CheckPasswordStrengthResponse instance,
 ) => <String, dynamic>{
-  'isStrong': instance.isStrong,
+  'is_strong': instance.isStrong,
   'message': instance.message,
 };

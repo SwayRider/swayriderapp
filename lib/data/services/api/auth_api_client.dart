@@ -6,6 +6,24 @@ import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 import 'model/auth/auth.dart';
 import '../../../utils/result.dart';
 
+/// Thrown when [AuthApiClient.register] fails because the backend is
+/// invitation-only and the given email has no invitation (HTTP 403).
+class InvitationRequiredException implements Exception {
+  const InvitationRequiredException();
+
+  @override
+  String toString() => 'An invitation is required to register';
+}
+
+/// Thrown when [AuthApiClient.register] fails because the password does not
+/// meet the backend's strength requirements (HTTP 400).
+class WeakPasswordException implements Exception {
+  const WeakPasswordException();
+
+  @override
+  String toString() => 'Password is not strong enough';
+}
+
 class AuthApiClient {
   AuthApiClient({
     String? scheme,
@@ -76,7 +94,14 @@ class AuthApiClient {
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(RegisterResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 403) {
+        return const Result.error(InvitationRequiredException());
       } else {
+        final stringData = await response.transform(utf8.decoder).join();
+        if (response.statusCode == 400 &&
+            stringData.contains('password is too weak')) {
+          return const Result.error(WeakPasswordException());
+        }
         return const Result.error(HttpException("Register error"));
       }
     } on Exception catch (e) {

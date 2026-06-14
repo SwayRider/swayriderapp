@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CheckPasswordStrengthResponse {
 
-@JsonKey(name: 'isStrong') bool get isStrong;@JsonKey(name: 'message') String get message;
+@JsonKey(name: 'is_strong') bool get isStrong;@JsonKey(name: 'message') String get message;
 /// Create a copy of CheckPasswordStrengthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -48,7 +48,7 @@ abstract mixin class $CheckPasswordStrengthResponseCopyWith<$Res>  {
   factory $CheckPasswordStrengthResponseCopyWith(CheckPasswordStrengthResponse value, $Res Function(CheckPasswordStrengthResponse) _then) = _$CheckPasswordStrengthResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'isStrong') bool isStrong,@JsonKey(name: 'message') String message
+@JsonKey(name: 'is_strong') bool isStrong,@JsonKey(name: 'message') String message
 });
 
 
@@ -151,7 +151,7 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'isStrong')  bool isStrong, @JsonKey(name: 'message')  String message)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'is_strong')  bool isStrong, @JsonKey(name: 'message')  String message)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _CheckPasswordStrengthResponse() when $default != null:
 return $default(_that.isStrong,_that.message);case _:
@@ -172,7 +172,7 @@ return $default(_that.isStrong,_that.message);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'isStrong')  bool isStrong, @JsonKey(name: 'message')  String message)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'is_strong')  bool isStrong, @JsonKey(name: 'message')  String message)  $default,) {final _that = this;
 switch (_that) {
 case _CheckPasswordStrengthResponse():
 return $default(_that.isStrong,_that.message);}
@@ -189,7 +189,7 @@ return $default(_that.isStrong,_that.message);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'isStrong')  bool isStrong, @JsonKey(name: 'message')  String message)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'is_strong')  bool isStrong, @JsonKey(name: 'message')  String message)?  $default,) {final _that = this;
 switch (_that) {
 case _CheckPasswordStrengthResponse() when $default != null:
 return $default(_that.isStrong,_that.message);case _:
@@ -204,10 +204,10 @@ return $default(_that.isStrong,_that.message);case _:
 @JsonSerializable()
 
 class _CheckPasswordStrengthResponse implements CheckPasswordStrengthResponse {
-  const _CheckPasswordStrengthResponse({@JsonKey(name: 'isStrong') required this.isStrong, @JsonKey(name: 'message') required this.message});
+  const _CheckPasswordStrengthResponse({@JsonKey(name: 'is_strong') required this.isStrong, @JsonKey(name: 'message') required this.message});
   factory _CheckPasswordStrengthResponse.fromJson(Map<String, dynamic> json) => _$CheckPasswordStrengthResponseFromJson(json);
 
-@override@JsonKey(name: 'isStrong') final  bool isStrong;
+@override@JsonKey(name: 'is_strong') final  bool isStrong;
 @override@JsonKey(name: 'message') final  String message;
 
 /// Create a copy of CheckPasswordStrengthResponse
@@ -243,7 +243,7 @@ abstract mixin class _$CheckPasswordStrengthResponseCopyWith<$Res> implements $C
   factory _$CheckPasswordStrengthResponseCopyWith(_CheckPasswordStrengthResponse value, $Res Function(_CheckPasswordStrengthResponse) _then) = __$CheckPasswordStrengthResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'isStrong') bool isStrong,@JsonKey(name: 'message') String message
+@JsonKey(name: 'is_strong') bool isStrong,@JsonKey(name: 'message') String message
 });
 
 

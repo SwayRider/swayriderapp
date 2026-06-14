@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../routing/routes.dart';
+import '../../core/localization/applocalization.dart';
 import '../../core/themes/dimens.dart';
 import '../../core/ui/app_text_field.dart';
 import '../../core/ui/auth_prompt.dart';
@@ -40,6 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final localization = AppLocalization.of(context);
+
     return BrandedScaffold(
       body: ListenableBuilder(
         listenable: widget.viewModel.login,
@@ -51,11 +56,11 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: Dimens.paddingVertical * 2),
-              const ScreenTitle(text: 'Login'),
+              ScreenTitle(text: localization.login),
               const SizedBox(height: Dimens.paddingVertical * 2),
               AppTextField(
                 controller: _emailController,
-                hintText: 'Email',
+                hintText: localization.email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
@@ -67,17 +72,17 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: Dimens.paddingVertical),
               PrimaryButton(
-                label: 'Login',
+                label: localization.login,
                 loading: loading,
                 onPressed: _submit,
               ),
               if (hasError) ...[
                 const SizedBox(height: Dimens.paddingVertical),
-                const ErrorMessage(text: 'Invalid Login'),
+                ErrorMessage(text: localization.invalidLogin),
                 const SizedBox(height: Dimens.paddingVertical),
                 AuthPrompt(
-                  text: 'Forgot Password?',
-                  buttonLabel: 'Reset Password',
+                  text: localization.forgotPassword,
+                  buttonLabel: localization.resetPassword,
                   spacing: Dimens.paddingVertical / 2,
                   // Placeholder until /reset-password is implemented.
                   onPressed: () {},
@@ -85,10 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               const SizedBox(height: Dimens.paddingVertical * 4),
               AuthPrompt(
-                text: 'No Account?',
-                buttonLabel: 'Signup',
-                // Placeholder until /signup is implemented.
-                onPressed: () {},
+                text: localization.noAccount,
+                buttonLabel: localization.signup,
+                onPressed: () => context.go(Routes.signup),
               ),
             ],
           );
