@@ -3,6 +3,7 @@ import 'package:logging/logging.dart';
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
 import '../../services/api/auth_api_client.dart';
+import '../../services/api/auth_header_provider.dart';
 import '../../services/api/model/auth/auth.dart';
 import '../../services/shared_preferences_service.dart';
 import 'auth_repository.dart';
@@ -23,6 +24,9 @@ class AuthRepositoryRemote extends AuthRepository {
   String? _refreshToken;
   bool? _cachedIsVerified;
   bool? _cachedIsAdmin;
+
+  @override
+  AuthHeaderProvider get authHeaderProvider => _authHeaderProvider;
 
   @override
   Future<bool> get isAuthenticated async {
@@ -194,7 +198,9 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
-  Future<Result<User>> me() async {
+  Future<Result<User>> me() => _withAuthRetry(_meOnce);
+
+  Future<Result<User>> _meOnce() async {
     final result = await _authApiClient.me();
     return switch (result) {
       Ok(:final value) => Result.ok(User(
@@ -207,7 +213,9 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
-  Future<Result<User>> whoAmI() async {
+  Future<Result<User>> whoAmI() => _withAuthRetry(_whoAmIOnce);
+
+  Future<Result<User>> _whoAmIOnce() async {
     final result = await _authApiClient.whoAmI();
     return switch (result) {
       Ok(:final value) => Result.ok(User(
@@ -219,6 +227,27 @@ class AuthRepositoryRemote extends AuthRepository {
         )),
       Error(:final error) => Result.error(error),
     };
+  }
+
+  /// Runs [call], and if it fails with [UnauthorizedException] (the access
+  /// token is expired or invalid), attempts [refresh] and retries [call]
+  /// once. If the refresh itself fails, the stored tokens are cleared so
+  /// [isAuthenticated] becomes false and the router redirects to login
+  /// instead of getting stuck on the verify-email screen.
+  Future<Result<T>> _withAuthRetry<T>(
+    Future<Result<T>> Function() call,
+  ) async {
+    final result = await call();
+    if (result case Error(error: UnauthorizedException())) {
+      _log.fine('Access token rejected, attempting refresh');
+      final refreshResult = await refresh();
+      if (refreshResult is Error<void>) {
+        await _clearTokens();
+        return result;
+      }
+      return call();
+    }
+    return result;
   }
 
   Future<Result<void>> _saveTokens(

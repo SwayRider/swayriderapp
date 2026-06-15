@@ -19,6 +19,23 @@ abstract final class AppConfig {
     defaultValue: '/api/v1/auth',
   );
 
+  /// Tiles API connection settings.
+  ///
+  /// Defaults match the dev backend. Override at build/run time via
+  /// `--dart-define=TILES_API_HOST=...` etc.
+  static const tilesApiScheme =
+      String.fromEnvironment('TILES_API_SCHEME', defaultValue: 'https');
+  static const tilesApiHost = String.fromEnvironment(
+    'TILES_API_HOST',
+    defaultValue: 'api.swayrider-dev.hevanto-it.com',
+  );
+  static const tilesApiPort =
+      int.fromEnvironment('TILES_API_PORT', defaultValue: 443);
+  static const tilesApiPathPrefix = String.fromEnvironment(
+    'TILES_API_PATH_PREFIX',
+    defaultValue: '/v1/tiles',
+  );
+
   /// URL the AuthService should redirect users to after they confirm their
   /// email address via the verification link sent during signup.
   ///

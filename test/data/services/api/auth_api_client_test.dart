@@ -548,6 +548,15 @@ void main() {
         expect((result as Error<WhoAmIResponse>).error.toString(), contains('Who am I error'));
       });
 
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.whoAmI();
+
+        expect((result as Error<WhoAmIResponse>).error, isA<UnauthorizedException>());
+      });
+
       test('sends Authorization header when authHeaderProvider is set', () async {
         final client = okClient({
           'user_id': 'user-1',
@@ -635,6 +644,15 @@ void main() {
         final result = await api.me();
 
         expect((result as Error<MeResponse>).error.toString(), contains('Me error'));
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.me();
+
+        expect((result as Error<MeResponse>).error, isA<UnauthorizedException>());
       });
 
       test('sends Authorization header when authHeaderProvider is set', () async {

@@ -8,6 +8,8 @@ class AppLocalizationNl extends AppLocalization {
     'email': 'E-mail',
     'password': 'Wachtwoord',
     'confirmPassword': 'Bevestig wachtwoord',
+    'oldPassword': 'Oud wachtwoord',
+    'newPassword': 'Nieuw wachtwoord',
     'show': 'Tonen',
     'hide': 'Verbergen',
 
@@ -28,6 +30,8 @@ class AppLocalizationNl extends AppLocalization {
     'profile': 'Profiel',
     'logout': 'Uitloggen',
     'comingSoon': 'Binnenkort beschikbaar',
+    'search': 'Zoeken',
+    'standardMotorcycle': 'Standaard motorfiets',
 
     'verified': 'Geverifieerd',
     'emailVerifiedMessage':

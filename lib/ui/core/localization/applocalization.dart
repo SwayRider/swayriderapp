@@ -21,6 +21,8 @@ class AppLocalization {
   String get email => _get('email');
   String get password => _get('password');
   String get confirmPassword => _get('confirmPassword');
+  String get oldPassword => _get('oldPassword');
+  String get newPassword => _get('newPassword');
   String get show => _get('show');
   String get hide => _get('hide');
 
@@ -41,6 +43,8 @@ class AppLocalization {
   String get profile => _get('profile');
   String get logout => _get('logout');
   String get comingSoon => _get('comingSoon');
+  String get search => _get('search');
+  String get standardMotorcycle => _get('standardMotorcycle');
 
   String get verified => _get('verified');
   String get emailVerifiedMessage => _get('emailVerifiedMessage');
