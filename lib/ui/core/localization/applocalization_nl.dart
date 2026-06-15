@@ -47,6 +47,19 @@ class AppLocalizationNl extends AppLocalization {
     'noEmailReceived': 'Geen e-mail ontvangen?',
     'resendEmail': 'E-mail opnieuw verzenden',
     'alreadyVerified': 'Al geverifieerd?',
+    'resendVerificationFailed': 'Verzenden van verificatie-e-mail mislukt',
+    'resendEmailIn': 'Je kan de e-mail opnieuw verzenden in {seconds}s',
+
+    'resetPasswordFailed': 'Versturen van wachtwoord-reset e-mail mislukt',
+    'rememberPassword': 'Wachtwoord toch nog gekend?',
+    'passwordResetEmailSentTo':
+        'Er is een wachtwoord-reset e-mail verzonden naar {email}',
+
+    'changePassword': 'Wachtwoord wijzigen',
+    'changePasswordFailed': 'Wachtwoord wijzigen mislukt',
+
+    'passwordChanged': 'Wachtwoord gewijzigd',
+    'passwordChangedMessage': 'Je wachtwoord is succesvol gewijzigd.',
   };
 
   @override

@@ -8,8 +8,15 @@ import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
 import '../ui/login/view_models/login_viewmodel.dart';
 import '../ui/login/widgets/login_screen.dart';
+import '../ui/new_password/view_models/new_password_viewmodel.dart';
+import '../ui/new_password/widgets/new_password_screen.dart';
+import '../ui/password_changed/widgets/password_changed_screen.dart';
+import '../ui/reset_password/view_models/reset_password_viewmodel.dart';
+import '../ui/reset_password/widgets/reset_password_screen.dart';
+import '../ui/reset_password_confirmation/widgets/reset_password_confirmation_screen.dart';
 import '../ui/signup/view_models/signup_viewmodel.dart';
 import '../ui/signup/widgets/signup_screen.dart';
+import '../ui/verify_email/view_models/verify_email_viewmodel.dart';
 import '../ui/verify_email/widgets/verify_email_screen.dart';
 import 'routes.dart';
 import '../data/repositories/auth/auth_repository.dart';
@@ -44,7 +51,14 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
       path: Routes.verifyEmail,
       builder: (context, state) {
         final email = state.extra;
-        return VerifyEmailScreen(email: email is String ? email : null);
+        final resolvedEmail = email is String ? email : null;
+        return VerifyEmailScreen(
+          email: resolvedEmail,
+          viewModel: VerifyEmailViewModel(
+            authRepository: context.read(),
+            email: resolvedEmail,
+          ),
+        );
       },
     ),
     GoRoute(
@@ -54,6 +68,38 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
     GoRoute(
       path: Routes.invitationOnly,
       builder: (context, state) => const InvitationOnlyScreen(),
+    ),
+    GoRoute(
+      path: Routes.resetPassword,
+      builder: (context, state) {
+        return ResetPasswordScreen(
+          viewModel: ResetPasswordViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.resetPasswordConfirmation,
+      builder: (context, state) {
+        final email = state.extra;
+        return ResetPasswordConfirmationScreen(
+          email: email is String ? email : '',
+          viewModel: ResetPasswordViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.newPassword,
+      builder: (context, state) {
+        return NewPasswordScreen(
+          userId: state.uri.queryParameters['user_id'] ?? '',
+          token: state.uri.queryParameters['token'] ?? '',
+          viewModel: NewPasswordViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.passwordChanged,
+      builder: (context, state) => const PasswordChangedScreen(),
     ),
     GoRoute(
       path: Routes.home,

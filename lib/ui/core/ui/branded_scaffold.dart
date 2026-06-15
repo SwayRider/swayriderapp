@@ -16,7 +16,14 @@ class BrandedScaffold extends StatelessWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: Dimens.of(context).edgeInsetsScreenSymetric,
-          child: body,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: Dimens.maxContentWidth,
+              ),
+              child: body,
+            ),
+          ),
         ),
       ),
     );

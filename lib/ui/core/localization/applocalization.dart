@@ -57,6 +57,20 @@ class AppLocalization {
   String get noEmailReceived => _get('noEmailReceived');
   String get resendEmail => _get('resendEmail');
   String get alreadyVerified => _get('alreadyVerified');
+  String get resendVerificationFailed => _get('resendVerificationFailed');
+  String resendEmailIn(int seconds) =>
+      _get('resendEmailIn').replaceFirst('{seconds}', '$seconds');
+
+  String get resetPasswordFailed => _get('resetPasswordFailed');
+  String get rememberPassword => _get('rememberPassword');
+  String passwordResetEmailSentTo(String email) =>
+      _get('passwordResetEmailSentTo').replaceFirst('{email}', email);
+
+  String get changePassword => _get('changePassword');
+  String get changePasswordFailed => _get('changePasswordFailed');
+
+  String get passwordChanged => _get('passwordChanged');
+  String get passwordChangedMessage => _get('passwordChangedMessage');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

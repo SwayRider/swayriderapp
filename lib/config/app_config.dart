@@ -30,6 +30,18 @@ abstract final class AppConfig {
     defaultValue: 'https://api.swayrider-dev.hevanto-it.com/web/verify-user',
   );
 
+  /// URL the AuthService should redirect users to after they submit a new
+  /// password via the reset-password link sent to their email.
+  ///
+  /// Empty by default — the AuthService falls back to its own default
+  /// reset-password landing page. Override with
+  /// `--dart-define=RESET_PASSWORD_REDIRECT_URL=...` at build/run time.
+  static const resetPasswordRedirectUrl = String.fromEnvironment(
+    'RESET_PASSWORD_REDIRECT_URL',
+    defaultValue:
+        'https://api.swayrider-dev.hevanto-it.com/web/reset-password',
+  );
+
   /// URL of the SwayRider homepage, shown to users who try to sign up on an
   /// invitation-only backend without an invitation.
   ///

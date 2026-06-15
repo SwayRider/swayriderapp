@@ -47,6 +47,20 @@ class AppLocalizationEn  extends AppLocalization {
     'noEmailReceived': 'No email received?',
     'resendEmail': 'Resend Email',
     'alreadyVerified': 'Already verified?',
+    'resendVerificationFailed': 'Failed to resend verification email',
+    'resendEmailIn': 'You can resend the email in {seconds}s',
+
+    'resetPasswordFailed': 'Failed to send password reset email',
+    'rememberPassword': 'Remember your password?',
+    'passwordResetEmailSentTo':
+        'A password reset email has been sent to {email}',
+
+    'changePassword': 'Change Password',
+    'changePasswordFailed': 'Failed to change password',
+
+    'passwordChanged': 'Password Changed',
+    'passwordChangedMessage':
+        'Your password has been successfully changed.',
   };
 
   @override
