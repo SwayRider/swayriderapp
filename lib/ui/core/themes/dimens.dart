@@ -9,6 +9,10 @@ abstract final class Dimens {
   /// General vertical padding used to separate UI items
   static const paddingVertical = 24.0;
 
+  /// Maximum width for screen content, so forms don't stretch full-width
+  /// on large screens
+  static const maxContentWidth = 480.0;
+
   /// Horizontal padding for screen edges
   double get paddingScreenHorizontal;
 

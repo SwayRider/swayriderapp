@@ -280,6 +280,15 @@ void main() {
         expect(result, isA<Ok<void>>());
       });
 
+      test('204 returns Ok(null)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(204));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.requestPasswordReset(request);
+
+        expect(result, isA<Ok<void>>());
+      });
+
       test('sends POST /request-password-reset with mapped body', () async {
         final client = FakeHttpClient(FakeHttpClientResponse(200));
         final api = AuthApiClient(clientFactory: () => client);
@@ -355,6 +364,15 @@ void main() {
 
       test('200 returns Ok(null)', () async {
         final client = FakeHttpClient(FakeHttpClientResponse(200));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.verifyEmail(request);
+
+        expect(result, isA<Ok<void>>());
+      });
+
+      test('204 returns Ok(null)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(204));
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.verifyEmail(request);

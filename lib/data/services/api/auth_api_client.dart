@@ -157,7 +157,7 @@ class AuthApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await request.close();
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         return const Result.ok(null);
       } else {
         return const Result.error(HttpException("Password reset error"));
@@ -196,7 +196,7 @@ class AuthApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await request.close();
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 204) {
         return const Result.ok(null);
       } else {
         return const Result.error(HttpException("Verify email error"));
