@@ -1,19 +1,32 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:mocktail/mocktail.dart';
 import 'package:swayriderapp/ui/home/view_models/home_viewmodel.dart';
 import 'package:swayriderapp/utils/result.dart';
 
 import '../../../helpers/mocks.dart';
 
+const _defaultLocation = LatLng(51.2194, 4.4025);
+const _testLocation = LatLng(50.8503, 4.3517);
+const _testStyle = '{"version": 8}';
+
 void main() {
   late MockAuthRepository mockAuthRepository;
+  late MockTilesRepository mockTilesRepository;
+  late MockLocationService mockLocationService;
   late HomeViewModel viewModel;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
-    viewModel = HomeViewModel(authRepository: mockAuthRepository);
+    mockTilesRepository = MockTilesRepository();
+    mockLocationService = MockLocationService();
+    viewModel = HomeViewModel(
+      authRepository: mockAuthRepository,
+      tilesRepository: mockTilesRepository,
+      locationService: mockLocationService,
+    );
   });
 
   test('initial state is idle', () {
@@ -77,5 +90,71 @@ void main() {
     await second;
 
     verify(() => mockAuthRepository.logout()).called(1);
+  });
+
+  group('loadMap', () {
+    test('initial state has no location or style', () {
+      expect(viewModel.location, isNull);
+      expect(viewModel.mapStyle, isNull);
+      expect(viewModel.loadMap.running, isFalse);
+      expect(viewModel.loadMap.completed, isFalse);
+    });
+
+    test('success sets location and mapStyle from the repositories', () async {
+      when(() => mockLocationService.getCurrentLocation())
+          .thenAnswer((_) async => const Result.ok(_testLocation));
+      when(() => mockTilesRepository.getMapStyle(name: 'light'))
+          .thenAnswer((_) async => const Result.ok(_testStyle));
+
+      await viewModel.loadMap.execute();
+
+      expect(viewModel.location, _testLocation);
+      expect(viewModel.mapStyle, _testStyle);
+      expect(viewModel.loadMap.completed, isTrue);
+      expect(viewModel.loadMap.error, isFalse);
+    });
+
+    test('location error falls back to the default location', () async {
+      when(() => mockLocationService.getCurrentLocation())
+          .thenAnswer((_) async => Result.error(Exception('denied')));
+      when(() => mockTilesRepository.getMapStyle(name: 'light'))
+          .thenAnswer((_) async => const Result.ok(_testStyle));
+
+      await viewModel.loadMap.execute();
+
+      expect(viewModel.location, _defaultLocation);
+      expect(viewModel.mapStyle, _testStyle);
+      expect(viewModel.loadMap.completed, isTrue);
+      expect(viewModel.loadMap.error, isFalse);
+    });
+
+    test('style error marks the command as error', () async {
+      final exception = Exception('style fetch failed');
+      when(() => mockLocationService.getCurrentLocation())
+          .thenAnswer((_) async => const Result.ok(_testLocation));
+      when(() => mockTilesRepository.getMapStyle(name: 'light'))
+          .thenAnswer((_) async => Result.error(exception));
+
+      await viewModel.loadMap.execute();
+
+      expect(viewModel.location, _testLocation);
+      expect(viewModel.mapStyle, isNull);
+      expect(viewModel.loadMap.error, isTrue);
+      expect((viewModel.loadMap.result as Error).error, exception);
+    });
+
+    test('notifies listeners exactly twice per execute cycle', () async {
+      when(() => mockLocationService.getCurrentLocation())
+          .thenAnswer((_) async => const Result.ok(_testLocation));
+      when(() => mockTilesRepository.getMapStyle(name: 'light'))
+          .thenAnswer((_) async => const Result.ok(_testStyle));
+
+      var notifications = 0;
+      viewModel.loadMap.addListener(() => notifications++);
+
+      await viewModel.loadMap.execute();
+
+      expect(notifications, 2);
+    });
   });
 }

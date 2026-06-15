@@ -2,11 +2,19 @@ import 'package:flutter/foundation.dart';
 
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
+import '../../services/api/auth_header_provider.dart';
 
 abstract class AuthRepository extends ChangeNotifier {
   Future<bool> get isAuthenticated;
   Future<bool> get isVerified;
   Future<bool> get isAdmin;
+
+  /// Returns the current `Authorization` header value (e.g.
+  /// `'Bearer <token>'`), or `null` if not authenticated.
+  ///
+  /// Lets other repositories reuse the same bearer-token source without
+  /// depending on [AuthRepository] internals.
+  AuthHeaderProvider get authHeaderProvider;
 
   Future<Result<void>> login({
     required String email,

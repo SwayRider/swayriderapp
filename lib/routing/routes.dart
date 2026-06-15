@@ -9,6 +9,8 @@ abstract final class Routes {
   static const resetPasswordConfirmation = '/reset-password-confirmation';
   static const newPassword = '/new-password';
   static const passwordChanged = '/password-changed';
+  static const profile = '/profile';
+  static const changePassword = '/change-password';
 
   /// Routes accessible while the user is not authenticated.
   static const publicRoutes = {

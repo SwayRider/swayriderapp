@@ -8,6 +8,8 @@ class AppLocalizationEn  extends AppLocalization {
     'email': 'Email',
     'password': 'Password',
     'confirmPassword': 'Confirm Password',
+    'oldPassword': 'Old Password',
+    'newPassword': 'New Password',
     'show': 'Show',
     'hide': 'Hide',
 
@@ -28,6 +30,8 @@ class AppLocalizationEn  extends AppLocalization {
     'profile': 'Profile',
     'logout': 'Logout',
     'comingSoon': 'Coming soon',
+    'search': 'Search',
+    'standardMotorcycle': 'Standard Motorcycle',
 
     'verified': 'Verified',
     'emailVerifiedMessage':

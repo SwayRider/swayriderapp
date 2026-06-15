@@ -3,8 +3,13 @@ import 'package:provider/single_child_widget.dart';
 
 import '../data/repositories/auth/auth_repository.dart';
 import '../data/repositories/auth/auth_repository_remote.dart';
+import '../data/repositories/tiles/tiles_repository.dart';
+import '../data/repositories/tiles/tiles_repository_remote.dart';
 import '../data/services/api/auth_api_client.dart';
+import '../data/services/api/tiles_api_client.dart';
+import '../data/services/location_service.dart';
 import '../data/services/shared_preferences_service.dart';
+import '../data/services/tile_cache.dart';
 import 'app_config.dart';
 
 /// Shared providers for all configurations.
@@ -27,6 +32,27 @@ List<SingleChildWidget> get providerDev {
         authApiClient: context.read(),
         sharedPreferencesService: context.read(),
       ) as AuthRepository),
+    Provider(create: (context) => TilesApiClient(
+      scheme: AppConfig.tilesApiScheme,
+      host: AppConfig.tilesApiHost,
+      port: AppConfig.tilesApiPort,
+      pathPrefix: AppConfig.tilesApiPathPrefix,
+    )),
+    Provider<TileCache>(create: (context) => NoopTileCache()),
+    Provider<TilesRepository>(
+      create: (context) => TilesRepositoryRemote(
+        tilesApiClient: context.read(),
+        authRepository: context.read(),
+        tilesBaseUrl: Uri(
+          scheme: AppConfig.tilesApiScheme,
+          host: AppConfig.tilesApiHost,
+          port: AppConfig.tilesApiPort,
+        ),
+        tileCache: context.read(),
+      ),
+      dispose: (context, repository) => repository.close(),
+    ),
+    Provider<LocationService>(create: (context) => LocationServiceGeolocator()),
     ..._sharedProviders
   ];
 }

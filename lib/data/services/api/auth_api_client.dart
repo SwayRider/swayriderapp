@@ -24,6 +24,15 @@ class WeakPasswordException implements Exception {
   String toString() => 'Password is not strong enough';
 }
 
+/// Thrown when an authenticated request is rejected because the access token
+/// is missing, expired, or otherwise invalid (HTTP 401).
+class UnauthorizedException implements Exception {
+  const UnauthorizedException();
+
+  @override
+  String toString() => 'Not authenticated';
+}
+
 class AuthApiClient {
   AuthApiClient({
     String? scheme,
@@ -258,6 +267,8 @@ class AuthApiClient {
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(WhoAmIResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
       } else {
         return const Result.error(HttpException("Who am I error"));
       }
@@ -277,6 +288,8 @@ class AuthApiClient {
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(MeResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
       } else {
         return const Result.error(HttpException("Me error"));
       }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:swayriderapp/data/repositories/auth/auth_repository_remote.dart';
+import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 import 'package:swayriderapp/data/services/api/model/auth/auth.dart';
 import 'package:swayriderapp/domain/models/user/user.dart';
@@ -95,6 +96,38 @@ void main() {
       expect(await repository.isVerified, isFalse);
       expect(await repository.isVerified, isFalse);
       verify(() => mockApiClient.me()).called(2);
+    });
+
+    test('UnauthorizedException triggers a transparent refresh and succeeds', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok('stored-refresh'));
+      when(() => mockApiClient.refresh(any())).thenAnswer((_) async =>
+          const Result.ok(RefreshResponse(
+              accessToken: 'access-2', refreshToken: 'refresh-2')));
+
+      var callCount = 0;
+      when(() => mockApiClient.me()).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          return const Result.error(UnauthorizedException());
+        }
+        return Result.ok(
+            MeResponse(userId: 'user-1', email: 'a@b.com', emailVerified: true));
+      });
+
+      expect(await repository.isVerified, isTrue);
+    });
+
+    test('UnauthorizedException with failed refresh logs the user out', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok(null));
+      when(() => mockPrefs.fetchAccessToken())
+          .thenAnswer((_) async => const Result.ok(null));
+      when(() => mockApiClient.me())
+          .thenAnswer((_) async => const Result.error(UnauthorizedException()));
+
+      expect(await repository.isVerified, isFalse);
+      expect(await repository.isAuthenticated, isFalse);
     });
   });
 
@@ -571,6 +604,44 @@ void main() {
 
       expect((result as Error<User>).error, exception);
     });
+
+    test('UnauthorizedException triggers refresh and retries, returning the refreshed result', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok('stored-refresh'));
+      when(() => mockApiClient.refresh(any())).thenAnswer((_) async =>
+          const Result.ok(RefreshResponse(
+              accessToken: 'access-2', refreshToken: 'refresh-2')));
+
+      var callCount = 0;
+      when(() => mockApiClient.me()).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          return const Result.error(UnauthorizedException());
+        }
+        return Result.ok(
+            MeResponse(userId: 'user-1', email: 'a@b.com', emailVerified: true));
+      });
+
+      final result = await repository.me();
+
+      expect((result as Ok<User>).value.isVerified, isTrue);
+      verify(() => mockApiClient.me()).called(2);
+      verify(() => mockApiClient.refresh(any())).called(1);
+    });
+
+    test('UnauthorizedException with failed refresh clears tokens and returns the original error', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok(null));
+      when(() => mockApiClient.me())
+          .thenAnswer((_) async => const Result.error(UnauthorizedException()));
+
+      final result = await repository.me();
+
+      expect((result as Error<User>).error, isA<UnauthorizedException>());
+      verify(() => mockApiClient.me()).called(1);
+      verify(() => mockPrefs.saveAccessToken(null)).called(1);
+      verify(() => mockPrefs.saveRefreshToken(null)).called(1);
+    });
   });
 
   group('whoAmI', () {
@@ -601,6 +672,48 @@ void main() {
       final result = await repository.whoAmI();
 
       expect((result as Error<User>).error, exception);
+    });
+
+    test('UnauthorizedException triggers refresh and retries, returning the refreshed result', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok('stored-refresh'));
+      when(() => mockApiClient.refresh(any())).thenAnswer((_) async =>
+          const Result.ok(RefreshResponse(
+              accessToken: 'access-2', refreshToken: 'refresh-2')));
+
+      var callCount = 0;
+      when(() => mockApiClient.whoAmI()).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          return const Result.error(UnauthorizedException());
+        }
+        return const Result.ok(WhoAmIResponse(
+            userId: 'user-1',
+            email: 'a@b.com',
+            isVerified: true,
+            isAdmin: false,
+            accountType: 'standard'));
+      });
+
+      final result = await repository.whoAmI();
+
+      expect((result as Ok<User>).value.id, 'user-1');
+      verify(() => mockApiClient.whoAmI()).called(2);
+      verify(() => mockApiClient.refresh(any())).called(1);
+    });
+
+    test('UnauthorizedException with failed refresh clears tokens and returns the original error', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok(null));
+      when(() => mockApiClient.whoAmI())
+          .thenAnswer((_) async => const Result.error(UnauthorizedException()));
+
+      final result = await repository.whoAmI();
+
+      expect((result as Error<User>).error, isA<UnauthorizedException>());
+      verify(() => mockApiClient.whoAmI()).called(1);
+      verify(() => mockPrefs.saveAccessToken(null)).called(1);
+      verify(() => mockPrefs.saveRefreshToken(null)).called(1);
     });
   });
 }

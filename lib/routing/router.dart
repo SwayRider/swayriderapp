@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../ui/change_password/view_models/change_password_viewmodel.dart';
+import '../ui/change_password/widgets/change_password_screen.dart';
 import '../ui/email_verified/widgets/email_verified_screen.dart';
 import '../ui/home/view_models/home_viewmodel.dart';
 import '../ui/invitation_only/widgets/invitation_only_screen.dart';
@@ -11,6 +13,7 @@ import '../ui/login/widgets/login_screen.dart';
 import '../ui/new_password/view_models/new_password_viewmodel.dart';
 import '../ui/new_password/widgets/new_password_screen.dart';
 import '../ui/password_changed/widgets/password_changed_screen.dart';
+import '../ui/profile/widgets/profile_screen.dart';
 import '../ui/reset_password/view_models/reset_password_viewmodel.dart';
 import '../ui/reset_password/widgets/reset_password_screen.dart';
 import '../ui/reset_password_confirmation/widgets/reset_password_confirmation_screen.dart';
@@ -102,9 +105,25 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
       builder: (context, state) => const PasswordChangedScreen(),
     ),
     GoRoute(
+      path: Routes.profile,
+      builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: Routes.changePassword,
+      builder: (context, state) {
+        return ChangePasswordScreen(
+          viewModel: ChangePasswordViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
       path: Routes.home,
       builder: (context, state) {
-        final viewModel = HomeViewModel(authRepository: context.read());
+        final viewModel = HomeViewModel(
+          authRepository: context.read(),
+          tilesRepository: context.read(),
+          locationService: context.read(),
+        );
         return HomeScreen(viewModel: viewModel);
       },
     )
@@ -126,6 +145,12 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
   // if the user is logged in but hasn't verified their email yet, send
   // them to the verify-email screen (unless they're already there)
   if (!await authRepository.isVerified) {
+    // isVerified may have cleared the session (an expired access token and
+    // a failed refresh); re-check isAuthenticated so a fully expired
+    // session goes to /login instead of getting stuck on /verify-email.
+    if (!await authRepository.isAuthenticated) {
+      return onPublicRoute ? null : Routes.login;
+    }
     return state.matchedLocation == Routes.verifyEmail
         ? null
         : Routes.verifyEmail;
