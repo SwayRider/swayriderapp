@@ -10,6 +10,7 @@ import '../data/services/api/tiles_api_client.dart';
 import '../data/services/location_service.dart';
 import '../data/services/shared_preferences_service.dart';
 import '../data/services/tile_cache.dart';
+import '../ui/home/view_models/home_viewmodel.dart';
 import 'app_config.dart';
 
 /// Shared providers for all configurations.
@@ -53,6 +54,13 @@ List<SingleChildWidget> get providerDev {
       dispose: (context, repository) => repository.close(),
     ),
     Provider<LocationService>(create: (context) => LocationServiceGeolocator()),
+    ChangeNotifierProvider<HomeViewModel>(
+      create: (context) => HomeViewModel(
+        authRepository: context.read(),
+        tilesRepository: context.read(),
+        locationService: context.read(),
+      ),
+    ),
     ..._sharedProviders
   ];
 }
