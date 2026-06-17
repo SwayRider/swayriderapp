@@ -172,6 +172,42 @@ class FakeHttpClient extends Fake implements HttpClient {
   }
 }
 
+/// Fake [HttpClient] whose requests stall forever — [close()] on the request
+/// returns a [Completer] future that never resolves. Used to verify that
+/// [AuthApiClient] applies a request timeout and surfaces a [TimeoutException].
+class FakeHangingHttpClient extends Fake implements HttpClient {
+  bool closed = false;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) async =>
+      _HangingRequest(uri: url, method: 'POST');
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async =>
+      _HangingRequest(uri: url, method: 'GET');
+
+  @override
+  void close({bool force = false}) => closed = true;
+}
+
+class _HangingRequest extends Fake implements HttpClientRequest {
+  _HangingRequest({required this.uri, required this.method});
+
+  @override
+  final Uri uri;
+  @override
+  final String method;
+
+  @override
+  HttpHeaders get headers => FakeHttpHeaders();
+
+  @override
+  void write(Object? object) {}
+
+  @override
+  Future<HttpClientResponse> close() => Completer<HttpClientResponse>().future;
+}
+
 /// Fake [HttpClient] that throws [exception] as soon as a request is opened,
 /// used to exercise the `on Exception catch (e)` paths in [AuthApiClient].
 class FakeThrowingHttpClient extends Fake implements HttpClient {

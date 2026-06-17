@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/data/services/api/model/auth/auth.dart';
@@ -708,6 +709,25 @@ void main() {
         await api.publicKeys();
 
         expect(client.lastRequest!.headers.value('Authorization'), isNull);
+      });
+    });
+
+    group('request timeout', () {
+      test('a hanging request completes with Result.error after 10 seconds', () {
+        fakeAsync((async) {
+          final client = FakeHangingHttpClient();
+          final api = AuthApiClient(clientFactory: () => client);
+          Result<LoginResponse>? result;
+
+          api
+              .login(const LoginRequest(email: 'a@b.com', password: 'pw'))
+              .then((r) => result = r);
+
+          async.elapse(const Duration(seconds: 11));
+
+          expect(result, isA<Error<LoginResponse>>());
+          expect(client.closed, isTrue);
+        });
       });
     });
   });
