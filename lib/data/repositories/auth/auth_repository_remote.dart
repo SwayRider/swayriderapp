@@ -71,10 +71,12 @@ class AuthRepositoryRemote extends AuthRepository {
       password: password,
       rememberMe: rememberMe,
     ));
-    return switch (result) {
-      Ok(:final value) => _saveTokens(value.accessToken, value.refreshToken),
-      Error(:final error) => Result.error(error),
-    };
+    if (result case Ok(:final value)) {
+      await _saveTokens(value.accessToken, value.refreshToken);
+      notifyListeners();
+      return const Result.ok(null);
+    }
+    return Result.error((result as Error<LoginResponse>).error);
   }
 
   @override
@@ -103,6 +105,7 @@ class AuthRepositoryRemote extends AuthRepository {
     final result =
         await _authApiClient.logout(LogoutRequest(refreshToken: _refreshToken));
     await _clearTokens();
+    notifyListeners();
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -256,7 +259,6 @@ class AuthRepositoryRemote extends AuthRepository {
     _refreshToken = refreshToken;
     await _sharedPreferencesService.saveAccessToken(accessToken);
     await _sharedPreferencesService.saveRefreshToken(refreshToken);
-    notifyListeners();
     return const Result.ok(null);
   }
 
@@ -267,7 +269,6 @@ class AuthRepositoryRemote extends AuthRepository {
     _cachedIsAdmin = null;
     await _sharedPreferencesService.saveAccessToken(null);
     await _sharedPreferencesService.saveRefreshToken(null);
-    notifyListeners();
   }
 
   String? _authHeaderProvider() =>

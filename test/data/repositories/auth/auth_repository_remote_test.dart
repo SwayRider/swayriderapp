@@ -305,6 +305,20 @@ void main() {
       expect((result as Error<void>).error, exception);
       verifyNever(() => mockPrefs.saveAccessToken(any()));
     });
+
+    test('Ok result does not notify listeners', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok('stored-refresh'));
+      when(() => mockApiClient.refresh(any())).thenAnswer((_) async =>
+          const Result.ok(RefreshResponse(
+              accessToken: 'access-2', refreshToken: 'refresh-2')));
+      var notified = false;
+      repository.addListener(() => notified = true);
+
+      await repository.refresh();
+
+      expect(notified, isFalse);
+    });
   });
 
   group('logout', () {
@@ -621,12 +635,15 @@ void main() {
         return Result.ok(
             MeResponse(userId: 'user-1', email: 'a@b.com', emailVerified: true));
       });
+      var notified = false;
+      repository.addListener(() => notified = true);
 
       final result = await repository.me();
 
       expect((result as Ok<User>).value.isVerified, isTrue);
       verify(() => mockApiClient.me()).called(2);
       verify(() => mockApiClient.refresh(any())).called(1);
+      expect(notified, isFalse);
     });
 
     test('UnauthorizedException with failed refresh clears tokens and returns the original error', () async {
@@ -634,6 +651,8 @@ void main() {
           .thenAnswer((_) async => const Result.ok(null));
       when(() => mockApiClient.me())
           .thenAnswer((_) async => const Result.error(UnauthorizedException()));
+      var notified = false;
+      repository.addListener(() => notified = true);
 
       final result = await repository.me();
 
@@ -641,6 +660,7 @@ void main() {
       verify(() => mockApiClient.me()).called(1);
       verify(() => mockPrefs.saveAccessToken(null)).called(1);
       verify(() => mockPrefs.saveRefreshToken(null)).called(1);
+      expect(notified, isFalse);
     });
   });
 
@@ -694,12 +714,15 @@ void main() {
             isAdmin: false,
             accountType: 'standard'));
       });
+      var notified = false;
+      repository.addListener(() => notified = true);
 
       final result = await repository.whoAmI();
 
       expect((result as Ok<User>).value.id, 'user-1');
       verify(() => mockApiClient.whoAmI()).called(2);
       verify(() => mockApiClient.refresh(any())).called(1);
+      expect(notified, isFalse);
     });
 
     test('UnauthorizedException with failed refresh clears tokens and returns the original error', () async {
@@ -707,6 +730,8 @@ void main() {
           .thenAnswer((_) async => const Result.ok(null));
       when(() => mockApiClient.whoAmI())
           .thenAnswer((_) async => const Result.error(UnauthorizedException()));
+      var notified = false;
+      repository.addListener(() => notified = true);
 
       final result = await repository.whoAmI();
 
@@ -714,6 +739,7 @@ void main() {
       verify(() => mockApiClient.whoAmI()).called(1);
       verify(() => mockPrefs.saveAccessToken(null)).called(1);
       verify(() => mockPrefs.saveRefreshToken(null)).called(1);
+      expect(notified, isFalse);
     });
   });
 }

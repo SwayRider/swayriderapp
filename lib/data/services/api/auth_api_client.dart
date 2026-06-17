@@ -64,6 +64,11 @@ class AuthApiClient {
     }
   }
 
+  static const _requestTimeout = Duration(seconds: 10);
+
+  Future<HttpClientResponse> _close(HttpClientRequest request) =>
+      request.close().timeout(_requestTimeout);
+
   String _fullPath(String path) => '$_pathPrefix$path';
 
   Uri _uri(String path) => Uri(
@@ -79,7 +84,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/login'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(LoginResponse.fromJson(jsonDecode(stringData)));
@@ -99,7 +104,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/register'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(RegisterResponse.fromJson(jsonDecode(stringData)));
@@ -126,7 +131,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/refresh'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(RefreshResponse.fromJson(jsonDecode(stringData)));
@@ -146,7 +151,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/logout'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         return const Result.ok(null);
       } else {
@@ -165,7 +170,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/request-password-reset'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200 || response.statusCode == 204) {
         return const Result.ok(null);
       } else {
@@ -184,7 +189,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/reset-password'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(ResetPasswordResponse.fromJson(jsonDecode(stringData)));
@@ -204,7 +209,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/verify-email'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200 || response.statusCode == 204) {
         return const Result.ok(null);
       } else {
@@ -224,7 +229,7 @@ class AuthApiClient {
       await _authHeader(request.headers);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(ChangePasswordResponse.fromJson(jsonDecode(stringData)));
@@ -244,7 +249,7 @@ class AuthApiClient {
       final request = await client.postUrl(_uri('/check-password-strength'));
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(CheckPasswordStrengthResponse.fromJson(jsonDecode(stringData)));
@@ -263,7 +268,7 @@ class AuthApiClient {
     try {
       final request = await client.getUrl(_uri('/whoami'));
       await _authHeader(request.headers);
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(WhoAmIResponse.fromJson(jsonDecode(stringData)));
@@ -284,7 +289,7 @@ class AuthApiClient {
     try {
       final request = await client.getUrl(_uri('/me'));
       await _authHeader(request.headers);
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(MeResponse.fromJson(jsonDecode(stringData)));
@@ -304,7 +309,7 @@ class AuthApiClient {
     final client = _clientFactory();
     try {
       final request = await client.getUrl(_uri('/public-keys'));
-      final response = await request.close();
+      final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(PublicKeysResponse.fromJson(jsonDecode(stringData)));
