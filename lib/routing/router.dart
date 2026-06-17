@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../ui/change_password/view_models/change_password_viewmodel.dart';
 import '../ui/change_password/widgets/change_password_screen.dart';
 import '../ui/email_verified/widgets/email_verified_screen.dart';
-import '../ui/home/view_models/home_viewmodel.dart';
 import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
 import '../ui/login/view_models/login_viewmodel.dart';
@@ -119,12 +118,7 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
     GoRoute(
       path: Routes.home,
       builder: (context, state) {
-        final viewModel = HomeViewModel(
-          authRepository: context.read(),
-          tilesRepository: context.read(),
-          locationService: context.read(),
-        );
-        return HomeScreen(viewModel: viewModel);
+        return HomeScreen(viewModel: context.read());
       },
     )
   ]

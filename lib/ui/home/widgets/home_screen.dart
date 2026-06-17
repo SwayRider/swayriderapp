@@ -45,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+      resizeToAvoidBottomInset: false,
       appBar: const BrandedAppBar(),
       body: SafeArea(
         child: Column(

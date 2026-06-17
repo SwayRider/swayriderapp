@@ -66,6 +66,16 @@ class AuthApiClient {
 
   static const _requestTimeout = Duration(seconds: 10);
 
+  HttpClient _newClient() => _clientFactory()
+    ..connectionTimeout = _requestTimeout;
+
+  // Covers DNS resolution + TCP connect + response with a single timeout budget.
+  Future<HttpClientRequest> _get(HttpClient client, String path) =>
+      client.getUrl(_uri(path)).timeout(_requestTimeout);
+
+  Future<HttpClientRequest> _post(HttpClient client, String path) =>
+      client.postUrl(_uri(path)).timeout(_requestTimeout);
+
   Future<HttpClientResponse> _close(HttpClientRequest request) =>
       request.close().timeout(_requestTimeout);
 
@@ -79,9 +89,9 @@ class AuthApiClient {
   );
 
   Future<Result<LoginResponse>> login(LoginRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/login'));
+      final request = await _post(client, '/login');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -99,9 +109,9 @@ class AuthApiClient {
   }
 
   Future<Result<RegisterResponse>> register(RegisterRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/register'));
+      final request = await _post(client, '/register');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -126,9 +136,9 @@ class AuthApiClient {
   }
 
   Future<Result<RefreshResponse>> refresh(RefreshRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/refresh'));
+      final request = await _post(client, '/refresh');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -146,9 +156,9 @@ class AuthApiClient {
   }
 
   Future<Result<void>> logout(LogoutRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/logout'));
+      final request = await _post(client, '/logout');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -165,9 +175,9 @@ class AuthApiClient {
   }
 
   Future<Result<void>> requestPasswordReset(PasswordResetRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/request-password-reset'));
+      final request = await _post(client, '/request-password-reset');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -184,9 +194,9 @@ class AuthApiClient {
   }
 
   Future<Result<ResetPasswordResponse>> resetPassword(ResetPasswordRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/reset-password'));
+      final request = await _post(client, '/reset-password');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -204,9 +214,9 @@ class AuthApiClient {
   }
 
   Future<Result<void>> verifyEmail(VerifyEmailRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/verify-email'));
+      final request = await _post(client, '/verify-email');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -223,9 +233,9 @@ class AuthApiClient {
   }
 
   Future<Result<ChangePasswordResponse>> changePassword(ChangePasswordRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/change-password'));
+      final request = await _post(client, '/change-password');
       await _authHeader(request.headers);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
@@ -244,9 +254,9 @@ class AuthApiClient {
   }
 
   Future<Result<CheckPasswordStrengthResponse>> checkPasswordStrength(CheckPasswordStrengthRequest req) async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.postUrl(_uri('/check-password-strength'));
+      final request = await _post(client, '/check-password-strength');
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
@@ -264,9 +274,9 @@ class AuthApiClient {
   }
 
   Future<Result<WhoAmIResponse>> whoAmI() async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.getUrl(_uri('/whoami'));
+      final request = await _get(client, '/whoami');
       await _authHeader(request.headers);
       final response = await _close(request);
       if (response.statusCode == 200) {
@@ -285,9 +295,9 @@ class AuthApiClient {
   }
 
   Future<Result<MeResponse>> me() async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.getUrl(_uri('/me'));
+      final request = await _get(client, '/me');
       await _authHeader(request.headers);
       final response = await _close(request);
       if (response.statusCode == 200) {
@@ -306,9 +316,9 @@ class AuthApiClient {
   }
 
   Future<Result<PublicKeysResponse>> publicKeys() async {
-    final client = _clientFactory();
+    final client = _newClient();
     try {
-      final request = await client.getUrl(_uri('/public-keys'));
+      final request = await _get(client, '/public-keys');
       final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
