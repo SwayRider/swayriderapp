@@ -36,6 +36,23 @@ abstract final class AppConfig {
     defaultValue: '/v1/tiles',
   );
 
+  /// Search API connection settings.
+  ///
+  /// Defaults match the dev backend. Override at build/run time via
+  /// `--dart-define=SEARCH_API_HOST=...` etc.
+  static const searchApiScheme =
+      String.fromEnvironment('SEARCH_API_SCHEME', defaultValue: 'https');
+  static const searchApiHost = String.fromEnvironment(
+    'SEARCH_API_HOST',
+    defaultValue: 'api.swayrider-dev.hevanto-it.com',
+  );
+  static const searchApiPort =
+      int.fromEnvironment('SEARCH_API_PORT', defaultValue: 443);
+  static const searchApiPathPrefix = String.fromEnvironment(
+    'SEARCH_API_PATH_PREFIX',
+    defaultValue: '/api/v1',
+  );
+
   /// URL the AuthService should redirect users to after they confirm their
   /// email address via the verification link sent during signup.
   ///
