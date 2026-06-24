@@ -16,16 +16,19 @@ void main() {
   late MockAuthRepository mockAuthRepository;
   late MockTilesRepository mockTilesRepository;
   late MockLocationService mockLocationService;
+  late MockSearchRepository mockSearchRepository;
   late HomeViewModel viewModel;
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
     mockTilesRepository = MockTilesRepository();
     mockLocationService = MockLocationService();
+    mockSearchRepository = MockSearchRepository();
     viewModel = HomeViewModel(
       authRepository: mockAuthRepository,
       tilesRepository: mockTilesRepository,
       locationService: mockLocationService,
+      searchRepository: mockSearchRepository,
     );
   });
 

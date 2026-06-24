@@ -3,9 +3,12 @@ import 'package:provider/single_child_widget.dart';
 
 import '../data/repositories/auth/auth_repository.dart';
 import '../data/repositories/auth/auth_repository_remote.dart';
+import '../data/repositories/search/search_repository.dart';
+import '../data/repositories/search/search_repository_remote.dart';
 import '../data/repositories/tiles/tiles_repository.dart';
 import '../data/repositories/tiles/tiles_repository_remote.dart';
 import '../data/services/api/auth_api_client.dart';
+import '../data/services/api/search_api_client.dart';
 import '../data/services/api/tiles_api_client.dart';
 import '../data/services/location_service.dart';
 import '../data/services/shared_preferences_service.dart';
@@ -40,6 +43,18 @@ List<SingleChildWidget> get providerDev {
       pathPrefix: AppConfig.tilesApiPathPrefix,
     )),
     Provider<TileCache>(create: (context) => NoopTileCache()),
+    Provider(create: (context) => SearchApiClient(
+      scheme: AppConfig.searchApiScheme,
+      host: AppConfig.searchApiHost,
+      port: AppConfig.searchApiPort,
+      pathPrefix: AppConfig.searchApiPathPrefix,
+    )),
+    Provider<SearchRepository>(
+      create: (context) => SearchRepositoryRemote(
+        searchApiClient: context.read(),
+        authRepository: context.read(),
+      ),
+    ),
     Provider<TilesRepository>(
       create: (context) => TilesRepositoryRemote(
         tilesApiClient: context.read(),
@@ -59,6 +74,7 @@ List<SingleChildWidget> get providerDev {
         authRepository: context.read(),
         tilesRepository: context.read(),
         locationService: context.read(),
+        searchRepository: context.read(),
       ),
     ),
     ..._sharedProviders

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
+import '../../../data/services/api/model/search/search_result_item.dart';
 import '../../../routing/routes.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
@@ -30,12 +31,27 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     widget.viewModel.loadMap.execute();
+    _searchController.addListener(_onSearchTextChanged);
   }
 
   @override
   void dispose() {
+    _searchController.removeListener(_onSearchTextChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchTextChanged() {
+    widget.viewModel.onSearchChanged(
+      _searchController.text,
+      language: Localizations.localeOf(context).languageCode,
+    );
+  }
+
+  void _selectSuggestion(SearchResultItem item) {
+    _searchController.text = item.label;
+    widget.viewModel.clearSuggestions();
+    FocusScope.of(context).unfocus();
   }
 
   @override
@@ -158,12 +174,64 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () {},
                         ),
                       ),
+                      ListenableBuilder(
+                        listenable: widget.viewModel,
+                        builder: (context, _) {
+                          final suggestions = widget.viewModel.suggestions;
+                          if (suggestions.isEmpty) return const SizedBox.shrink();
+                          return Positioned(
+                            left: 0,
+                            right: 0,
+                            top: 0,
+                            child: _SuggestionsList(
+                              suggestions: suggestions,
+                              onSelected: _selectSuggestion,
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   );
                 },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SuggestionsList extends StatelessWidget {
+  const _SuggestionsList({required this.suggestions, required this.onSelected});
+
+  final List<SearchResultItem> suggestions;
+  final ValueChanged<SearchResultItem> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.black,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 240),
+        child: ListView.builder(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          itemCount: suggestions.length,
+          itemBuilder: (context, index) {
+            final item = suggestions[index];
+            final subtitle = [item.locality, item.country]
+                .where((part) => part.isNotEmpty)
+                .join(', ');
+            return ListTile(
+              leading: const Icon(Icons.location_on, color: AppColors.grey3),
+              title: Text(item.label, style: const TextStyle(color: AppColors.white)),
+              subtitle: subtitle.isEmpty
+                  ? null
+                  : Text(subtitle, style: const TextStyle(color: AppColors.grey3)),
+              onTap: () => onSelected(item),
+            );
+          },
         ),
       ),
     );

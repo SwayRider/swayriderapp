@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:go_router/go_router.dart';
+import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
 import '../ui/change_password/view_models/change_password_viewmodel.dart';
@@ -124,38 +125,49 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
   ]
 );
 
+final _redirectLog = Logger('GoRouterRedirect');
+
 // From https://github.com/flutter/packages/blob/main/packages/go_router/example/lib/redirection.dart
 Future<String?> _redirect(BuildContext context, GoRouterState state) async {
   final authRepository = context.read<AuthRepository>();
   final loggedIn = await authRepository.isAuthenticated;
   final onPublicRoute = Routes.publicRoutes.contains(state.matchedLocation);
+  _redirectLog.fine('[DIAG] _redirect: loggedIn=$loggedIn onPublicRoute=$onPublicRoute matchedLocation=${state.matchedLocation}');
 
   // if the user is not logged in, they need to be on a public route
   // (login, signup, verify-email, email-verified, invitation-only)
   if (!loggedIn) {
+    _redirectLog.fine('[DIAG] _redirect: not logged in, returning ${onPublicRoute ? null : Routes.login}');
     return onPublicRoute ? null : Routes.login;
   }
 
   // if the user is logged in but hasn't verified their email yet, send
   // them to the verify-email screen (unless they're already there)
-  if (!await authRepository.isVerified) {
+  final isVerified = await authRepository.isVerified;
+  _redirectLog.fine('[DIAG] _redirect: isVerified=$isVerified');
+  if (!isVerified) {
     // isVerified may have cleared the session (an expired access token and
     // a failed refresh); re-check isAuthenticated so a fully expired
     // session goes to /login instead of getting stuck on /verify-email.
-    if (!await authRepository.isAuthenticated) {
+    final stillAuthenticated = await authRepository.isAuthenticated;
+    _redirectLog.fine('[DIAG] _redirect: not verified, re-checked isAuthenticated=$stillAuthenticated');
+    if (!stillAuthenticated) {
+      _redirectLog.fine('[DIAG] _redirect: returning ${onPublicRoute ? null : Routes.login}');
       return onPublicRoute ? null : Routes.login;
     }
-    return state.matchedLocation == Routes.verifyEmail
-        ? null
-        : Routes.verifyEmail;
+    final target = state.matchedLocation == Routes.verifyEmail ? null : Routes.verifyEmail;
+    _redirectLog.fine('[DIAG] _redirect: returning $target');
+    return target;
   }
 
   // if the user is logged in but on a public route, send them to the
   // home page
   if (onPublicRoute) {
+    _redirectLog.fine('[DIAG] _redirect: on public route while verified, returning ${Routes.home}');
     return Routes.home;
   }
 
   // no need to redirect at all
+  _redirectLog.fine('[DIAG] _redirect: no redirect needed, returning null');
   return null;
 }

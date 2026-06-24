@@ -1,5 +1,6 @@
 import 'package:mocktail/mocktail.dart';
 import 'package:swayriderapp/data/repositories/auth/auth_repository.dart';
+import 'package:swayriderapp/data/repositories/search/search_repository.dart';
 import 'package:swayriderapp/data/repositories/tiles/tiles_repository.dart';
 import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/data/services/api/model/auth/auth.dart';
@@ -16,6 +17,8 @@ class MockSharedPreferencesService extends Mock
 class MockTilesRepository extends Mock implements TilesRepository {}
 
 class MockLocationService extends Mock implements LocationService {}
+
+class MockSearchRepository extends Mock implements SearchRepository {}
 
 /// Registers fallback values for freezed request types used as `any()`
 /// matchers in `verify()`/`when()` calls against [MockAuthApiClient].

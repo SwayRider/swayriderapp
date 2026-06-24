@@ -1,5 +1,6 @@
 import 'package:logging/logging.dart';
 
+import '../../../config/app_config.dart';
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
 import '../../services/api/auth_api_client.dart';
@@ -33,7 +34,7 @@ class AuthRepositoryRemote extends AuthRepository {
     if (_accessToken != null) return true;
     final result = await _sharedPreferencesService.fetchAccessToken();
     if (result case Ok(:final value) when value != null) {
-      _accessToken = value;
+      _accessToken = AppConfig.forceExpiredAccessToken ? '$value-invalid' : value;
       return true;
     }
     return false;
@@ -43,6 +44,7 @@ class AuthRepositoryRemote extends AuthRepository {
   Future<bool> get isVerified async {
     if (_cachedIsVerified != null) return _cachedIsVerified!;
     final result = await me();
+    _log.fine('[DIAG] isVerified: me() resolved with $result');
     return switch (result) {
       Ok(:final value) => _cachedIsVerified = value.isVerified,
       Error() => false,
@@ -84,7 +86,7 @@ class AuthRepositoryRemote extends AuthRepository {
     if (_refreshToken == null) {
       final stored = await _sharedPreferencesService.fetchRefreshToken();
       if (stored case Ok(:final value)) {
-        _refreshToken = value;
+        _refreshToken = AppConfig.forceExpiredRefreshToken ? '$value-invalid' : value;
       }
     }
     if (_refreshToken == null) {
@@ -93,6 +95,7 @@ class AuthRepositoryRemote extends AuthRepository {
     _log.fine('Refreshing tokens');
     final result = await _authApiClient
         .refresh(RefreshRequest(refreshToken: _refreshToken!));
+    _log.fine('[DIAG] refresh(): _authApiClient.refresh() resolved with $result');
     return switch (result) {
       Ok(:final value) => _saveTokens(value.accessToken, value.refreshToken),
       Error(:final error) => Result.error(error),
@@ -244,11 +247,16 @@ class AuthRepositoryRemote extends AuthRepository {
     if (result case Error(error: UnauthorizedException())) {
       _log.fine('Access token rejected, attempting refresh');
       final refreshResult = await refresh();
+      _log.fine('[DIAG] _withAuthRetry: refresh() resolved with $refreshResult');
       if (refreshResult is Error<void>) {
+        _log.fine('[DIAG] _withAuthRetry: refresh failed, clearing tokens');
         await _clearTokens();
         return result;
       }
-      return call();
+      _log.fine('[DIAG] _withAuthRetry: refresh succeeded, retrying call()');
+      final retryResult = await call();
+      _log.fine('[DIAG] _withAuthRetry: retried call() resolved with $retryResult');
+      return retryResult;
     }
     return result;
   }

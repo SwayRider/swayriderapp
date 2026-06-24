@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:logging/logging.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 
 import 'model/auth/auth.dart';
@@ -34,6 +35,8 @@ class UnauthorizedException implements Exception {
 }
 
 class AuthApiClient {
+  final _log = Logger('AuthApiClient');
+
   AuthApiClient({
     String? scheme,
     String? host,
@@ -79,6 +82,12 @@ class AuthApiClient {
   Future<HttpClientResponse> _close(HttpClientRequest request) =>
       request.close().timeout(_requestTimeout);
 
+  // Reading the response body is a separate I/O wait from the headers
+  // received by _close(), and was previously unbounded: if the server sent
+  // headers but the body stream stalled, this would hang forever.
+  Future<String> _readBody(HttpClientResponse response) =>
+      response.transform(utf8.decoder).join().timeout(_requestTimeout);
+
   String _fullPath(String path) => '$_pathPrefix$path';
 
   Uri _uri(String path) => Uri(
@@ -96,7 +105,7 @@ class AuthApiClient {
       request.write(jsonEncode(req));
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(LoginResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Login error"));
@@ -116,12 +125,12 @@ class AuthApiClient {
       request.write(jsonEncode(req));
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(RegisterResponse.fromJson(jsonDecode(stringData)));
       } else if (response.statusCode == 403) {
         return const Result.error(InvitationRequiredException());
       } else {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         if (response.statusCode == 400 &&
             stringData.contains('password is too weak')) {
           return const Result.error(WeakPasswordException());
@@ -142,8 +151,10 @@ class AuthApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
+      _log.fine('[DIAG] AuthApiClient.refresh(): headers received, statusCode=${response.statusCode}');
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
+        _log.fine('[DIAG] AuthApiClient.refresh(): body read complete');
         return Result.ok(RefreshResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Refresh error"));
@@ -201,7 +212,7 @@ class AuthApiClient {
       request.write(jsonEncode(req));
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(ResetPasswordResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Reset password error"));
@@ -241,7 +252,7 @@ class AuthApiClient {
       request.write(jsonEncode(req));
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(ChangePasswordResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Change password error"));
@@ -261,7 +272,7 @@ class AuthApiClient {
       request.write(jsonEncode(req));
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(CheckPasswordStrengthResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Check password strength error"));
@@ -280,7 +291,7 @@ class AuthApiClient {
       await _authHeader(request.headers);
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(WhoAmIResponse.fromJson(jsonDecode(stringData)));
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
@@ -301,7 +312,7 @@ class AuthApiClient {
       await _authHeader(request.headers);
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(MeResponse.fromJson(jsonDecode(stringData)));
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
@@ -321,7 +332,7 @@ class AuthApiClient {
       final request = await _get(client, '/public-keys');
       final response = await _close(request);
       if (response.statusCode == 200) {
-        final stringData = await response.transform(utf8.decoder).join();
+        final stringData = await _readBody(response);
         return Result.ok(PublicKeysResponse.fromJson(jsonDecode(stringData)));
       } else {
         return const Result.error(HttpException("Public keys error"));
