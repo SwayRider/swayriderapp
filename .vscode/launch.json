@@ -10,6 +10,21 @@
             "type": "dart"
         },
         {
+            "name": "swayriderapp - expired token",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--dart-define=FORCE_EXPIRED_ACCESS_TOKEN=true"]
+        },
+        {
+            "name": "swayriderapp - expired access + refresh token",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "--dart-define=FORCE_EXPIRED_ACCESS_TOKEN=true",
+                "--dart-define=FORCE_EXPIRED_REFRESH_TOKEN=true"
+            ]
+        },
+        {
             "name": "swayriderapp (profile mode)",
             "request": "launch",
             "type": "dart",

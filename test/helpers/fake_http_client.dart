@@ -30,10 +30,17 @@ class FakeHttpHeaders extends Fake implements HttpHeaders {
 }
 
 /// Fake [HttpClientResponse] backed by an in-memory UTF-8 body.
+///
+/// Pass [stalledBody] to simulate a response whose headers arrive normally
+/// but whose body stream never emits/closes — used to verify that body reads
+/// are time-bounded, not just the initial connection/headers.
 class FakeHttpClientResponse extends Stream<List<int>>
     implements HttpClientResponse {
   FakeHttpClientResponse(this.statusCode, [String body = ''])
       : _stream = Stream.fromIterable([utf8.encode(body)]);
+
+  FakeHttpClientResponse.stalledBody(this.statusCode)
+      : _stream = StreamController<List<int>>().stream;
 
   @override
   final int statusCode;
@@ -145,6 +152,9 @@ class FakeHttpClient extends Fake implements HttpClient {
   bool closed = false;
 
   @override
+  Duration? connectionTimeout;
+
+  @override
   Future<HttpClientRequest> postUrl(Uri url) async {
     final request = FakeHttpClientRequest(
       method: 'POST',
@@ -177,6 +187,9 @@ class FakeHttpClient extends Fake implements HttpClient {
 /// [AuthApiClient] applies a request timeout and surfaces a [TimeoutException].
 class FakeHangingHttpClient extends Fake implements HttpClient {
   bool closed = false;
+
+  @override
+  Duration? connectionTimeout;
 
   @override
   Future<HttpClientRequest> postUrl(Uri url) async =>
@@ -215,6 +228,9 @@ class FakeThrowingHttpClient extends Fake implements HttpClient {
 
   final Exception exception;
   bool closed = false;
+
+  @override
+  Duration? connectionTimeout;
 
   @override
   Future<HttpClientRequest> postUrl(Uri url) async => throw exception;

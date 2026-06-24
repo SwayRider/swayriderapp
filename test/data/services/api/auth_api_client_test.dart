@@ -182,11 +182,9 @@ void main() {
       final request = RefreshRequest(refreshToken: 'refresh-456');
 
       test('200 returns Ok(RefreshResponse) with mapped fields', () async {
-        // RefreshResponse uses camelCase @JsonKey names ('accessToken'/
-        // 'refreshToken'), unlike LoginResponse's snake_case keys.
         final client = okClient({
-          'accessToken': 'access-789',
-          'refreshToken': 'refresh-101',
+          'access_token': 'access-789',
+          'refresh_token': 'refresh-101',
         });
         final api = AuthApiClient(clientFactory: () => client);
 
@@ -199,8 +197,8 @@ void main() {
 
       test('sends POST /refresh with mapped body', () async {
         final client = okClient({
-          'accessToken': 'access-789',
-          'refreshToken': 'refresh-101',
+          'access_token': 'access-789',
+          'refresh_token': 'refresh-101',
         });
         final api = AuthApiClient(clientFactory: () => client);
 
@@ -727,6 +725,22 @@ void main() {
 
           expect(result, isA<Error<LoginResponse>>());
           expect(client.closed, isTrue);
+        });
+      });
+
+      test('a response whose body never completes still resolves with Result.error after 10 seconds', () {
+        fakeAsync((async) {
+          final client = FakeHttpClient(FakeHttpClientResponse.stalledBody(200));
+          final api = AuthApiClient(clientFactory: () => client);
+          Result<RefreshResponse>? result;
+
+          api
+              .refresh(RefreshRequest(refreshToken: 'rt'))
+              .then((r) => result = r);
+
+          async.elapse(const Duration(seconds: 11));
+
+          expect(result, isA<Error<RefreshResponse>>());
         });
       });
     });
