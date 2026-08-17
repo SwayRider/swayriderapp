@@ -185,8 +185,8 @@ class AuthRepositoryRemote extends AuthRepository {
     required String newPassword,
   }) async {
     _log.fine('Changing password');
-    final result = await _authApiClient.changePassword(
-        ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword));
+    final result = await withAuthRetry(() => _authApiClient.changePassword(
+        ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword)));
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -204,7 +204,7 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
-  Future<Result<User>> me() => _withAuthRetry(_meOnce);
+  Future<Result<User>> me() => withAuthRetry(_meOnce);
 
   Future<Result<User>> _meOnce() async {
     final result = await _authApiClient.me();
@@ -219,7 +219,7 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
-  Future<Result<User>> whoAmI() => _withAuthRetry(_whoAmIOnce);
+  Future<Result<User>> whoAmI() => withAuthRetry(_whoAmIOnce);
 
   Future<Result<User>> _whoAmIOnce() async {
     final result = await _authApiClient.whoAmI();
@@ -235,27 +235,23 @@ class AuthRepositoryRemote extends AuthRepository {
     };
   }
 
-  /// Runs [call], and if it fails with [UnauthorizedException] (the access
-  /// token is expired or invalid), attempts [refresh] and retries [call]
-  /// once. If the refresh itself fails, the stored tokens are cleared so
-  /// [isAuthenticated] becomes false and the router redirects to login
-  /// instead of getting stuck on the verify-email screen.
-  Future<Result<T>> _withAuthRetry<T>(
+  @override
+  Future<Result<T>> withAuthRetry<T>(
     Future<Result<T>> Function() call,
   ) async {
     final result = await call();
     if (result case Error(error: UnauthorizedException())) {
       _log.fine('Access token rejected, attempting refresh');
       final refreshResult = await refresh();
-      _log.fine('[DIAG] _withAuthRetry: refresh() resolved with $refreshResult');
+      _log.fine('[DIAG] withAuthRetry: refresh() resolved with $refreshResult');
       if (refreshResult is Error<void>) {
-        _log.fine('[DIAG] _withAuthRetry: refresh failed, clearing tokens');
+        _log.fine('[DIAG] withAuthRetry: refresh failed, clearing tokens');
         await _clearTokens();
         return result;
       }
-      _log.fine('[DIAG] _withAuthRetry: refresh succeeded, retrying call()');
+      _log.fine('[DIAG] withAuthRetry: refresh succeeded, retrying call()');
       final retryResult = await call();
-      _log.fine('[DIAG] _withAuthRetry: retried call() resolved with $retryResult');
+      _log.fine('[DIAG] withAuthRetry: retried call() resolved with $retryResult');
       return retryResult;
     }
     return result;

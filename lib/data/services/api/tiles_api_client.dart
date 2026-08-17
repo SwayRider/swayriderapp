@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'auth_header_provider.dart';
+import 'unauthorized_exception.dart';
 import '../../../utils/result.dart';
 
 class TilesApiClient {
@@ -62,8 +63,12 @@ class TilesApiClient {
       if (response.statusCode == 200) {
         final stringData = await response.transform(utf8.decoder).join();
         return Result.ok(jsonDecode(stringData) as Map<String, dynamic>);
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
       } else {
-        return const Result.error(HttpException("Get style error"));
+        return Result.error(
+          HttpException("Get style error: HTTP ${response.statusCode}"),
+        );
       }
     } on Exception catch (e) {
       return Result.error(e);
