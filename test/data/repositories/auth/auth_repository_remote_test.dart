@@ -11,14 +11,14 @@ import '../../../helpers/mocks.dart';
 
 void main() {
   late MockAuthApiClient mockApiClient;
-  late MockSharedPreferencesService mockPrefs;
+  late MockSecureTokenStorageService mockPrefs;
   late AuthRepositoryRemote repository;
 
   setUpAll(registerFallbacks);
 
   setUp(() {
     mockApiClient = MockAuthApiClient();
-    mockPrefs = MockSharedPreferencesService();
+    mockPrefs = MockSecureTokenStorageService();
     when(
       () => mockApiClient.authHeaderProvider = any<AuthHeaderProvider>(),
     ).thenReturn(() => null);
@@ -30,7 +30,7 @@ void main() {
     ).thenAnswer((_) async => const Result.ok(null));
     repository = AuthRepositoryRemote(
       authApiClient: mockApiClient,
-      sharedPreferencesService: mockPrefs,
+      tokenStorageService: mockPrefs,
     );
   });
 

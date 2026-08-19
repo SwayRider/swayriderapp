@@ -95,7 +95,7 @@ abstract final class AppConfig {
   /// time.
   static const homepageUrl = String.fromEnvironment('HOMEPAGE_URL');
 
-  /// When true, the access token loaded from `SharedPreferences` at startup
+  /// When true, the access token loaded from secure storage at startup
   /// is corrupted before use, forcing a 401 + refresh on the first
   /// authenticated call. Debug-only, for reproducing the auth-refresh flow
   /// on demand; never set in release builds.
@@ -105,7 +105,7 @@ abstract final class AppConfig {
   );
 
   /// Like [forceExpiredAccessToken], but also corrupts the refresh token
-  /// loaded from `SharedPreferences`, so the refresh call itself fails too
+  /// loaded from secure storage, so the refresh call itself fails too
   /// (simulating a fully expired session). Debug-only.
   /// `--dart-define=FORCE_EXPIRED_REFRESH_TOKEN=true`
   static const forceExpiredRefreshToken = bool.fromEnvironment(

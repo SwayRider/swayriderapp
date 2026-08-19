@@ -11,7 +11,7 @@ import '../data/services/api/auth_api_client.dart';
 import '../data/services/api/search_api_client.dart';
 import '../data/services/api/tiles_api_client.dart';
 import '../data/services/location_service.dart';
-import '../data/services/shared_preferences_service.dart';
+import '../data/services/secure_token_storage_service.dart';
 import '../data/services/tile_cache.dart';
 import '../ui/home/view_models/home_viewmodel.dart';
 import 'app_config.dart';
@@ -31,12 +31,12 @@ List<SingleChildWidget> get providerDev {
         pathPrefix: AppConfig.authApiPathPrefix,
       ),
     ),
-    Provider(create: (context) => SharedPreferencesService()),
+    Provider(create: (context) => SecureTokenStorageService()),
     ChangeNotifierProvider(
       create: (context) =>
           AuthRepositoryRemote(
                 authApiClient: context.read(),
-                sharedPreferencesService: context.read(),
+                tokenStorageService: context.read(),
               )
               as AuthRepository,
     ),

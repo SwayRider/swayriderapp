@@ -7,7 +7,7 @@ import 'package:swayriderapp/data/services/api/model/auth/auth.dart';
 import 'package:swayriderapp/data/services/api/search_api_client.dart';
 import 'package:swayriderapp/data/services/api/tiles_api_client.dart';
 import 'package:swayriderapp/data/services/location_service.dart';
-import 'package:swayriderapp/data/services/shared_preferences_service.dart';
+import 'package:swayriderapp/data/services/secure_token_storage_service.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -17,8 +17,8 @@ class MockTilesApiClient extends Mock implements TilesApiClient {}
 
 class MockSearchApiClient extends Mock implements SearchApiClient {}
 
-class MockSharedPreferencesService extends Mock
-    implements SharedPreferencesService {}
+class MockSecureTokenStorageService extends Mock
+    implements SecureTokenStorageService {}
 
 class MockTilesRepository extends Mock implements TilesRepository {}
 

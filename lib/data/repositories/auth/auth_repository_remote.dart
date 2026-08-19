@@ -6,19 +6,19 @@ import '../../../utils/result.dart';
 import '../../services/api/auth_api_client.dart';
 import '../../services/api/auth_header_provider.dart';
 import '../../services/api/model/auth/auth.dart';
-import '../../services/shared_preferences_service.dart';
+import '../../services/secure_token_storage_service.dart';
 import 'auth_repository.dart';
 
 class AuthRepositoryRemote extends AuthRepository {
   AuthRepositoryRemote({
     required this._authApiClient,
-    required this._sharedPreferencesService,
+    required this._tokenStorageService,
   }) {
     _authApiClient.authHeaderProvider = _authHeaderProvider;
   }
 
   final AuthApiClient _authApiClient;
-  final SharedPreferencesService _sharedPreferencesService;
+  final SecureTokenStorageService _tokenStorageService;
   final _log = Logger('AuthRepositoryRemote');
 
   String? _accessToken;
@@ -32,7 +32,7 @@ class AuthRepositoryRemote extends AuthRepository {
   @override
   Future<bool> get isAuthenticated async {
     if (_accessToken != null) return true;
-    final result = await _sharedPreferencesService.fetchAccessToken();
+    final result = await _tokenStorageService.fetchAccessToken();
     if (result case Ok(:final value) when value != null) {
       _accessToken = AppConfig.forceExpiredAccessToken
           ? '$value-invalid'
@@ -84,7 +84,7 @@ class AuthRepositoryRemote extends AuthRepository {
   @override
   Future<Result<void>> refresh() async {
     if (_refreshToken == null) {
-      final stored = await _sharedPreferencesService.fetchRefreshToken();
+      final stored = await _tokenStorageService.fetchRefreshToken();
       if (stored case Ok(:final value)) {
         _refreshToken = AppConfig.forceExpiredRefreshToken
             ? '$value-invalid'
@@ -286,8 +286,8 @@ class AuthRepositoryRemote extends AuthRepository {
   ) async {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
-    await _sharedPreferencesService.saveAccessToken(accessToken);
-    await _sharedPreferencesService.saveRefreshToken(refreshToken);
+    await _tokenStorageService.saveAccessToken(accessToken);
+    await _tokenStorageService.saveRefreshToken(refreshToken);
     return const Result.ok(null);
   }
 
@@ -296,8 +296,8 @@ class AuthRepositoryRemote extends AuthRepository {
     _refreshToken = null;
     _cachedIsVerified = null;
     _cachedIsAdmin = null;
-    await _sharedPreferencesService.saveAccessToken(null);
-    await _sharedPreferencesService.saveRefreshToken(null);
+    await _tokenStorageService.saveAccessToken(null);
+    await _tokenStorageService.saveRefreshToken(null);
   }
 
   String? _authHeaderProvider() =>
