@@ -166,15 +166,29 @@ void main() {
         expect((result as Error<RegisterResponse>).error, isA<InvitationRequiredException>());
       });
 
-      test('400 with weak-password body returns Result.error(WeakPasswordException)', () async {
+      test('400 with weak-password reason returns Result.error(WeakPasswordException)', () async {
         final client = FakeHttpClient(FakeHttpClientResponse(400, jsonEncode({
-          'error': 'rpc error: code = InvalidArgument desc = password is too weak: needs at least 8 characters',
+          'error': 'invalid argument',
+          'code': 'InvalidArgument',
+          'reason': 'weak_password',
         })));
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.register(request);
 
         expect((result as Error<RegisterResponse>).error, isA<WeakPasswordException>());
+      });
+
+      test('400 without weak-password reason returns Result.error(HttpException)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(400, jsonEncode({
+          'error': 'invalid argument',
+          'code': 'InvalidArgument',
+        })));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.register(request);
+
+        expect((result as Error<RegisterResponse>).error, isA<HttpException>());
       });
     });
 
@@ -441,6 +455,15 @@ void main() {
         final result = await api.changePassword(request);
 
         expect((result as Error<ChangePasswordResponse>).error.toString(), contains('Change password error'));
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.changePassword(request);
+
+        expect((result as Error<ChangePasswordResponse>).error, isA<UnauthorizedException>());
       });
 
       test('sends Authorization header when authHeaderProvider is set', () async {

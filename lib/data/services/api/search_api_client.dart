@@ -5,6 +5,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
 import 'auth_header_provider.dart';
 import 'model/search/search_result_item.dart';
+import 'unauthorized_exception.dart';
 import '../../../utils/result.dart';
 
 class SearchApiClient {
@@ -79,6 +80,8 @@ class SearchApiClient {
         return Result.ok(items
             .map((item) => SearchResultItem.fromJson(item as Map<String, dynamic>))
             .toList());
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
       } else {
         return const Result.error(HttpException("Autocomplete error"));
       }

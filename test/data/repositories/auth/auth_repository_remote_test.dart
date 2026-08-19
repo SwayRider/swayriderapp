@@ -554,6 +554,32 @@ void main() {
 
       expect((result as Error<void>).error, exception);
     });
+
+    test('UnauthorizedException triggers a transparent refresh and succeeds', () async {
+      when(() => mockPrefs.fetchRefreshToken())
+          .thenAnswer((_) async => const Result.ok('stored-refresh'));
+      when(() => mockApiClient.refresh(any())).thenAnswer((_) async =>
+          const Result.ok(RefreshResponse(
+              accessToken: 'access-2', refreshToken: 'refresh-2')));
+
+      var callCount = 0;
+      when(() => mockApiClient.changePassword(any())).thenAnswer((_) async {
+        callCount++;
+        if (callCount == 1) {
+          return const Result.error(UnauthorizedException());
+        }
+        return const Result.ok(ChangePasswordResponse(message: 'changed'));
+      });
+
+      final result = await repository.changePassword(
+        oldPassword: 'old',
+        newPassword: 'new',
+      );
+
+      expect(result, isA<Ok<void>>());
+      verify(() => mockApiClient.changePassword(any())).called(2);
+      verify(() => mockApiClient.refresh(any())).called(1);
+    });
   });
 
   group('checkPasswordStrength', () {

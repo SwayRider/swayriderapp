@@ -5,7 +5,10 @@ import 'package:logging/logging.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 
 import 'model/auth/auth.dart';
+import 'unauthorized_exception.dart';
 import '../../../utils/result.dart';
+
+export 'unauthorized_exception.dart';
 
 /// Thrown when [AuthApiClient.register] fails because the backend is
 /// invitation-only and the given email has no invitation (HTTP 403).
@@ -23,15 +26,6 @@ class WeakPasswordException implements Exception {
 
   @override
   String toString() => 'Password is not strong enough';
-}
-
-/// Thrown when an authenticated request is rejected because the access token
-/// is missing, expired, or otherwise invalid (HTTP 401).
-class UnauthorizedException implements Exception {
-  const UnauthorizedException();
-
-  @override
-  String toString() => 'Not authenticated';
 }
 
 class AuthApiClient {
@@ -88,6 +82,25 @@ class AuthApiClient {
   Future<String> _readBody(HttpClientResponse response) =>
       response.transform(utf8.decoder).join().timeout(_requestTimeout);
 
+  // Parses the machine-readable "reason" field from an error response body.
+  // The gateway sanitizes error text (it no longer echoes the raw gRPC
+  // message), so clients must match on this stable enum instead of message
+  // content. Returns null when absent or unparseable.
+  String? _errorReason(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        final reason = decoded['reason'];
+        if (reason is String) {
+          return reason;
+        }
+      }
+    } on FormatException {
+      // Not JSON — ignore.
+    }
+    return null;
+  }
+
   String _fullPath(String path) => '$_pathPrefix$path';
 
   Uri _uri(String path) => Uri(
@@ -132,7 +145,7 @@ class AuthApiClient {
       } else {
         final stringData = await _readBody(response);
         if (response.statusCode == 400 &&
-            stringData.contains('password is too weak')) {
+            _errorReason(stringData) == 'weak_password') {
           return const Result.error(WeakPasswordException());
         }
         return const Result.error(HttpException("Register error"));
@@ -254,6 +267,8 @@ class AuthApiClient {
       if (response.statusCode == 200) {
         final stringData = await _readBody(response);
         return Result.ok(ChangePasswordResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
       } else {
         return const Result.error(HttpException("Change password error"));
       }

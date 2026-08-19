@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
 import '../../services/api/auth_header_provider.dart';
+import '../../services/api/unauthorized_exception.dart';
 
 abstract class AuthRepository extends ChangeNotifier {
   Future<bool> get isAuthenticated;
@@ -61,4 +62,13 @@ abstract class AuthRepository extends ChangeNotifier {
   Future<Result<User>> me();
 
   Future<Result<User>> whoAmI();
+
+  /// Runs [call], and if it fails with [UnauthorizedException] (the access
+  /// token is expired or invalid), attempts a token refresh and retries
+  /// [call] once.
+  ///
+  /// Lets other repositories (e.g. tiles, search) reuse the same
+  /// expiry-recovery logic as [me]/[whoAmI] for their own authenticated
+  /// calls.
+  Future<Result<T>> withAuthRetry<T>(Future<Result<T>> Function() call);
 }
