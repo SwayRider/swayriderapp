@@ -14,10 +14,10 @@ SwayRider mobile app and will replace the Kotlin/Jetpack Compose prototype at
 [SwayRider/mobile](https://github.com/SwayRider/mobile).
 
 > **Note**
-> This app is under active development. Only the authentication flow and a
-> placeholder authenticated dashboard are implemented so far. Navigation, route
-> planning, location search, and map display are not yet built — see
-> [Status](#status).
+> This app is under active development. Authentication, a home screen with
+> MapLibre-based map display, and location search autocomplete are
+> implemented so far. Full route planning and turn-by-turn navigation are
+> not yet built — see [Status](#status).
 
 ---
 
@@ -55,13 +55,15 @@ end-to-end product offers:
 | Invitation-only access | Signup screen gracefully handles invitation-only backends |
 | Email verification | "Check your inbox" prompt + "email verified" confirmation screen |
 | Home / Dashboard shell | Authenticated home screen with a profile menu and logout |
+| Map display | MapLibre-based map view using vector tiles from swayrider-api |
+| Location search | Address/POI search with autocomplete on the home screen |
 
 ### Not yet implemented
 
 - Reset password & "password changed" confirmation
 - Change password (from the profile screen)
 - Profile screen & navigation drawer
-- Route planning, location search, and map navigation
+- Route planning and turn-by-turn navigation
 
 ---
 
