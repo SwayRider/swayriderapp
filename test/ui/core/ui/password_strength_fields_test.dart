@@ -24,17 +24,19 @@ void main() {
     required Future<Result<bool>> Function(String) checkPasswordStrength,
     ValueChanged<bool?>? onStrengthChanged,
   }) async {
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: [AppLocalizationDelegate()],
-      home: Scaffold(
-        body: PasswordStrengthFields(
-          passwordController: passwordController,
-          confirmPasswordController: confirmPasswordController,
-          checkPasswordStrength: checkPasswordStrength,
-          onStrengthChanged: onStrengthChanged,
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: [AppLocalizationDelegate()],
+        home: Scaffold(
+          body: PasswordStrengthFields(
+            passwordController: passwordController,
+            confirmPasswordController: confirmPasswordController,
+            checkPasswordStrength: checkPasswordStrength,
+            onStrengthChanged: onStrengthChanged,
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Color barColor(WidgetTester tester) {
@@ -44,13 +46,20 @@ void main() {
     return (container.decoration as BoxDecoration).color!;
   }
 
-  testWidgets('bar is transparent before any password is entered', (tester) async {
-    await pumpFields(tester, checkPasswordStrength: (_) async => const Result.ok(true));
+  testWidgets('bar is transparent before any password is entered', (
+    tester,
+  ) async {
+    await pumpFields(
+      tester,
+      checkPasswordStrength: (_) async => const Result.ok(true),
+    );
 
     expect(barColor(tester), Colors.transparent);
   });
 
-  testWidgets('weak password turns the bar orange after the debounce delay', (tester) async {
+  testWidgets('weak password turns the bar orange after the debounce delay', (
+    tester,
+  ) async {
     final notified = <bool?>[];
 
     await pumpFields(
@@ -67,7 +76,9 @@ void main() {
     expect(notified, [false]);
   });
 
-  testWidgets('strong password turns the bar green after the debounce delay', (tester) async {
+  testWidgets('strong password turns the bar green after the debounce delay', (
+    tester,
+  ) async {
     final notified = <bool?>[];
 
     await pumpFields(
@@ -84,13 +95,18 @@ void main() {
     expect(notified, [true]);
   });
 
-  testWidgets('rapid edits within the debounce window only trigger one check', (tester) async {
+  testWidgets('rapid edits within the debounce window only trigger one check', (
+    tester,
+  ) async {
     var callCount = 0;
 
-    await pumpFields(tester, checkPasswordStrength: (_) async {
-      callCount++;
-      return const Result.ok(true);
-    });
+    await pumpFields(
+      tester,
+      checkPasswordStrength: (_) async {
+        callCount++;
+        return const Result.ok(true);
+      },
+    );
 
     final passwordField = find.byType(TextField).first;
     await tester.enterText(passwordField, 'a');
@@ -104,7 +120,9 @@ void main() {
     expect(callCount, 1);
   });
 
-  testWidgets('clearing the password resets the bar to transparent', (tester) async {
+  testWidgets('clearing the password resets the bar to transparent', (
+    tester,
+  ) async {
     final notified = <bool?>[];
 
     await pumpFields(

@@ -121,8 +121,8 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
       builder: (context, state) {
         return HomeScreen(viewModel: context.read());
       },
-    )
-  ]
+    ),
+  ],
 );
 
 final _redirectLog = Logger('GoRouterRedirect');
@@ -132,12 +132,16 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
   final authRepository = context.read<AuthRepository>();
   final loggedIn = await authRepository.isAuthenticated;
   final onPublicRoute = Routes.publicRoutes.contains(state.matchedLocation);
-  _redirectLog.fine('[DIAG] _redirect: loggedIn=$loggedIn onPublicRoute=$onPublicRoute matchedLocation=${state.matchedLocation}');
+  _redirectLog.fine(
+    '[DIAG] _redirect: loggedIn=$loggedIn onPublicRoute=$onPublicRoute matchedLocation=${state.matchedLocation}',
+  );
 
   // if the user is not logged in, they need to be on a public route
   // (login, signup, verify-email, email-verified, invitation-only)
   if (!loggedIn) {
-    _redirectLog.fine('[DIAG] _redirect: not logged in, returning ${onPublicRoute ? null : Routes.login}');
+    _redirectLog.fine(
+      '[DIAG] _redirect: not logged in, returning ${onPublicRoute ? null : Routes.login}',
+    );
     return onPublicRoute ? null : Routes.login;
   }
 
@@ -150,12 +154,18 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
     // a failed refresh); re-check isAuthenticated so a fully expired
     // session goes to /login instead of getting stuck on /verify-email.
     final stillAuthenticated = await authRepository.isAuthenticated;
-    _redirectLog.fine('[DIAG] _redirect: not verified, re-checked isAuthenticated=$stillAuthenticated');
+    _redirectLog.fine(
+      '[DIAG] _redirect: not verified, re-checked isAuthenticated=$stillAuthenticated',
+    );
     if (!stillAuthenticated) {
-      _redirectLog.fine('[DIAG] _redirect: returning ${onPublicRoute ? null : Routes.login}');
+      _redirectLog.fine(
+        '[DIAG] _redirect: returning ${onPublicRoute ? null : Routes.login}',
+      );
       return onPublicRoute ? null : Routes.login;
     }
-    final target = state.matchedLocation == Routes.verifyEmail ? null : Routes.verifyEmail;
+    final target = state.matchedLocation == Routes.verifyEmail
+        ? null
+        : Routes.verifyEmail;
     _redirectLog.fine('[DIAG] _redirect: returning $target');
     return target;
   }
@@ -163,7 +173,9 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
   // if the user is logged in but on a public route, send them to the
   // home page
   if (onPublicRoute) {
-    _redirectLog.fine('[DIAG] _redirect: on public route while verified, returning ${Routes.home}');
+    _redirectLog.fine(
+      '[DIAG] _redirect: on public route while verified, returning ${Routes.home}',
+    );
     return Routes.home;
   }
 

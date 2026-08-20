@@ -31,17 +31,11 @@ class MockSearchRepository extends Mock implements SearchRepository {}
 void registerFallbacks() {
   registerFallbackValue(const LoginRequest(email: '', password: ''));
   registerFallbackValue(
-    const RegisterRequest(
-      email: '',
-      password: '',
-      verificationUrl: '',
-    ),
+    const RegisterRequest(email: '', password: '', verificationUrl: ''),
   );
   registerFallbackValue(RefreshRequest(refreshToken: ''));
   registerFallbackValue(const LogoutRequest());
-  registerFallbackValue(
-    const PasswordResetRequest(email: '', resetUrl: ''),
-  );
+  registerFallbackValue(const PasswordResetRequest(email: '', resetUrl: ''));
   registerFallbackValue(
     const ResetPasswordRequest(userId: '', token: '', newPassword: ''),
   );

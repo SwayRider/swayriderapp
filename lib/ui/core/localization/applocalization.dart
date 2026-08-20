@@ -12,8 +12,7 @@ class AppLocalization {
   @protected
   Map<String, String> get strings => {};
 
-  String _get(String label) =>
-    strings[label] ?? '[${label.toUpperCase()}]';
+  String _get(String label) => strings[label] ?? '[${label.toUpperCase()}]';
 
   String get close => _get('close');
   String get confirm => _get('confirm');
@@ -84,7 +83,8 @@ class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {
   };
 
   @override
-  bool isSupported(Locale locale) => _languages.containsKey(locale.languageCode);
+  bool isSupported(Locale locale) =>
+      _languages.containsKey(locale.languageCode);
 
   @override
   Future<AppLocalization> load(Locale locale) {

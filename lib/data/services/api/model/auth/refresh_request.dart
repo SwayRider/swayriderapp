@@ -7,7 +7,7 @@ part 'refresh_request.g.dart';
 sealed class RefreshRequest with _$RefreshRequest {
   factory RefreshRequest({
     @JsonKey(name: 'refresh_token') required String refreshToken,
-    @JsonKey(name: 'remember_me') @Default(false) bool rememberMe
+    @JsonKey(name: 'remember_me') @Default(false) bool rememberMe,
   }) = _RefreshRequest;
 
   factory RefreshRequest.fromJson(Map<String, dynamic> json) =>

@@ -37,8 +37,7 @@ class PasswordStrengthFields extends StatefulWidget {
   final ValueChanged<String>? onConfirmPasswordSubmitted;
 
   @override
-  State<PasswordStrengthFields> createState() =>
-      _PasswordStrengthFieldsState();
+  State<PasswordStrengthFields> createState() => _PasswordStrengthFieldsState();
 }
 
 class _PasswordStrengthFieldsState extends State<PasswordStrengthFields> {

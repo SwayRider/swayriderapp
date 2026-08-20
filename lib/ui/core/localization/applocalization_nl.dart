@@ -47,7 +47,8 @@ class AppLocalizationNl extends AppLocalization {
 
     'verifyEmail': 'E-mail verifiëren',
     'yourEmailAddress': 'jouw e-mailadres',
-    'verificationEmailSentTo': 'Er is een verificatie-e-mail verzonden naar {email}',
+    'verificationEmailSentTo':
+        'Er is een verificatie-e-mail verzonden naar {email}',
     'noEmailReceived': 'Geen e-mail ontvangen?',
     'resendEmail': 'E-mail opnieuw verzenden',
     'alreadyVerified': 'Al geverifieerd?',

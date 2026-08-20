@@ -53,17 +53,17 @@ class TilesRepositoryRemote implements TilesRepository {
   late final shelf.Handler _proxyHandler;
   Future<HttpServer>? _proxyServer;
 
-  Future<HttpServer> _ensureProxyServer() =>
-      _proxyServer ??= shelf_io.serve(
-        _handleRequest,
-        InternetAddress.loopbackIPv4,
-        0,
-      );
+  Future<HttpServer> _ensureProxyServer() => _proxyServer ??= shelf_io.serve(
+    _handleRequest,
+    InternetAddress.loopbackIPv4,
+    0,
+  );
 
   @override
   Future<Result<String>> getMapStyle({required String name}) async {
-    final styleResult =
-        await _authRepository.withAuthRetry(() => _tilesApiClient.getStyle(name));
+    final styleResult = await _authRepository.withAuthRetry(
+      () => _tilesApiClient.getStyle(name),
+    );
     switch (styleResult) {
       case Error(:final error):
         return Result.error(error);

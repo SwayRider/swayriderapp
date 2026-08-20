@@ -18,5 +18,11 @@ class NoopTileCache implements TileCache {
   Future<Uint8List?> get(String tileset, int z, int x, int y) async => null;
 
   @override
-  Future<void> put(String tileset, int z, int x, int y, Uint8List bytes) async {}
+  Future<void> put(
+    String tileset,
+    int z,
+    int x,
+    int y,
+    Uint8List bytes,
+  ) async {}
 }

@@ -119,8 +119,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const SizedBox(height: Dimens.paddingVertical),
                 ErrorMessage(text: localization.passwordsDoNotMatch),
               ],
-              if (_passwordTooWeak ||
-                  widget.viewModel.passwordTooWeak) ...[
+              if (_passwordTooWeak || widget.viewModel.passwordTooWeak) ...[
                 const SizedBox(height: Dimens.paddingVertical),
                 ErrorMessage(text: localization.passwordNotStrongEnough),
               ],

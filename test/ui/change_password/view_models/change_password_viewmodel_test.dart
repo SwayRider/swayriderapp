@@ -23,25 +23,34 @@ void main() {
     expect(viewModel.changePassword.result, isNull);
   });
 
-  test('execute calls AuthRepository.changePassword with oldPassword and newPassword', () async {
-    when(() => mockAuthRepository.changePassword(
+  test(
+    'execute calls AuthRepository.changePassword with oldPassword and newPassword',
+    () async {
+      when(
+        () => mockAuthRepository.changePassword(
           oldPassword: any(named: 'oldPassword'),
           newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) async => const Result.ok(null));
+        ),
+      ).thenAnswer((_) async => const Result.ok(null));
 
-    await viewModel.changePassword.execute(('old-pw', 'new-pw'));
+      await viewModel.changePassword.execute(('old-pw', 'new-pw'));
 
-    verify(() => mockAuthRepository.changePassword(
+      verify(
+        () => mockAuthRepository.changePassword(
           oldPassword: 'old-pw',
           newPassword: 'new-pw',
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.changePassword(
-          oldPassword: any(named: 'oldPassword'),
-          newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.changePassword.execute(('old-pw', 'new-pw'));
 
@@ -51,10 +60,12 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('change password failed');
-    when(() => mockAuthRepository.changePassword(
-          oldPassword: any(named: 'oldPassword'),
-          newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
 
     await viewModel.changePassword.execute(('old-pw', 'new-pw'));
 
@@ -62,21 +73,31 @@ void main() {
     expect((viewModel.changePassword.result as Error).error, exception);
   });
 
-  test('checkPasswordStrength delegates to AuthRepository.checkPasswordStrength', () async {
-    when(() => mockAuthRepository.checkPasswordStrength(password: any(named: 'password')))
-        .thenAnswer((_) async => const Result.ok(true));
+  test(
+    'checkPasswordStrength delegates to AuthRepository.checkPasswordStrength',
+    () async {
+      when(
+        () => mockAuthRepository.checkPasswordStrength(
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => const Result.ok(true));
 
-    final result = await viewModel.checkPasswordStrength('pw');
+      final result = await viewModel.checkPasswordStrength('pw');
 
-    expect((result as Ok<bool>).value, isTrue);
-    verify(() => mockAuthRepository.checkPasswordStrength(password: 'pw')).called(1);
-  });
+      expect((result as Ok<bool>).value, isTrue);
+      verify(
+        () => mockAuthRepository.checkPasswordStrength(password: 'pw'),
+      ).called(1);
+    },
+  );
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.changePassword(
-          oldPassword: any(named: 'oldPassword'),
-          newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     var notifications = 0;
     viewModel.changePassword.addListener(() => notifications++);
@@ -88,10 +109,12 @@ void main() {
 
   test('re-entrant execute calls only invoke the repository once', () async {
     final completer = Completer<Result<void>>();
-    when(() => mockAuthRepository.changePassword(
-          oldPassword: any(named: 'oldPassword'),
-          newPassword: any(named: 'newPassword'),
-        )).thenAnswer((_) => completer.future);
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) => completer.future);
 
     final first = viewModel.changePassword.execute(('old-pw', 'new-pw'));
     final second = viewModel.changePassword.execute(('old-pw', 'new-pw'));
@@ -100,9 +123,11 @@ void main() {
     await first;
     await second;
 
-    verify(() => mockAuthRepository.changePassword(
-          oldPassword: any(named: 'oldPassword'),
-          newPassword: any(named: 'newPassword'),
-        )).called(1);
+    verify(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).called(1);
   });
 }

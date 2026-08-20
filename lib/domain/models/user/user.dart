@@ -10,7 +10,7 @@ sealed class User with _$User {
     required String email,
     required bool isVerified,
     bool? isAdmin,
-    String? accountType
+    String? accountType,
   }) = _User;
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);

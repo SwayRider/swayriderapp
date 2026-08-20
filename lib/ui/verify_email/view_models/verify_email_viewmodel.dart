@@ -7,10 +7,10 @@ import '../../../utils/result.dart';
 
 class VerifyEmailViewModel {
   VerifyEmailViewModel({required AuthRepository authRepository, String? email})
-  // ignore: prefer_initializing_formals
-  : _authRepository = authRepository,
     // ignore: prefer_initializing_formals
-    _email = email {
+    : _authRepository = authRepository,
+      // ignore: prefer_initializing_formals
+      _email = email {
     resendVerification = Command0<void>(_resendVerification);
     logout = Command0<void>(_logout);
   }

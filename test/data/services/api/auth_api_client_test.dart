@@ -87,31 +87,34 @@ void main() {
         expect(client.closed, isTrue);
       });
 
-      test('custom scheme/host/port/pathPrefix builds the expected URI', () async {
-        final client = okClient({
-          'access_token': 'access-123',
-          'refresh_token': 'refresh-456',
-        });
-        final api = AuthApiClient(
-          scheme: 'https',
-          host: 'api.example.com',
-          port: 443,
-          pathPrefix: '/api/v1/auth',
-          clientFactory: () => client,
-        );
-
-        await api.login(request);
-
-        expect(
-          client.lastRequest!.uri,
-          Uri(
+      test(
+        'custom scheme/host/port/pathPrefix builds the expected URI',
+        () async {
+          final client = okClient({
+            'access_token': 'access-123',
+            'refresh_token': 'refresh-456',
+          });
+          final api = AuthApiClient(
             scheme: 'https',
             host: 'api.example.com',
             port: 443,
-            path: '/api/v1/auth/login',
-          ),
-        );
-      });
+            pathPrefix: '/api/v1/auth',
+            clientFactory: () => client,
+          );
+
+          await api.login(request);
+
+          expect(
+            client.lastRequest!.uri,
+            Uri(
+              scheme: 'https',
+              host: 'api.example.com',
+              port: 443,
+              path: '/api/v1/auth/login',
+            ),
+          );
+        },
+      );
     });
 
     group('register', () {
@@ -154,7 +157,10 @@ void main() {
 
         final result = await api.register(request);
 
-        expect((result as Error<RegisterResponse>).error.toString(), contains('Register error'));
+        expect(
+          (result as Error<RegisterResponse>).error.toString(),
+          contains('Register error'),
+        );
       });
 
       test('403 returns Result.error(InvitationRequiredException)', () async {
@@ -163,33 +169,58 @@ void main() {
 
         final result = await api.register(request);
 
-        expect((result as Error<RegisterResponse>).error, isA<InvitationRequiredException>());
+        expect(
+          (result as Error<RegisterResponse>).error,
+          isA<InvitationRequiredException>(),
+        );
       });
 
-      test('400 with weak-password reason returns Result.error(WeakPasswordException)', () async {
-        final client = FakeHttpClient(FakeHttpClientResponse(400, jsonEncode({
-          'error': 'invalid argument',
-          'code': 'InvalidArgument',
-          'reason': 'weak_password',
-        })));
-        final api = AuthApiClient(clientFactory: () => client);
+      test(
+        '400 with weak-password reason returns Result.error(WeakPasswordException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'weak_password',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.register(request);
+          final result = await api.register(request);
 
-        expect((result as Error<RegisterResponse>).error, isA<WeakPasswordException>());
-      });
+          expect(
+            (result as Error<RegisterResponse>).error,
+            isA<WeakPasswordException>(),
+          );
+        },
+      );
 
-      test('400 without weak-password reason returns Result.error(HttpException)', () async {
-        final client = FakeHttpClient(FakeHttpClientResponse(400, jsonEncode({
-          'error': 'invalid argument',
-          'code': 'InvalidArgument',
-        })));
-        final api = AuthApiClient(clientFactory: () => client);
+      test(
+        '400 without weak-password reason returns Result.error(HttpException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.register(request);
+          final result = await api.register(request);
 
-        expect((result as Error<RegisterResponse>).error, isA<HttpException>());
-      });
+          expect(
+            (result as Error<RegisterResponse>).error,
+            isA<HttpException>(),
+          );
+        },
+      );
     });
 
     group('refresh', () {
@@ -233,7 +264,10 @@ void main() {
 
         final result = await api.refresh(request);
 
-        expect((result as Error<RefreshResponse>).error.toString(), contains('Refresh error'));
+        expect(
+          (result as Error<RefreshResponse>).error.toString(),
+          contains('Refresh error'),
+        );
       });
     });
 
@@ -242,7 +276,9 @@ void main() {
         final client = FakeHttpClient(FakeHttpClientResponse(200));
         final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.logout(const LogoutRequest(refreshToken: 'refresh-456'));
+        final result = await api.logout(
+          const LogoutRequest(refreshToken: 'refresh-456'),
+        );
 
         expect(result, isA<Ok<void>>());
       });
@@ -274,7 +310,10 @@ void main() {
 
         final result = await api.logout(const LogoutRequest());
 
-        expect((result as Error<void>).error.toString(), contains('Logout error'));
+        expect(
+          (result as Error<void>).error.toString(),
+          contains('Logout error'),
+        );
       });
     });
 
@@ -323,7 +362,10 @@ void main() {
 
         final result = await api.requestPasswordReset(request);
 
-        expect((result as Error<void>).error.toString(), contains('Password reset error'));
+        expect(
+          (result as Error<void>).error.toString(),
+          contains('Password reset error'),
+        );
       });
     });
 
@@ -334,14 +376,20 @@ void main() {
         newPassword: 'newpw',
       );
 
-      test('200 returns Ok(ResetPasswordResponse) with mapped fields', () async {
-        final client = okClient({'message': 'password reset'});
-        final api = AuthApiClient(clientFactory: () => client);
+      test(
+        '200 returns Ok(ResetPasswordResponse) with mapped fields',
+        () async {
+          final client = okClient({'message': 'password reset'});
+          final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.resetPassword(request);
+          final result = await api.resetPassword(request);
 
-        expect((result as Ok<ResetPasswordResponse>).value.message, 'password reset');
-      });
+          expect(
+            (result as Ok<ResetPasswordResponse>).value.message,
+            'password reset',
+          );
+        },
+      );
 
       test('sends POST /reset-password with mapped body', () async {
         final client = okClient({'message': 'password reset'});
@@ -365,7 +413,10 @@ void main() {
 
         final result = await api.resetPassword(request);
 
-        expect((result as Error<ResetPasswordResponse>).error.toString(), contains('Reset password error'));
+        expect(
+          (result as Error<ResetPasswordResponse>).error.toString(),
+          contains('Reset password error'),
+        );
       });
     });
 
@@ -414,7 +465,10 @@ void main() {
 
         final result = await api.verifyEmail(request);
 
-        expect((result as Error<void>).error.toString(), contains('Verify email error'));
+        expect(
+          (result as Error<void>).error.toString(),
+          contains('Verify email error'),
+        );
       });
     });
 
@@ -424,14 +478,20 @@ void main() {
         newPassword: 'newpw',
       );
 
-      test('200 returns Ok(ChangePasswordResponse) with mapped fields', () async {
-        final client = okClient({'message': 'password changed'});
-        final api = AuthApiClient(clientFactory: () => client);
+      test(
+        '200 returns Ok(ChangePasswordResponse) with mapped fields',
+        () async {
+          final client = okClient({'message': 'password changed'});
+          final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.changePassword(request);
+          final result = await api.changePassword(request);
 
-        expect((result as Ok<ChangePasswordResponse>).value.message, 'password changed');
-      });
+          expect(
+            (result as Ok<ChangePasswordResponse>).value.message,
+            'password changed',
+          );
+        },
+      );
 
       test('sends POST /change-password with mapped body', () async {
         final client = okClient({'message': 'password changed'});
@@ -454,7 +514,10 @@ void main() {
 
         final result = await api.changePassword(request);
 
-        expect((result as Error<ChangePasswordResponse>).error.toString(), contains('Change password error'));
+        expect(
+          (result as Error<ChangePasswordResponse>).error.toString(),
+          contains('Change password error'),
+        );
       });
 
       test('401 returns Result.error(UnauthorizedException)', () async {
@@ -463,43 +526,58 @@ void main() {
 
         final result = await api.changePassword(request);
 
-        expect((result as Error<ChangePasswordResponse>).error, isA<UnauthorizedException>());
+        expect(
+          (result as Error<ChangePasswordResponse>).error,
+          isA<UnauthorizedException>(),
+        );
       });
 
-      test('sends Authorization header when authHeaderProvider is set', () async {
-        final client = okClient({'message': 'password changed'});
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'sends Authorization header when authHeaderProvider is set',
+        () async {
+          final client = okClient({'message': 'password changed'});
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.changePassword(request);
+          await api.changePassword(request);
 
-        expect(client.lastRequest!.headers.value('Authorization'), 'Bearer test-token');
-      });
+          expect(
+            client.lastRequest!.headers.value('Authorization'),
+            'Bearer test-token',
+          );
+        },
+      );
 
-      test('omits Authorization header when authHeaderProvider returns null', () async {
-        final client = okClient({'message': 'password changed'});
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => null;
+      test(
+        'omits Authorization header when authHeaderProvider returns null',
+        () async {
+          final client = okClient({'message': 'password changed'});
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => null;
 
-        await api.changePassword(request);
+          await api.changePassword(request);
 
-        expect(client.lastRequest!.headers.value('Authorization'), isNull);
-      });
+          expect(client.lastRequest!.headers.value('Authorization'), isNull);
+        },
+      );
     });
 
     group('checkPasswordStrength', () {
       const request = CheckPasswordStrengthRequest(password: 'pw');
 
-      test('200 returns Ok(CheckPasswordStrengthResponse) with mapped fields', () async {
-        final client = okClient({'is_strong': true, 'message': 'strong'});
-        final api = AuthApiClient(clientFactory: () => client);
+      test(
+        '200 returns Ok(CheckPasswordStrengthResponse) with mapped fields',
+        () async {
+          final client = okClient({'is_strong': true, 'message': 'strong'});
+          final api = AuthApiClient(clientFactory: () => client);
 
-        final result = await api.checkPasswordStrength(request);
+          final result = await api.checkPasswordStrength(request);
 
-        final value = (result as Ok<CheckPasswordStrengthResponse>).value;
-        expect(value.isStrong, isTrue);
-        expect(value.message, 'strong');
-      });
+          final value = (result as Ok<CheckPasswordStrengthResponse>).value;
+          expect(value.isStrong, isTrue);
+          expect(value.message, 'strong');
+        },
+      );
 
       test('sends POST /check-password-strength with mapped body', () async {
         final client = okClient({'is_strong': true, 'message': 'strong'});
@@ -519,7 +597,10 @@ void main() {
 
         final result = await api.checkPasswordStrength(request);
 
-        expect((result as Error<CheckPasswordStrengthResponse>).error.toString(), contains('Check password strength error'));
+        expect(
+          (result as Error<CheckPasswordStrengthResponse>).error.toString(),
+          contains('Check password strength error'),
+        );
       });
     });
 
@@ -567,7 +648,10 @@ void main() {
 
         final result = await api.whoAmI();
 
-        expect((result as Error<WhoAmIResponse>).error.toString(), contains('Who am I error'));
+        expect(
+          (result as Error<WhoAmIResponse>).error.toString(),
+          contains('Who am I error'),
+        );
       });
 
       test('401 returns Result.error(UnauthorizedException)', () async {
@@ -576,40 +660,52 @@ void main() {
 
         final result = await api.whoAmI();
 
-        expect((result as Error<WhoAmIResponse>).error, isA<UnauthorizedException>());
+        expect(
+          (result as Error<WhoAmIResponse>).error,
+          isA<UnauthorizedException>(),
+        );
       });
 
-      test('sends Authorization header when authHeaderProvider is set', () async {
-        final client = okClient({
-          'user_id': 'user-1',
-          'email': 'a@b.com',
-          'is_verified': true,
-          'is_admin': true,
-          'account_type': 'premium',
-        });
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'sends Authorization header when authHeaderProvider is set',
+        () async {
+          final client = okClient({
+            'user_id': 'user-1',
+            'email': 'a@b.com',
+            'is_verified': true,
+            'is_admin': true,
+            'account_type': 'premium',
+          });
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.whoAmI();
+          await api.whoAmI();
 
-        expect(client.lastRequest!.headers.value('Authorization'), 'Bearer test-token');
-      });
+          expect(
+            client.lastRequest!.headers.value('Authorization'),
+            'Bearer test-token',
+          );
+        },
+      );
 
-      test('omits Authorization header when authHeaderProvider returns null', () async {
-        final client = okClient({
-          'user_id': 'user-1',
-          'email': 'a@b.com',
-          'is_verified': true,
-          'is_admin': true,
-          'account_type': 'premium',
-        });
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => null;
+      test(
+        'omits Authorization header when authHeaderProvider returns null',
+        () async {
+          final client = okClient({
+            'user_id': 'user-1',
+            'email': 'a@b.com',
+            'is_verified': true,
+            'is_admin': true,
+            'account_type': 'premium',
+          });
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => null;
 
-        await api.whoAmI();
+          await api.whoAmI();
 
-        expect(client.lastRequest!.headers.value('Authorization'), isNull);
-      });
+          expect(client.lastRequest!.headers.value('Authorization'), isNull);
+        },
+      );
     });
 
     group('me', () {
@@ -665,7 +761,10 @@ void main() {
 
         final result = await api.me();
 
-        expect((result as Error<MeResponse>).error.toString(), contains('Me error'));
+        expect(
+          (result as Error<MeResponse>).error.toString(),
+          contains('Me error'),
+        );
       });
 
       test('401 returns Result.error(UnauthorizedException)', () async {
@@ -674,32 +773,46 @@ void main() {
 
         final result = await api.me();
 
-        expect((result as Error<MeResponse>).error, isA<UnauthorizedException>());
+        expect(
+          (result as Error<MeResponse>).error,
+          isA<UnauthorizedException>(),
+        );
       });
 
-      test('sends Authorization header when authHeaderProvider is set', () async {
-        final client = okClient({
-          'user_id': 'user-1',
-          'email': 'a@b.com',
-          'email_verified': true,
-        });
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'sends Authorization header when authHeaderProvider is set',
+        () async {
+          final client = okClient({
+            'user_id': 'user-1',
+            'email': 'a@b.com',
+            'email_verified': true,
+          });
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.me();
+          await api.me();
 
-        expect(client.lastRequest!.headers.value('Authorization'), 'Bearer test-token');
-      });
+          expect(
+            client.lastRequest!.headers.value('Authorization'),
+            'Bearer test-token',
+          );
+        },
+      );
     });
 
     group('publicKeys', () {
       test('200 returns Ok(PublicKeysResponse) with mapped keys', () async {
-        final client = okClient({'keys': ['key-1', 'key-2']});
+        final client = okClient({
+          'keys': ['key-1', 'key-2'],
+        });
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.publicKeys();
 
-        expect((result as Ok<PublicKeysResponse>).value.keys, ['key-1', 'key-2']);
+        expect((result as Ok<PublicKeysResponse>).value.keys, [
+          'key-1',
+          'key-2',
+        ]);
       });
 
       test('sends GET /public-keys', () async {
@@ -719,53 +832,67 @@ void main() {
 
         final result = await api.publicKeys();
 
-        expect((result as Error<PublicKeysResponse>).error.toString(), contains('Public keys error'));
+        expect(
+          (result as Error<PublicKeysResponse>).error.toString(),
+          contains('Public keys error'),
+        );
       });
 
-      test('never sends an Authorization header, even if authHeaderProvider is set', () async {
-        final client = okClient({'keys': <String>[]});
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'never sends an Authorization header, even if authHeaderProvider is set',
+        () async {
+          final client = okClient({'keys': <String>[]});
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.publicKeys();
+          await api.publicKeys();
 
-        expect(client.lastRequest!.headers.value('Authorization'), isNull);
-      });
+          expect(client.lastRequest!.headers.value('Authorization'), isNull);
+        },
+      );
     });
 
     group('request timeout', () {
-      test('a hanging request completes with Result.error after 10 seconds', () {
-        fakeAsync((async) {
-          final client = FakeHangingHttpClient();
-          final api = AuthApiClient(clientFactory: () => client);
-          Result<LoginResponse>? result;
+      test(
+        'a hanging request completes with Result.error after 10 seconds',
+        () {
+          fakeAsync((async) {
+            final client = FakeHangingHttpClient();
+            final api = AuthApiClient(clientFactory: () => client);
+            Result<LoginResponse>? result;
 
-          api
-              .login(const LoginRequest(email: 'a@b.com', password: 'pw'))
-              .then((r) => result = r);
+            api
+                .login(const LoginRequest(email: 'a@b.com', password: 'pw'))
+                .then((r) => result = r);
 
-          async.elapse(const Duration(seconds: 11));
+            async.elapse(const Duration(seconds: 11));
 
-          expect(result, isA<Error<LoginResponse>>());
-          expect(client.closed, isTrue);
-        });
-      });
+            expect(result, isA<Error<LoginResponse>>());
+            expect(client.closed, isTrue);
+          });
+        },
+      );
 
-      test('a response whose body never completes still resolves with Result.error after 10 seconds', () {
-        fakeAsync((async) {
-          final client = FakeHttpClient(FakeHttpClientResponse.stalledBody(200));
-          final api = AuthApiClient(clientFactory: () => client);
-          Result<RefreshResponse>? result;
+      test(
+        'a response whose body never completes still resolves with Result.error after 10 seconds',
+        () {
+          fakeAsync((async) {
+            final client = FakeHttpClient(
+              FakeHttpClientResponse.stalledBody(200),
+            );
+            final api = AuthApiClient(clientFactory: () => client);
+            Result<RefreshResponse>? result;
 
-          api
-              .refresh(RefreshRequest(refreshToken: 'rt'))
-              .then((r) => result = r);
+            api
+                .refresh(RefreshRequest(refreshToken: 'rt'))
+                .then((r) => result = r);
 
-          async.elapse(const Duration(seconds: 11));
+            async.elapse(const Duration(seconds: 11));
 
-          expect(result, isA<Error<RefreshResponse>>());
-        });
-      });
+            expect(result, isA<Error<RefreshResponse>>());
+          });
+        },
+      );
     });
   });
 }

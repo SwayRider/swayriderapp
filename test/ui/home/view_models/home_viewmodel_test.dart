@@ -40,8 +40,9 @@ void main() {
   });
 
   test('execute calls AuthRepository.logout with no arguments', () async {
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.logout.execute();
 
@@ -49,8 +50,9 @@ void main() {
   });
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.logout.execute();
 
@@ -60,8 +62,9 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('logout failed');
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => Result.error(exception));
 
     await viewModel.logout.execute();
 
@@ -70,8 +73,9 @@ void main() {
   });
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     var notifications = 0;
     viewModel.logout.addListener(() => notifications++);
@@ -104,10 +108,12 @@ void main() {
     });
 
     test('success sets location and mapStyle from the repositories', () async {
-      when(() => mockLocationService.getCurrentLocation())
-          .thenAnswer((_) async => const Result.ok(_testLocation));
-      when(() => mockTilesRepository.getMapStyle(name: 'light'))
-          .thenAnswer((_) async => const Result.ok(_testStyle));
+      when(
+        () => mockLocationService.getCurrentLocation(),
+      ).thenAnswer((_) async => const Result.ok(_testLocation));
+      when(
+        () => mockTilesRepository.getMapStyle(name: 'light'),
+      ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       await viewModel.loadMap.execute();
 
@@ -118,10 +124,12 @@ void main() {
     });
 
     test('location error falls back to the default location', () async {
-      when(() => mockLocationService.getCurrentLocation())
-          .thenAnswer((_) async => Result.error(Exception('denied')));
-      when(() => mockTilesRepository.getMapStyle(name: 'light'))
-          .thenAnswer((_) async => const Result.ok(_testStyle));
+      when(
+        () => mockLocationService.getCurrentLocation(),
+      ).thenAnswer((_) async => Result.error(Exception('denied')));
+      when(
+        () => mockTilesRepository.getMapStyle(name: 'light'),
+      ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       await viewModel.loadMap.execute();
 
@@ -133,10 +141,12 @@ void main() {
 
     test('style error marks the command as error', () async {
       final exception = Exception('style fetch failed');
-      when(() => mockLocationService.getCurrentLocation())
-          .thenAnswer((_) async => const Result.ok(_testLocation));
-      when(() => mockTilesRepository.getMapStyle(name: 'light'))
-          .thenAnswer((_) async => Result.error(exception));
+      when(
+        () => mockLocationService.getCurrentLocation(),
+      ).thenAnswer((_) async => const Result.ok(_testLocation));
+      when(
+        () => mockTilesRepository.getMapStyle(name: 'light'),
+      ).thenAnswer((_) async => Result.error(exception));
 
       await viewModel.loadMap.execute();
 
@@ -147,10 +157,12 @@ void main() {
     });
 
     test('notifies listeners exactly twice per execute cycle', () async {
-      when(() => mockLocationService.getCurrentLocation())
-          .thenAnswer((_) async => const Result.ok(_testLocation));
-      when(() => mockTilesRepository.getMapStyle(name: 'light'))
-          .thenAnswer((_) async => const Result.ok(_testStyle));
+      when(
+        () => mockLocationService.getCurrentLocation(),
+      ).thenAnswer((_) async => const Result.ok(_testLocation));
+      when(
+        () => mockTilesRepository.getMapStyle(name: 'light'),
+      ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       var notifications = 0;
       viewModel.loadMap.addListener(() => notifications++);

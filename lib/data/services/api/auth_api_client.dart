@@ -37,11 +37,11 @@ class AuthApiClient {
     int? port,
     String? pathPrefix,
     HttpClient Function()? clientFactory,
-  })  : _scheme = scheme ?? 'http',
-        _host = host ?? 'localhost',
-        _port = port ?? 8080,
-        _pathPrefix = pathPrefix ?? '',
-        _clientFactory = clientFactory ?? HttpClient.new;
+  }) : _scheme = scheme ?? 'http',
+       _host = host ?? 'localhost',
+       _port = port ?? 8080,
+       _pathPrefix = pathPrefix ?? '',
+       _clientFactory = clientFactory ?? HttpClient.new;
 
   final String _scheme;
   final String _host;
@@ -52,7 +52,7 @@ class AuthApiClient {
   AuthHeaderProvider? _authHeaderProvider;
 
   set authHeaderProvider(AuthHeaderProvider authHeaderProvider) =>
-    _authHeaderProvider = authHeaderProvider;
+      _authHeaderProvider = authHeaderProvider;
 
   Future<void> _authHeader(HttpHeaders headers) async {
     final header = _authHeaderProvider?.call();
@@ -63,8 +63,8 @@ class AuthApiClient {
 
   static const _requestTimeout = Duration(seconds: 10);
 
-  HttpClient _newClient() => _clientFactory()
-    ..connectionTimeout = _requestTimeout;
+  HttpClient _newClient() =>
+      _clientFactory()..connectionTimeout = _requestTimeout;
 
   // Covers DNS resolution + TCP connect + response with a single timeout budget.
   Future<HttpClientRequest> _get(HttpClient client, String path) =>
@@ -103,12 +103,8 @@ class AuthApiClient {
 
   String _fullPath(String path) => '$_pathPrefix$path';
 
-  Uri _uri(String path) => Uri(
-    scheme: _scheme,
-    host: _host,
-    port: _port,
-    path: _fullPath(path),
-  );
+  Uri _uri(String path) =>
+      Uri(scheme: _scheme, host: _host, port: _port, path: _fullPath(path));
 
   Future<Result<LoginResponse>> login(LoginRequest req) async {
     final client = _newClient();
@@ -164,7 +160,9 @@ class AuthApiClient {
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(req));
       final response = await _close(request);
-      _log.fine('[DIAG] AuthApiClient.refresh(): headers received, statusCode=${response.statusCode}');
+      _log.fine(
+        '[DIAG] AuthApiClient.refresh(): headers received, statusCode=${response.statusCode}',
+      );
       if (response.statusCode == 200) {
         final stringData = await _readBody(response);
         _log.fine('[DIAG] AuthApiClient.refresh(): body read complete');
@@ -217,7 +215,9 @@ class AuthApiClient {
     }
   }
 
-  Future<Result<ResetPasswordResponse>> resetPassword(ResetPasswordRequest req) async {
+  Future<Result<ResetPasswordResponse>> resetPassword(
+    ResetPasswordRequest req,
+  ) async {
     final client = _newClient();
     try {
       final request = await _post(client, '/reset-password');
@@ -226,7 +226,9 @@ class AuthApiClient {
       final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await _readBody(response);
-        return Result.ok(ResetPasswordResponse.fromJson(jsonDecode(stringData)));
+        return Result.ok(
+          ResetPasswordResponse.fromJson(jsonDecode(stringData)),
+        );
       } else {
         return const Result.error(HttpException("Reset password error"));
       }
@@ -256,7 +258,9 @@ class AuthApiClient {
     }
   }
 
-  Future<Result<ChangePasswordResponse>> changePassword(ChangePasswordRequest req) async {
+  Future<Result<ChangePasswordResponse>> changePassword(
+    ChangePasswordRequest req,
+  ) async {
     final client = _newClient();
     try {
       final request = await _post(client, '/change-password');
@@ -266,7 +270,9 @@ class AuthApiClient {
       final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await _readBody(response);
-        return Result.ok(ChangePasswordResponse.fromJson(jsonDecode(stringData)));
+        return Result.ok(
+          ChangePasswordResponse.fromJson(jsonDecode(stringData)),
+        );
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {
@@ -279,7 +285,9 @@ class AuthApiClient {
     }
   }
 
-  Future<Result<CheckPasswordStrengthResponse>> checkPasswordStrength(CheckPasswordStrengthRequest req) async {
+  Future<Result<CheckPasswordStrengthResponse>> checkPasswordStrength(
+    CheckPasswordStrengthRequest req,
+  ) async {
     final client = _newClient();
     try {
       final request = await _post(client, '/check-password-strength');
@@ -288,9 +296,13 @@ class AuthApiClient {
       final response = await _close(request);
       if (response.statusCode == 200) {
         final stringData = await _readBody(response);
-        return Result.ok(CheckPasswordStrengthResponse.fromJson(jsonDecode(stringData)));
+        return Result.ok(
+          CheckPasswordStrengthResponse.fromJson(jsonDecode(stringData)),
+        );
       } else {
-        return const Result.error(HttpException("Check password strength error"));
+        return const Result.error(
+          HttpException("Check password strength error"),
+        );
       }
     } on Exception catch (e) {
       return Result.error(e);

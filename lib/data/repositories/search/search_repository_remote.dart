@@ -23,9 +23,11 @@ class SearchRepositoryRemote implements SearchRepository {
     required String text,
     required LatLng focusPoint,
     String language = 'en',
-  }) => _authRepository.withAuthRetry(() => _searchApiClient.autocomplete(
-        text: text,
-        focusPoint: focusPoint,
-        language: language,
-      ));
+  }) => _authRepository.withAuthRetry(
+    () => _searchApiClient.autocomplete(
+      text: text,
+      focusPoint: focusPoint,
+      language: language,
+    ),
+  );
 }

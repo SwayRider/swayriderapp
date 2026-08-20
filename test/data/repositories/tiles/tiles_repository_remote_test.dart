@@ -9,30 +9,41 @@ import '../../../helpers/mocks.dart';
 void main() {
   const origin = 'http://127.0.0.1:54321';
 
-  test('getMapStyle routes the api call through authRepository.withAuthRetry', () async {
-    final mockApiClient = MockTilesApiClient();
-    final mockAuthRepository = MockAuthRepository();
-    when(() => mockApiClient.authHeaderProvider = any()).thenReturn(() => null);
-    when(() => mockAuthRepository.authHeaderProvider).thenReturn(() => null);
-    when(() => mockApiClient.getStyle(any()))
-        .thenAnswer((_) async => const Result.error(UnauthorizedException()));
-    when(() => mockAuthRepository.withAuthRetry<Map<String, dynamic>>(any()))
-        .thenAnswer((invocation) => (invocation.positionalArguments.single
-            as Future<Result<Map<String, dynamic>>> Function())());
+  test(
+    'getMapStyle routes the api call through authRepository.withAuthRetry',
+    () async {
+      final mockApiClient = MockTilesApiClient();
+      final mockAuthRepository = MockAuthRepository();
+      when(
+        () => mockApiClient.authHeaderProvider = any(),
+      ).thenReturn(() => null);
+      when(() => mockAuthRepository.authHeaderProvider).thenReturn(() => null);
+      when(
+        () => mockApiClient.getStyle(any()),
+      ).thenAnswer((_) async => const Result.error(UnauthorizedException()));
+      when(
+        () => mockAuthRepository.withAuthRetry<Map<String, dynamic>>(any()),
+      ).thenAnswer(
+        (invocation) =>
+            (invocation.positionalArguments.single
+                as Future<Result<Map<String, dynamic>>> Function())(),
+      );
 
-    final repository = TilesRepositoryRemote(
-      tilesApiClient: mockApiClient,
-      authRepository: mockAuthRepository,
-      tilesBaseUrl: Uri.parse('http://localhost:8080'),
-    );
+      final repository = TilesRepositoryRemote(
+        tilesApiClient: mockApiClient,
+        authRepository: mockAuthRepository,
+        tilesBaseUrl: Uri.parse('http://localhost:8080'),
+      );
 
-    final result = await repository.getMapStyle(name: 'light');
+      final result = await repository.getMapStyle(name: 'light');
 
-    expect(result, isA<Error<String>>());
-    expect((result as Error<String>).error, isA<UnauthorizedException>());
-    verify(() => mockAuthRepository.withAuthRetry<Map<String, dynamic>>(any()))
-        .called(1);
-  });
+      expect(result, isA<Error<String>>());
+      expect((result as Error<String>).error, isA<UnauthorizedException>());
+      verify(
+        () => mockAuthRepository.withAuthRetry<Map<String, dynamic>>(any()),
+      ).called(1);
+    },
+  );
 
   test('rewrites tile source URLs to the local proxy origin', () {
     final style = {
@@ -56,7 +67,8 @@ void main() {
 
   test('rewrites a sprite URL under /v1/tiles/', () {
     final style = {
-      'sprite': 'https://api.swayrider-dev.hevanto-it.com/v1/tiles/sprites/light',
+      'sprite':
+          'https://api.swayrider-dev.hevanto-it.com/v1/tiles/sprites/light',
     };
 
     final rewritten = TilesRepositoryRemote.rewriteTileUrls(style, origin);

@@ -11,5 +11,5 @@ sealed class LoginResponse with _$LoginResponse {
   }) = _LoginResponse;
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) =>
-    _$LoginResponseFromJson(json);
+      _$LoginResponseFromJson(json);
 }

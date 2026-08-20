@@ -7,8 +7,8 @@ import '../../../utils/result.dart';
 
 class ResetPasswordViewModel {
   ResetPasswordViewModel({required AuthRepository authRepository})
-  // ignore: prefer_initializing_formals
-  : _authRepository = authRepository {
+    // ignore: prefer_initializing_formals
+    : _authRepository = authRepository {
     requestReset = Command1<void, String>(_requestReset);
   }
 

@@ -15,11 +15,11 @@ class SearchApiClient {
     int? port,
     String? pathPrefix,
     HttpClient Function()? clientFactory,
-  })  : _scheme = scheme ?? 'http',
-        _host = host ?? 'localhost',
-        _port = port ?? 8080,
-        _pathPrefix = pathPrefix ?? '',
-        _clientFactory = clientFactory ?? HttpClient.new;
+  }) : _scheme = scheme ?? 'http',
+       _host = host ?? 'localhost',
+       _port = port ?? 8080,
+       _pathPrefix = pathPrefix ?? '',
+       _clientFactory = clientFactory ?? HttpClient.new;
 
   final String _scheme;
   final String _host;
@@ -41,7 +41,8 @@ class SearchApiClient {
 
   static const _requestTimeout = Duration(seconds: 10);
 
-  HttpClient _newClient() => _clientFactory()..connectionTimeout = _requestTimeout;
+  HttpClient _newClient() =>
+      _clientFactory()..connectionTimeout = _requestTimeout;
 
   Future<HttpClientRequest> _post(HttpClient client, String path) =>
       client.postUrl(_uri(path)).timeout(_requestTimeout);
@@ -49,12 +50,8 @@ class SearchApiClient {
   Future<HttpClientResponse> _close(HttpClientRequest request) =>
       request.close().timeout(_requestTimeout);
 
-  Uri _uri(String path) => Uri(
-        scheme: _scheme,
-        host: _host,
-        port: _port,
-        path: '$_pathPrefix$path',
-      );
+  Uri _uri(String path) =>
+      Uri(scheme: _scheme, host: _host, port: _port, path: '$_pathPrefix$path');
 
   Future<Result<List<SearchResultItem>>> autocomplete({
     required String text,
@@ -67,19 +64,29 @@ class SearchApiClient {
       final request = await _post(client, '/search/autocomplete');
       await _authHeader(request.headers);
       request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({
-        'text': text,
-        'focusPoint': {'lat': focusPoint.latitude, 'lon': focusPoint.longitude},
-        'size': size,
-        'language': language,
-      }));
+      request.write(
+        jsonEncode({
+          'text': text,
+          'focusPoint': {
+            'lat': focusPoint.latitude,
+            'lon': focusPoint.longitude,
+          },
+          'size': size,
+          'language': language,
+        }),
+      );
       final response = await _close(request);
       final stringData = await response.transform(utf8.decoder).join();
       if (response.statusCode == 200) {
         final items = jsonDecode(stringData) as List<dynamic>;
-        return Result.ok(items
-            .map((item) => SearchResultItem.fromJson(item as Map<String, dynamic>))
-            .toList());
+        return Result.ok(
+          items
+              .map(
+                (item) =>
+                    SearchResultItem.fromJson(item as Map<String, dynamic>),
+              )
+              .toList(),
+        );
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {

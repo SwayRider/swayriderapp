@@ -37,10 +37,10 @@ class FakeHttpHeaders extends Fake implements HttpHeaders {
 class FakeHttpClientResponse extends Stream<List<int>>
     implements HttpClientResponse {
   FakeHttpClientResponse(this.statusCode, [String body = ''])
-      : _stream = Stream.fromIterable([utf8.encode(body)]);
+    : _stream = Stream.fromIterable([utf8.encode(body)]);
 
   FakeHttpClientResponse.stalledBody(this.statusCode)
-      : _stream = StreamController<List<int>>().stream;
+    : _stream = StreamController<List<int>>().stream;
 
   @override
   final int statusCode;
