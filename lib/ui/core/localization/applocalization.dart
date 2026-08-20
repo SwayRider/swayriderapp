@@ -34,6 +34,8 @@ class AppLocalization {
   String get noAccount => _get('noAccount');
 
   String get passwordNotStrongEnough => _get('passwordNotStrongEnough');
+  String get passwordBreached => _get('passwordBreached');
+  String get passwordReused => _get('passwordReused');
   String get passwordsDoNotMatch => _get('passwordsDoNotMatch');
   String get signupFailed => _get('signupFailed');
   String get haveAccount => _get('haveAccount');

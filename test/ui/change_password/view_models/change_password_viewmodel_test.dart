@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/ui/change_password/view_models/change_password_viewmodel.dart';
 import 'package:swayriderapp/utils/result.dart';
 
@@ -71,6 +72,74 @@ void main() {
 
     expect(viewModel.changePassword.error, isTrue);
     expect((viewModel.changePassword.result as Error).error, exception);
+  });
+
+  test(
+    'passwordBreached is true when changePassword fails with BreachedPasswordException',
+    () async {
+      when(
+        () => mockAuthRepository.changePassword(
+          oldPassword: any(named: 'oldPassword'),
+          newPassword: any(named: 'newPassword'),
+        ),
+      ).thenAnswer((_) async => const Result.error(BreachedPasswordException()));
+
+      await viewModel.changePassword.execute(('old-pw', 'new-pw'));
+
+      expect(viewModel.passwordBreached, isTrue);
+    },
+  );
+
+  test('passwordBreached is false for other errors', () async {
+    final exception = Exception('change password failed');
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
+
+    await viewModel.changePassword.execute(('old-pw', 'new-pw'));
+
+    expect(viewModel.passwordBreached, isFalse);
+  });
+
+  test('passwordBreached is false in the initial idle state', () {
+    expect(viewModel.passwordBreached, isFalse);
+  });
+
+  test(
+    'passwordReused is true when changePassword fails with PasswordReusedException',
+    () async {
+      when(
+        () => mockAuthRepository.changePassword(
+          oldPassword: any(named: 'oldPassword'),
+          newPassword: any(named: 'newPassword'),
+        ),
+      ).thenAnswer((_) async => const Result.error(PasswordReusedException()));
+
+      await viewModel.changePassword.execute(('old-pw', 'new-pw'));
+
+      expect(viewModel.passwordReused, isTrue);
+    },
+  );
+
+  test('passwordReused is false for other errors', () async {
+    final exception = Exception('change password failed');
+    when(
+      () => mockAuthRepository.changePassword(
+        oldPassword: any(named: 'oldPassword'),
+        newPassword: any(named: 'newPassword'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
+
+    await viewModel.changePassword.execute(('old-pw', 'new-pw'));
+
+    expect(viewModel.passwordReused, isFalse);
+  });
+
+  test('passwordReused is false in the initial idle state', () {
+    expect(viewModel.passwordReused, isFalse);
   });
 
   test(

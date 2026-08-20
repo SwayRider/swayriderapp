@@ -28,6 +28,26 @@ class WeakPasswordException implements Exception {
   String toString() => 'Password is not strong enough';
 }
 
+/// Thrown when a password is rejected because it has appeared in a known data
+/// breach (HTTP 400 with reason `breached_password`). Thrown by register,
+/// changePassword and resetPassword.
+class BreachedPasswordException implements Exception {
+  const BreachedPasswordException();
+
+  @override
+  String toString() => 'Password has appeared in a known data breach';
+}
+
+/// Thrown when a password is rejected because it matches a recently-used
+/// password of the same account (HTTP 400 with reason `password_reused`).
+/// Thrown by changePassword and resetPassword.
+class PasswordReusedException implements Exception {
+  const PasswordReusedException();
+
+  @override
+  String toString() => 'Password has been used before';
+}
+
 class AuthApiClient {
   final _log = Logger('AuthApiClient');
 
@@ -140,9 +160,14 @@ class AuthApiClient {
         return const Result.error(InvitationRequiredException());
       } else {
         final stringData = await _readBody(response);
-        if (response.statusCode == 400 &&
-            _errorReason(stringData) == 'weak_password') {
-          return const Result.error(WeakPasswordException());
+        if (response.statusCode == 400) {
+          final reason = _errorReason(stringData);
+          if (reason == 'weak_password') {
+            return const Result.error(WeakPasswordException());
+          }
+          if (reason == 'breached_password') {
+            return const Result.error(BreachedPasswordException());
+          }
         }
         return const Result.error(HttpException("Register error"));
       }
@@ -230,6 +255,16 @@ class AuthApiClient {
           ResetPasswordResponse.fromJson(jsonDecode(stringData)),
         );
       } else {
+        final stringData = await _readBody(response);
+        if (response.statusCode == 400) {
+          final reason = _errorReason(stringData);
+          if (reason == 'breached_password') {
+            return const Result.error(BreachedPasswordException());
+          }
+          if (reason == 'password_reused') {
+            return const Result.error(PasswordReusedException());
+          }
+        }
         return const Result.error(HttpException("Reset password error"));
       }
     } on Exception catch (e) {
@@ -276,6 +311,16 @@ class AuthApiClient {
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {
+        final stringData = await _readBody(response);
+        if (response.statusCode == 400) {
+          final reason = _errorReason(stringData);
+          if (reason == 'breached_password') {
+            return const Result.error(BreachedPasswordException());
+          }
+          if (reason == 'password_reused') {
+            return const Result.error(PasswordReusedException());
+          }
+        }
         return const Result.error(HttpException("Change password error"));
       }
     } on Exception catch (e) {

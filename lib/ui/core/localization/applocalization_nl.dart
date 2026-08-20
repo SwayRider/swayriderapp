@@ -22,6 +22,11 @@ class AppLocalizationNl extends AppLocalization {
     'noAccount': 'Geen account?',
 
     'passwordNotStrongEnough': 'Wachtwoord is niet sterk genoeg',
+    'passwordBreached':
+        'Dit wachtwoord is aangetroffen in een bekend datalek. '
+        'Kies een ander wachtwoord.',
+    'passwordReused':
+        'Dit wachtwoord is eerder gebruikt. Kies een ander wachtwoord.',
     'passwordsDoNotMatch': 'Wachtwoorden komen niet overeen',
     'signupFailed': 'Registratie mislukt',
     'haveAccount': 'Heb je al een account?',

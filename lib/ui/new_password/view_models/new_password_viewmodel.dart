@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 
 import '../../../data/repositories/auth/auth_repository.dart';
+import '../../../data/services/api/auth_api_client.dart';
 import '../../../utils/command.dart';
 import '../../../utils/result.dart';
 
@@ -15,6 +16,20 @@ class NewPasswordViewModel {
   final _log = Logger('NewPasswordViewModel');
 
   late Command1<void, (String, String, String)> resetPassword;
+
+  /// Whether the most recent attempt failed because the backend rejected the
+  /// new password as breached (appeared in a known data breach).
+  bool get passwordBreached {
+    final result = resetPassword.result;
+    return result is Error && result.error is BreachedPasswordException;
+  }
+
+  /// Whether the most recent attempt failed because the backend rejected the
+  /// new password as a reuse of a recently-used password.
+  bool get passwordReused {
+    final result = resetPassword.result;
+    return result is Error && result.error is PasswordReusedException;
+  }
 
   /// Checks the strength of [password] against the backend.
   Future<Result<bool>> checkPasswordStrength(String password) =>
