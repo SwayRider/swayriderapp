@@ -49,15 +49,12 @@ abstract class AuthRepository extends ChangeNotifier {
     required String verificationUrl,
   });
 
-
   Future<Result<void>> changePassword({
     required String oldPassword,
     required String newPassword,
   });
 
-  Future<Result<bool>> checkPasswordStrength({
-    required String password,
-  });
+  Future<Result<bool>> checkPasswordStrength({required String password});
 
   Future<Result<User>> me();
 

@@ -13,7 +13,6 @@ void main() {
   development.main();
 }
 
-
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
@@ -29,7 +28,7 @@ class MainApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      routerConfig: router(context.read())
+      routerConfig: router(context.read()),
     );
   }
 }

@@ -25,28 +25,37 @@ void main() {
     expect(viewModel.signup.result, isNull);
   });
 
-  test('execute calls AuthRepository.register with email, password and verificationUrl', () async {
-    when(() => mockAuthRepository.register(
+  test(
+    'execute calls AuthRepository.register with email, password and verificationUrl',
+    () async {
+      when(
+        () => mockAuthRepository.register(
           email: any(named: 'email'),
           password: any(named: 'password'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+        ),
+      ).thenAnswer((_) async => const Result.ok(null));
 
-    await viewModel.signup.execute(('a@b.com', 'pw'));
+      await viewModel.signup.execute(('a@b.com', 'pw'));
 
-    verify(() => mockAuthRepository.register(
+      verify(
+        () => mockAuthRepository.register(
           email: 'a@b.com',
           password: 'pw',
           verificationUrl: AppConfig.verificationRedirectUrl,
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.signup.execute(('a@b.com', 'pw'));
 
@@ -56,11 +65,13 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('signup failed');
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
 
     await viewModel.signup.execute(('a@b.com', 'pw'));
 
@@ -68,24 +79,33 @@ void main() {
     expect((viewModel.signup.result as Error).error, exception);
   });
 
-  test('invitationRequired is true when register fails with InvitationRequiredException', () async {
-    when(() => mockAuthRepository.register(
+  test(
+    'invitationRequired is true when register fails with InvitationRequiredException',
+    () async {
+      when(
+        () => mockAuthRepository.register(
           email: any(named: 'email'),
           password: any(named: 'password'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.error(InvitationRequiredException()));
+        ),
+      ).thenAnswer(
+        (_) async => const Result.error(InvitationRequiredException()),
+      );
 
-    await viewModel.signup.execute(('a@b.com', 'pw'));
+      await viewModel.signup.execute(('a@b.com', 'pw'));
 
-    expect(viewModel.invitationRequired, isTrue);
-  });
+      expect(viewModel.invitationRequired, isTrue);
+    },
+  );
 
   test('invitationRequired is false for other errors', () async {
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => Result.error(Exception('signup failed')));
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(Exception('signup failed')));
 
     await viewModel.signup.execute(('a@b.com', 'pw'));
 
@@ -96,24 +116,31 @@ void main() {
     expect(viewModel.invitationRequired, isFalse);
   });
 
-  test('passwordTooWeak is true when register fails with WeakPasswordException', () async {
-    when(() => mockAuthRepository.register(
+  test(
+    'passwordTooWeak is true when register fails with WeakPasswordException',
+    () async {
+      when(
+        () => mockAuthRepository.register(
           email: any(named: 'email'),
           password: any(named: 'password'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.error(WeakPasswordException()));
+        ),
+      ).thenAnswer((_) async => const Result.error(WeakPasswordException()));
 
-    await viewModel.signup.execute(('a@b.com', 'pw'));
+      await viewModel.signup.execute(('a@b.com', 'pw'));
 
-    expect(viewModel.passwordTooWeak, isTrue);
-  });
+      expect(viewModel.passwordTooWeak, isTrue);
+    },
+  );
 
   test('passwordTooWeak is false for other errors', () async {
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => Result.error(Exception('signup failed')));
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(Exception('signup failed')));
 
     await viewModel.signup.execute(('a@b.com', 'pw'));
 
@@ -124,22 +151,32 @@ void main() {
     expect(viewModel.passwordTooWeak, isFalse);
   });
 
-  test('checkPasswordStrength delegates to AuthRepository.checkPasswordStrength', () async {
-    when(() => mockAuthRepository.checkPasswordStrength(password: any(named: 'password')))
-        .thenAnswer((_) async => const Result.ok(true));
+  test(
+    'checkPasswordStrength delegates to AuthRepository.checkPasswordStrength',
+    () async {
+      when(
+        () => mockAuthRepository.checkPasswordStrength(
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer((_) async => const Result.ok(true));
 
-    final result = await viewModel.checkPasswordStrength('pw');
+      final result = await viewModel.checkPasswordStrength('pw');
 
-    expect((result as Ok<bool>).value, isTrue);
-    verify(() => mockAuthRepository.checkPasswordStrength(password: 'pw')).called(1);
-  });
+      expect((result as Ok<bool>).value, isTrue);
+      verify(
+        () => mockAuthRepository.checkPasswordStrength(password: 'pw'),
+      ).called(1);
+    },
+  );
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     var notifications = 0;
     viewModel.signup.addListener(() => notifications++);
@@ -151,11 +188,13 @@ void main() {
 
   test('re-entrant execute calls only invoke the repository once', () async {
     final completer = Completer<Result<void>>();
-    when(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) => completer.future);
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) => completer.future);
 
     final first = viewModel.signup.execute(('a@b.com', 'pw'));
     final second = viewModel.signup.execute(('a@b.com', 'pw'));
@@ -164,10 +203,12 @@ void main() {
     await first;
     await second;
 
-    verify(() => mockAuthRepository.register(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).called(1);
+    verify(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).called(1);
   });
 }

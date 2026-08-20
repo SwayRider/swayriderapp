@@ -8,8 +8,8 @@ import '../../../utils/result.dart';
 
 class SignupViewModel {
   SignupViewModel({required AuthRepository authRepository})
-  // ignore: prefer_initializing_formals
-  : _authRepository = authRepository {
+    // ignore: prefer_initializing_formals
+    : _authRepository = authRepository {
     signup = Command1<void, (String email, String password)>(_signup);
   }
 

@@ -12,11 +12,11 @@ class TilesApiClient {
     int? port,
     String? pathPrefix,
     HttpClient Function()? clientFactory,
-  })  : _scheme = scheme ?? 'http',
-        _host = host ?? 'localhost',
-        _port = port ?? 8080,
-        _pathPrefix = pathPrefix ?? '',
-        _clientFactory = clientFactory ?? HttpClient.new;
+  }) : _scheme = scheme ?? 'http',
+       _host = host ?? 'localhost',
+       _port = port ?? 8080,
+       _pathPrefix = pathPrefix ?? '',
+       _clientFactory = clientFactory ?? HttpClient.new;
 
   final String _scheme;
   final String _host;
@@ -26,8 +26,8 @@ class TilesApiClient {
 
   static const _requestTimeout = Duration(seconds: 10);
 
-  HttpClient _newClient() => _clientFactory()
-    ..connectionTimeout = _requestTimeout;
+  HttpClient _newClient() =>
+      _clientFactory()..connectionTimeout = _requestTimeout;
 
   AuthHeaderProvider? _authHeaderProvider;
 
@@ -41,12 +41,8 @@ class TilesApiClient {
     }
   }
 
-  Uri _uri(String path) => Uri(
-    scheme: _scheme,
-    host: _host,
-    port: _port,
-    path: '$_pathPrefix$path',
-  );
+  Uri _uri(String path) =>
+      Uri(scheme: _scheme, host: _host, port: _port, path: '$_pathPrefix$path');
 
   Future<HttpClientRequest> _get(HttpClient client, String path) =>
       client.getUrl(_uri(path)).timeout(_requestTimeout);

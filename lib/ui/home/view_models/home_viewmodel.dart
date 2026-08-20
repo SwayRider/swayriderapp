@@ -94,7 +94,10 @@ class HomeViewModel extends ChangeNotifier {
       clearSuggestions();
       return;
     }
-    _searchDebounceTimer = Timer(_searchDebounce, () => _doSearch(text, language));
+    _searchDebounceTimer = Timer(
+      _searchDebounce,
+      () => _doSearch(text, language),
+    );
   }
 
   Future<void> _doSearch(String text, String language) async {

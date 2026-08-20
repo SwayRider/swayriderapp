@@ -10,5 +10,5 @@ sealed class CheckPasswordStrengthRequest with _$CheckPasswordStrengthRequest {
   }) = _CheckPasswordStrengthRequest;
 
   factory CheckPasswordStrengthRequest.fromJson(Map<String, dynamic> json) =>
-    _$CheckPasswordStrengthRequestFromJson(json);
+      _$CheckPasswordStrengthRequestFromJson(json);
 }

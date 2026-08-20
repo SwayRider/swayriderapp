@@ -33,70 +33,96 @@ void main() {
     expect(viewModel.logout.result, isNull);
   });
 
-  test('with email provided, execute calls verifyEmail directly without calling me()', () async {
-    when(() => mockAuthRepository.verifyEmail(
+  test(
+    'with email provided, execute calls verifyEmail directly without calling me()',
+    () async {
+      when(
+        () => mockAuthRepository.verifyEmail(
           email: any(named: 'email'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+        ),
+      ).thenAnswer((_) async => const Result.ok(null));
 
-    final viewModel = VerifyEmailViewModel(
-      authRepository: mockAuthRepository,
-      email: 'a@b.com',
-    );
+      final viewModel = VerifyEmailViewModel(
+        authRepository: mockAuthRepository,
+        email: 'a@b.com',
+      );
 
-    await viewModel.resendVerification.execute();
+      await viewModel.resendVerification.execute();
 
-    verify(() => mockAuthRepository.verifyEmail(
+      verify(
+        () => mockAuthRepository.verifyEmail(
           email: 'a@b.com',
           verificationUrl: AppConfig.verificationRedirectUrl,
-        )).called(1);
-    verifyNever(() => mockAuthRepository.me());
-  });
+        ),
+      ).called(1);
+      verifyNever(() => mockAuthRepository.me());
+    },
+  );
 
-  test('with no email provided, execute resolves the email via me() first', () async {
-    when(() => mockAuthRepository.me()).thenAnswer(
-      (_) async => const Result.ok(
-        User(id: '1', email: 'fetched@b.com', isVerified: false),
-      ),
-    );
-    when(() => mockAuthRepository.verifyEmail(
+  test(
+    'with no email provided, execute resolves the email via me() first',
+    () async {
+      when(() => mockAuthRepository.me()).thenAnswer(
+        (_) async => const Result.ok(
+          User(id: '1', email: 'fetched@b.com', isVerified: false),
+        ),
+      );
+      when(
+        () => mockAuthRepository.verifyEmail(
           email: any(named: 'email'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+        ),
+      ).thenAnswer((_) async => const Result.ok(null));
 
-    final viewModel = VerifyEmailViewModel(authRepository: mockAuthRepository);
+      final viewModel = VerifyEmailViewModel(
+        authRepository: mockAuthRepository,
+      );
 
-    await viewModel.resendVerification.execute();
+      await viewModel.resendVerification.execute();
 
-    verify(() => mockAuthRepository.me()).called(1);
-    verify(() => mockAuthRepository.verifyEmail(
+      verify(() => mockAuthRepository.me()).called(1);
+      verify(
+        () => mockAuthRepository.verifyEmail(
           email: 'fetched@b.com',
           verificationUrl: AppConfig.verificationRedirectUrl,
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 
-  test('if me() returns Error, resendVerification ends in error and verifyEmail is not called', () async {
-    final exception = Exception('me failed');
-    when(() => mockAuthRepository.me())
-        .thenAnswer((_) async => Result.error(exception));
+  test(
+    'if me() returns Error, resendVerification ends in error and verifyEmail is not called',
+    () async {
+      final exception = Exception('me failed');
+      when(
+        () => mockAuthRepository.me(),
+      ).thenAnswer((_) async => Result.error(exception));
 
-    final viewModel = VerifyEmailViewModel(authRepository: mockAuthRepository);
+      final viewModel = VerifyEmailViewModel(
+        authRepository: mockAuthRepository,
+      );
 
-    await viewModel.resendVerification.execute();
+      await viewModel.resendVerification.execute();
 
-    expect(viewModel.resendVerification.error, isTrue);
-    expect((viewModel.resendVerification.result as Error).error, exception);
-    verifyNever(() => mockAuthRepository.verifyEmail(
+      expect(viewModel.resendVerification.error, isTrue);
+      expect((viewModel.resendVerification.result as Error).error, exception);
+      verifyNever(
+        () => mockAuthRepository.verifyEmail(
           email: any(named: 'email'),
           verificationUrl: any(named: 'verificationUrl'),
-        ));
-  });
+        ),
+      );
+    },
+  );
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.verifyEmail(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.verifyEmail(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,
@@ -111,10 +137,12 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('resend failed');
-    when(() => mockAuthRepository.verifyEmail(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.verifyEmail(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,
@@ -128,10 +156,12 @@ void main() {
   });
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.verifyEmail(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.verifyEmail(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,
@@ -148,10 +178,12 @@ void main() {
 
   test('re-entrant execute calls only invoke the repository once', () async {
     final completer = Completer<Result<void>>();
-    when(() => mockAuthRepository.verifyEmail(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) => completer.future);
+    when(
+      () => mockAuthRepository.verifyEmail(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) => completer.future);
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,
@@ -165,15 +197,18 @@ void main() {
     await first;
     await second;
 
-    verify(() => mockAuthRepository.verifyEmail(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).called(1);
+    verify(
+      () => mockAuthRepository.verifyEmail(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).called(1);
   });
 
   test('logout calls AuthRepository.logout', () async {
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,
@@ -189,8 +224,9 @@ void main() {
 
   test('logout marks the command as error and preserves the error', () async {
     final exception = Exception('logout failed');
-    when(() => mockAuthRepository.logout())
-        .thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.logout(),
+    ).thenAnswer((_) async => Result.error(exception));
 
     final viewModel = VerifyEmailViewModel(
       authRepository: mockAuthRepository,

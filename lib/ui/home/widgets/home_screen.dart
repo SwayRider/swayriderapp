@@ -84,7 +84,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   PopupMenuButton<_ProfileMenuAction>(
-                    icon: const Icon(Icons.account_circle, color: AppColors.grey3),
+                    icon: const Icon(
+                      Icons.account_circle,
+                      color: AppColors.grey3,
+                    ),
                     color: AppColors.black,
                     onSelected: (action) {
                       switch (action) {
@@ -99,9 +102,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         value: _ProfileMenuAction.profile,
                         child: Row(
                           children: [
-                            const Icon(Icons.person_outline, color: AppColors.white),
+                            const Icon(
+                              Icons.person_outline,
+                              color: AppColors.white,
+                            ),
                             const SizedBox(width: 12),
-                            Text(localization.profile, style: const TextStyle(color: AppColors.white)),
+                            Text(
+                              localization.profile,
+                              style: const TextStyle(color: AppColors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -111,7 +120,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             const Icon(Icons.logout, color: AppColors.white),
                             const SizedBox(width: 12),
-                            Text(localization.logout, style: const TextStyle(color: AppColors.white)),
+                            Text(
+                              localization.logout,
+                              style: const TextStyle(color: AppColors.white),
+                            ),
                           ],
                         ),
                       ),
@@ -178,7 +190,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         listenable: widget.viewModel,
                         builder: (context, _) {
                           final suggestions = widget.viewModel.suggestions;
-                          if (suggestions.isEmpty) return const SizedBox.shrink();
+                          if (suggestions.isEmpty)
+                            return const SizedBox.shrink();
                           return Positioned(
                             left: 0,
                             right: 0,
@@ -220,15 +233,22 @@ class _SuggestionsList extends StatelessWidget {
           itemCount: suggestions.length,
           itemBuilder: (context, index) {
             final item = suggestions[index];
-            final subtitle = [item.locality, item.country]
-                .where((part) => part.isNotEmpty)
-                .join(', ');
+            final subtitle = [
+              item.locality,
+              item.country,
+            ].where((part) => part.isNotEmpty).join(', ');
             return ListTile(
               leading: const Icon(Icons.location_on, color: AppColors.grey3),
-              title: Text(item.label, style: const TextStyle(color: AppColors.white)),
+              title: Text(
+                item.label,
+                style: const TextStyle(color: AppColors.white),
+              ),
               subtitle: subtitle.isEmpty
                   ? null
-                  : Text(subtitle, style: const TextStyle(color: AppColors.grey3)),
+                  : Text(
+                      subtitle,
+                      style: const TextStyle(color: AppColors.grey3),
+                    ),
               onTap: () => onSelected(item),
             );
           },

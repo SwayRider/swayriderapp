@@ -25,12 +25,15 @@ void main() {
   setUp(() {
     mockApiClient = MockAuthApiClient();
     mockPrefs = MockSharedPreferencesService();
-    when(() => mockApiClient.authHeaderProvider = any<AuthHeaderProvider>())
-        .thenReturn(() => null);
-    when(() => mockPrefs.saveAccessToken(any()))
-        .thenAnswer((_) async => const Result.ok(null));
-    when(() => mockPrefs.saveRefreshToken(any()))
-        .thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockApiClient.authHeaderProvider = any<AuthHeaderProvider>(),
+    ).thenReturn(() => null);
+    when(
+      () => mockPrefs.saveAccessToken(any()),
+    ).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockPrefs.saveRefreshToken(any()),
+    ).thenAnswer((_) async => const Result.ok(null));
     authRepository = AuthRepositoryRemote(
       authApiClient: mockApiClient,
       sharedPreferencesService: mockPrefs,
@@ -49,36 +52,39 @@ void main() {
     );
   }
 
-  testWidgets(
-    'a stale access token with an invalid refresh token redirects to '
-    '/login without crashing',
-    (tester) async {
-      // Mimic real SharedPreferences: saving null actually clears what's
-      // returned by subsequent fetches.
-      String? storedAccess = 'stale-access';
-      String? storedRefresh = 'stale-refresh';
-      when(() => mockPrefs.fetchAccessToken())
-          .thenAnswer((_) async => Result.ok(storedAccess));
-      when(() => mockPrefs.fetchRefreshToken())
-          .thenAnswer((_) async => Result.ok(storedRefresh));
-      when(() => mockPrefs.saveAccessToken(any())).thenAnswer((invocation) async {
-        storedAccess = invocation.positionalArguments[0] as String?;
-        return const Result.ok(null);
-      });
-      when(() => mockPrefs.saveRefreshToken(any())).thenAnswer((invocation) async {
-        storedRefresh = invocation.positionalArguments[0] as String?;
-        return const Result.ok(null);
-      });
-      when(() => mockApiClient.me()).thenAnswer(
-          (_) async => const Result.error(UnauthorizedException()));
-      when(() => mockApiClient.refresh(any())).thenAnswer(
-          (_) async => const Result.error(HttpException('Refresh error')));
+  testWidgets('a stale access token with an invalid refresh token redirects to '
+      '/login without crashing', (tester) async {
+    // Mimic real SharedPreferences: saving null actually clears what's
+    // returned by subsequent fetches.
+    String? storedAccess = 'stale-access';
+    String? storedRefresh = 'stale-refresh';
+    when(
+      () => mockPrefs.fetchAccessToken(),
+    ).thenAnswer((_) async => Result.ok(storedAccess));
+    when(
+      () => mockPrefs.fetchRefreshToken(),
+    ).thenAnswer((_) async => Result.ok(storedRefresh));
+    when(() => mockPrefs.saveAccessToken(any())).thenAnswer((invocation) async {
+      storedAccess = invocation.positionalArguments[0] as String?;
+      return const Result.ok(null);
+    });
+    when(() => mockPrefs.saveRefreshToken(any())).thenAnswer((
+      invocation,
+    ) async {
+      storedRefresh = invocation.positionalArguments[0] as String?;
+      return const Result.ok(null);
+    });
+    when(
+      () => mockApiClient.me(),
+    ).thenAnswer((_) async => const Result.error(UnauthorizedException()));
+    when(() => mockApiClient.refresh(any())).thenAnswer(
+      (_) async => const Result.error(HttpException('Refresh error')),
+    );
 
-      await pumpApp(tester);
-      await tester.pumpAndSettle();
+    await pumpApp(tester);
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(find.byType(LoginScreen), findsOneWidget);
-    },
-  );
+    expect(tester.takeException(), isNull);
+    expect(find.byType(LoginScreen), findsOneWidget);
+  });
 }

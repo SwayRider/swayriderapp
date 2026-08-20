@@ -34,7 +34,9 @@ class AuthRepositoryRemote extends AuthRepository {
     if (_accessToken != null) return true;
     final result = await _sharedPreferencesService.fetchAccessToken();
     if (result case Ok(:final value) when value != null) {
-      _accessToken = AppConfig.forceExpiredAccessToken ? '$value-invalid' : value;
+      _accessToken = AppConfig.forceExpiredAccessToken
+          ? '$value-invalid'
+          : value;
       return true;
     }
     return false;
@@ -68,11 +70,9 @@ class AuthRepositoryRemote extends AuthRepository {
     bool rememberMe = false,
   }) async {
     _log.fine('Logging in as $email');
-    final result = await _authApiClient.login(LoginRequest(
-      email: email,
-      password: password,
-      rememberMe: rememberMe,
-    ));
+    final result = await _authApiClient.login(
+      LoginRequest(email: email, password: password, rememberMe: rememberMe),
+    );
     if (result case Ok(:final value)) {
       await _saveTokens(value.accessToken, value.refreshToken);
       notifyListeners();
@@ -86,16 +86,21 @@ class AuthRepositoryRemote extends AuthRepository {
     if (_refreshToken == null) {
       final stored = await _sharedPreferencesService.fetchRefreshToken();
       if (stored case Ok(:final value)) {
-        _refreshToken = AppConfig.forceExpiredRefreshToken ? '$value-invalid' : value;
+        _refreshToken = AppConfig.forceExpiredRefreshToken
+            ? '$value-invalid'
+            : value;
       }
     }
     if (_refreshToken == null) {
       return Result.error(Exception('No refresh token available'));
     }
     _log.fine('Refreshing tokens');
-    final result = await _authApiClient
-        .refresh(RefreshRequest(refreshToken: _refreshToken!));
-    _log.fine('[DIAG] refresh(): _authApiClient.refresh() resolved with $result');
+    final result = await _authApiClient.refresh(
+      RefreshRequest(refreshToken: _refreshToken!),
+    );
+    _log.fine(
+      '[DIAG] refresh(): _authApiClient.refresh() resolved with $result',
+    );
     return switch (result) {
       Ok(:final value) => _saveTokens(value.accessToken, value.refreshToken),
       Error(:final error) => Result.error(error),
@@ -105,8 +110,9 @@ class AuthRepositoryRemote extends AuthRepository {
   @override
   Future<Result<void>> logout() async {
     _log.fine('Logging out');
-    final result =
-        await _authApiClient.logout(LogoutRequest(refreshToken: _refreshToken));
+    final result = await _authApiClient.logout(
+      LogoutRequest(refreshToken: _refreshToken),
+    );
     await _clearTokens();
     notifyListeners();
     return switch (result) {
@@ -122,11 +128,13 @@ class AuthRepositoryRemote extends AuthRepository {
     required String verificationUrl,
   }) async {
     _log.fine('Registering $email');
-    final result = await _authApiClient.register(RegisterRequest(
-      email: email,
-      password: password,
-      verificationUrl: verificationUrl,
-    ));
+    final result = await _authApiClient.register(
+      RegisterRequest(
+        email: email,
+        password: password,
+        verificationUrl: verificationUrl,
+      ),
+    );
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -140,7 +148,8 @@ class AuthRepositoryRemote extends AuthRepository {
   }) async {
     _log.fine('Requesting password reset for $email');
     final result = await _authApiClient.requestPasswordReset(
-        PasswordResetRequest(email: email, resetUrl: verificationUrl));
+      PasswordResetRequest(email: email, resetUrl: verificationUrl),
+    );
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -154,11 +163,13 @@ class AuthRepositoryRemote extends AuthRepository {
     required String newPassword,
   }) async {
     _log.fine('Resetting password for user $userId');
-    final result = await _authApiClient.resetPassword(ResetPasswordRequest(
-      userId: userId,
-      token: token,
-      newPassword: newPassword,
-    ));
+    final result = await _authApiClient.resetPassword(
+      ResetPasswordRequest(
+        userId: userId,
+        token: token,
+        newPassword: newPassword,
+      ),
+    );
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -172,7 +183,8 @@ class AuthRepositoryRemote extends AuthRepository {
   }) async {
     _log.fine('Verifying email for $email');
     final result = await _authApiClient.verifyEmail(
-        VerifyEmailRequest(email: email, verificationUrl: verificationUrl));
+      VerifyEmailRequest(email: email, verificationUrl: verificationUrl),
+    );
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -185,8 +197,14 @@ class AuthRepositoryRemote extends AuthRepository {
     required String newPassword,
   }) async {
     _log.fine('Changing password');
-    final result = await withAuthRetry(() => _authApiClient.changePassword(
-        ChangePasswordRequest(oldPassword: oldPassword, newPassword: newPassword)));
+    final result = await withAuthRetry(
+      () => _authApiClient.changePassword(
+        ChangePasswordRequest(
+          oldPassword: oldPassword,
+          newPassword: newPassword,
+        ),
+      ),
+    );
     return switch (result) {
       Ok() => const Result.ok(null),
       Error(:final error) => Result.error(error),
@@ -195,8 +213,9 @@ class AuthRepositoryRemote extends AuthRepository {
 
   @override
   Future<Result<bool>> checkPasswordStrength({required String password}) async {
-    final result = await _authApiClient
-        .checkPasswordStrength(CheckPasswordStrengthRequest(password: password));
+    final result = await _authApiClient.checkPasswordStrength(
+      CheckPasswordStrengthRequest(password: password),
+    );
     return switch (result) {
       Ok(:final value) => Result.ok(value.isStrong),
       Error(:final error) => Result.error(error),
@@ -209,11 +228,13 @@ class AuthRepositoryRemote extends AuthRepository {
   Future<Result<User>> _meOnce() async {
     final result = await _authApiClient.me();
     return switch (result) {
-      Ok(:final value) => Result.ok(User(
+      Ok(:final value) => Result.ok(
+        User(
           id: value.userId,
           email: value.email ?? '',
           isVerified: value.emailVerified,
-        )),
+        ),
+      ),
       Error(:final error) => Result.error(error),
     };
   }
@@ -224,21 +245,21 @@ class AuthRepositoryRemote extends AuthRepository {
   Future<Result<User>> _whoAmIOnce() async {
     final result = await _authApiClient.whoAmI();
     return switch (result) {
-      Ok(:final value) => Result.ok(User(
+      Ok(:final value) => Result.ok(
+        User(
           id: value.userId,
           email: value.email,
           isVerified: value.isVerified,
           isAdmin: value.isAdmin,
           accountType: value.accountType,
-        )),
+        ),
+      ),
       Error(:final error) => Result.error(error),
     };
   }
 
   @override
-  Future<Result<T>> withAuthRetry<T>(
-    Future<Result<T>> Function() call,
-  ) async {
+  Future<Result<T>> withAuthRetry<T>(Future<Result<T>> Function() call) async {
     final result = await call();
     if (result case Error(error: UnauthorizedException())) {
       _log.fine('Access token rejected, attempting refresh');
@@ -251,14 +272,18 @@ class AuthRepositoryRemote extends AuthRepository {
       }
       _log.fine('[DIAG] withAuthRetry: refresh succeeded, retrying call()');
       final retryResult = await call();
-      _log.fine('[DIAG] withAuthRetry: retried call() resolved with $retryResult');
+      _log.fine(
+        '[DIAG] withAuthRetry: retried call() resolved with $retryResult',
+      );
       return retryResult;
     }
     return result;
   }
 
   Future<Result<void>> _saveTokens(
-      String accessToken, String refreshToken) async {
+    String accessToken,
+    String refreshToken,
+  ) async {
     _accessToken = accessToken;
     _refreshToken = refreshToken;
     await _sharedPreferencesService.saveAccessToken(accessToken);
@@ -276,5 +301,5 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   String? _authHeaderProvider() =>
-    _accessToken != null ? 'Bearer $_accessToken' : null;
+      _accessToken != null ? 'Bearer $_accessToken' : null;
 }

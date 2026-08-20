@@ -1,6 +1,6 @@
 import 'applocalization.dart';
 
-class AppLocalizationEn  extends AppLocalization {
+class AppLocalizationEn extends AppLocalization {
   static const _en = <String, String>{
     'close': 'Close',
     'confirm': 'Confirm',
@@ -63,8 +63,7 @@ class AppLocalizationEn  extends AppLocalization {
     'changePasswordFailed': 'Failed to change password',
 
     'passwordChanged': 'Password Changed',
-    'passwordChangedMessage':
-        'Your password has been successfully changed.',
+    'passwordChangedMessage': 'Your password has been successfully changed.',
   };
 
   @override

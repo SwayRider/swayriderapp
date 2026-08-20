@@ -1,4 +1,3 @@
-
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'register_request.freezed.dart';
@@ -13,5 +12,5 @@ sealed class RegisterRequest with _$RegisterRequest {
   }) = _RegisterRequest;
 
   factory RegisterRequest.fromJson(Map<String, dynamic> json) =>
-    _$RegisterRequestFromJson(json);
+      _$RegisterRequestFromJson(json);
 }

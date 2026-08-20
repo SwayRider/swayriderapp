@@ -12,5 +12,5 @@ sealed class LoginRequest with _$LoginRequest {
   }) = _LoginRequest;
 
   factory LoginRequest.fromJson(Map<String, dynamic> json) =>
-    _$LoginRequestFromJson(json);
+      _$LoginRequestFromJson(json);
 }

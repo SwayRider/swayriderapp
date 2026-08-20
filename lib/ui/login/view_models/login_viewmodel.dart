@@ -6,8 +6,8 @@ import '../../../utils/result.dart';
 
 class LoginViewModel {
   LoginViewModel({required AuthRepository authRepository})
-  // ignore: prefer_initializing_formals
-  : _authRepository = authRepository {
+    // ignore: prefer_initializing_formals
+    : _authRepository = authRepository {
     login = Command1<void, (String email, String password)>(_login);
   }
 

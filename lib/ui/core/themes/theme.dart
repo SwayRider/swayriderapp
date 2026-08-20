@@ -5,38 +5,14 @@ import 'colors.dart';
 
 abstract final class AppTheme {
   static const _textTheme = TextTheme(
-    headlineLarge: TextStyle(
-      fontSize: 32,
-      fontWeight: FontWeight.w500,
-    ),
-    headlineMedium: TextStyle(
-      fontSize: 24,
-      fontWeight: FontWeight.w400,
-    ),
-    headlineSmall: TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.w400,
-    ),
-    titleLarge: TextStyle(
-      fontSize: 24,
-      fontWeight: FontWeight.w500,
-    ),
-    titleMedium: TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.w500,
-    ),
-    titleSmall: TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w400,
-    ),
-    bodyLarge: TextStyle(
-      fontSize: 18,
-      fontWeight: FontWeight.w400,
-    ),
-    bodyMedium: TextStyle(
-      fontSize: 16,
-      fontWeight: FontWeight.w400,
-    ),
+    headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w500),
+    headlineMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.w400),
+    headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
+    titleLarge: TextStyle(fontSize: 24, fontWeight: FontWeight.w500),
+    titleMedium: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+    titleSmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+    bodyLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w400),
+    bodyMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
     bodySmall: TextStyle(
       fontSize: 14,
       fontWeight: FontWeight.w400,
@@ -64,7 +40,7 @@ abstract final class AppTheme {
       color: AppColors.grey3,
       fontSize: 18,
       fontWeight: FontWeight.w400,
-    )
+    ),
   );
 
   static ThemeData lightTheme = ThemeData(

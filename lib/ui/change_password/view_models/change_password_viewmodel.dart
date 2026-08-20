@@ -6,8 +6,8 @@ import '../../../utils/result.dart';
 
 class ChangePasswordViewModel {
   ChangePasswordViewModel({required AuthRepository authRepository})
-  // ignore: prefer_initializing_formals
-  : _authRepository = authRepository {
+    // ignore: prefer_initializing_formals
+    : _authRepository = authRepository {
     changePassword = Command1<void, (String, String)>(_changePassword);
   }
 
@@ -20,9 +20,7 @@ class ChangePasswordViewModel {
   Future<Result<bool>> checkPasswordStrength(String password) =>
       _authRepository.checkPasswordStrength(password: password);
 
-  Future<Result<void>> _changePassword(
-    (String, String) args,
-  ) async {
+  Future<Result<void>> _changePassword((String, String) args) async {
     final (oldPassword, newPassword) = args;
     final result = await _authRepository.changePassword(
       oldPassword: oldPassword,

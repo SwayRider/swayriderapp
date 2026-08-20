@@ -24,25 +24,34 @@ void main() {
     expect(viewModel.requestReset.result, isNull);
   });
 
-  test('execute calls AuthRepository.requestPasswordReset with email and resetPasswordRedirectUrl', () async {
-    when(() => mockAuthRepository.requestPasswordReset(
+  test(
+    'execute calls AuthRepository.requestPasswordReset with email and resetPasswordRedirectUrl',
+    () async {
+      when(
+        () => mockAuthRepository.requestPasswordReset(
           email: any(named: 'email'),
           verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+        ),
+      ).thenAnswer((_) async => const Result.ok(null));
 
-    await viewModel.requestReset.execute('a@b.com');
+      await viewModel.requestReset.execute('a@b.com');
 
-    verify(() => mockAuthRepository.requestPasswordReset(
+      verify(
+        () => mockAuthRepository.requestPasswordReset(
           email: 'a@b.com',
           verificationUrl: AppConfig.resetPasswordRedirectUrl,
-        )).called(1);
-  });
+        ),
+      ).called(1);
+    },
+  );
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.requestPasswordReset(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.requestPasswordReset(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.requestReset.execute('a@b.com');
 
@@ -52,10 +61,12 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('reset failed');
-    when(() => mockAuthRepository.requestPasswordReset(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.requestPasswordReset(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
 
     await viewModel.requestReset.execute('a@b.com');
 
@@ -64,10 +75,12 @@ void main() {
   });
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.requestPasswordReset(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.requestPasswordReset(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     var notifications = 0;
     viewModel.requestReset.addListener(() => notifications++);
@@ -79,10 +92,12 @@ void main() {
 
   test('re-entrant execute calls only invoke the repository once', () async {
     final completer = Completer<Result<void>>();
-    when(() => mockAuthRepository.requestPasswordReset(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).thenAnswer((_) => completer.future);
+    when(
+      () => mockAuthRepository.requestPasswordReset(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) => completer.future);
 
     final first = viewModel.requestReset.execute('a@b.com');
     final second = viewModel.requestReset.execute('a@b.com');
@@ -91,9 +106,11 @@ void main() {
     await first;
     await second;
 
-    verify(() => mockAuthRepository.requestPasswordReset(
-          email: any(named: 'email'),
-          verificationUrl: any(named: 'verificationUrl'),
-        )).called(1);
+    verify(
+      () => mockAuthRepository.requestPasswordReset(
+        email: any(named: 'email'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).called(1);
   });
 }

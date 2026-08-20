@@ -22,9 +22,8 @@ abstract final class Dimens {
   double get profilePictureSize;
 
   /// Horizontal symetric padding for screen edges
-  EdgeInsets get edgeInsetsScreenHorizontal => EdgeInsets.symmetric(
-    horizontal: paddingScreenHorizontal,
-  );
+  EdgeInsets get edgeInsetsScreenHorizontal =>
+      EdgeInsets.symmetric(horizontal: paddingScreenHorizontal);
 
   /// Symetic padding for screen edges
   EdgeInsets get edgeInsetsScreenSymetric => EdgeInsets.symmetric(
@@ -37,15 +36,15 @@ abstract final class Dimens {
 
   /// Get the dimensions based on screen size
   factory Dimens.of(BuildContext context) =>
-    switch (MediaQuery.sizeOf(context).width) {
-      > 600 => tablet,
-      _ => mobile,
-    };
+      switch (MediaQuery.sizeOf(context).width) {
+        > 600 => tablet,
+        _ => mobile,
+      };
 }
 
 /// Mobile dimensions
 final class _DimensMobile extends Dimens {
-  const _DimensMobile(); 
+  const _DimensMobile();
 
   @override
   double get paddingScreenHorizontal => Dimens.paddingHorizontal;

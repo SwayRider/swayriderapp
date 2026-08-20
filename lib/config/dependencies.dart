@@ -17,38 +17,46 @@ import '../ui/home/view_models/home_viewmodel.dart';
 import 'app_config.dart';
 
 /// Shared providers for all configurations.
-List<SingleChildWidget> _sharedProviders = [
-];
+List<SingleChildWidget> _sharedProviders = [];
 
 /// Configure dependencies for dev data.
 /// This dependency list uses repositories that connect to a remote dev server.
 List<SingleChildWidget> get providerDev {
   return [
-    Provider(create: (context) => AuthApiClient(
-      scheme: AppConfig.authApiScheme,
-      host: AppConfig.authApiHost,
-      port: AppConfig.authApiPort,
-      pathPrefix: AppConfig.authApiPathPrefix,
-    )),
+    Provider(
+      create: (context) => AuthApiClient(
+        scheme: AppConfig.authApiScheme,
+        host: AppConfig.authApiHost,
+        port: AppConfig.authApiPort,
+        pathPrefix: AppConfig.authApiPathPrefix,
+      ),
+    ),
     Provider(create: (context) => SharedPreferencesService()),
-    ChangeNotifierProvider(create: (context) =>
-      AuthRepositoryRemote(
-        authApiClient: context.read(),
-        sharedPreferencesService: context.read(),
-      ) as AuthRepository),
-    Provider(create: (context) => TilesApiClient(
-      scheme: AppConfig.tilesApiScheme,
-      host: AppConfig.tilesApiHost,
-      port: AppConfig.tilesApiPort,
-      pathPrefix: AppConfig.tilesApiPathPrefix,
-    )),
+    ChangeNotifierProvider(
+      create: (context) =>
+          AuthRepositoryRemote(
+                authApiClient: context.read(),
+                sharedPreferencesService: context.read(),
+              )
+              as AuthRepository,
+    ),
+    Provider(
+      create: (context) => TilesApiClient(
+        scheme: AppConfig.tilesApiScheme,
+        host: AppConfig.tilesApiHost,
+        port: AppConfig.tilesApiPort,
+        pathPrefix: AppConfig.tilesApiPathPrefix,
+      ),
+    ),
     Provider<TileCache>(create: (context) => NoopTileCache()),
-    Provider(create: (context) => SearchApiClient(
-      scheme: AppConfig.searchApiScheme,
-      host: AppConfig.searchApiHost,
-      port: AppConfig.searchApiPort,
-      pathPrefix: AppConfig.searchApiPathPrefix,
-    )),
+    Provider(
+      create: (context) => SearchApiClient(
+        scheme: AppConfig.searchApiScheme,
+        host: AppConfig.searchApiHost,
+        port: AppConfig.searchApiPort,
+        pathPrefix: AppConfig.searchApiPathPrefix,
+      ),
+    ),
     Provider<SearchRepository>(
       create: (context) => SearchRepositoryRemote(
         searchApiClient: context.read(),
@@ -77,6 +85,6 @@ List<SingleChildWidget> get providerDev {
         searchRepository: context.read(),
       ),
     ),
-    ..._sharedProviders
+    ..._sharedProviders,
   ];
 }

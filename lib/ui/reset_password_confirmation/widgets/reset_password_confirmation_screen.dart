@@ -35,10 +35,7 @@ class ResetPasswordConfirmationScreen extends StatelessWidget {
           const SizedBox(height: Dimens.paddingVertical * 2),
           ScreenTitle(text: localization.resetPassword),
           const SizedBox(height: Dimens.paddingVertical * 2),
-          Text(
-            localization.passwordResetEmailSentTo(email),
-            style: bodyStyle,
-          ),
+          Text(localization.passwordResetEmailSentTo(email), style: bodyStyle),
           const SizedBox(height: Dimens.paddingVertical),
           Text(localization.noEmailReceived, style: bodyStyle),
           const SizedBox(height: Dimens.paddingVertical / 2),

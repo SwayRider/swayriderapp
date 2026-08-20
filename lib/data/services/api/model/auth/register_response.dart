@@ -11,5 +11,5 @@ sealed class RegisterResponse with _$RegisterResponse {
   }) = _RegisterResponse;
 
   factory RegisterResponse.fromJson(Map<String, dynamic> json) =>
-    _$RegisterResponseFromJson(json);
+      _$RegisterResponseFromJson(json);
 }

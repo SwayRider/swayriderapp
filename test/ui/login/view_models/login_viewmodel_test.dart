@@ -24,22 +24,27 @@ void main() {
   });
 
   test('execute calls AuthRepository.login with email and password', () async {
-    when(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.login.execute(('a@b.com', 'pw'));
 
-    verify(() => mockAuthRepository.login(email: 'a@b.com', password: 'pw'))
-        .called(1);
+    verify(
+      () => mockAuthRepository.login(email: 'a@b.com', password: 'pw'),
+    ).called(1);
   });
 
   test('Ok(null) marks the command as completed', () async {
-    when(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     await viewModel.login.execute(('a@b.com', 'pw'));
 
@@ -49,10 +54,12 @@ void main() {
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('login failed');
-    when(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).thenAnswer((_) async => Result.error(exception));
+    when(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => Result.error(exception));
 
     await viewModel.login.execute(('a@b.com', 'pw'));
 
@@ -61,10 +68,12 @@ void main() {
   });
 
   test('notifies listeners exactly twice per execute cycle', () async {
-    when(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).thenAnswer((_) async => const Result.ok(null));
+    when(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) async => const Result.ok(null));
 
     var notifications = 0;
     viewModel.login.addListener(() => notifications++);
@@ -76,10 +85,12 @@ void main() {
 
   test('re-entrant execute calls only invoke the repository once', () async {
     final completer = Completer<Result<void>>();
-    when(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).thenAnswer((_) => completer.future);
+    when(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).thenAnswer((_) => completer.future);
 
     final first = viewModel.login.execute(('a@b.com', 'pw'));
     final second = viewModel.login.execute(('a@b.com', 'pw'));
@@ -88,9 +99,11 @@ void main() {
     await first;
     await second;
 
-    verify(() => mockAuthRepository.login(
-          email: any(named: 'email'),
-          password: any(named: 'password'),
-        )).called(1);
+    verify(
+      () => mockAuthRepository.login(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+      ),
+    ).called(1);
   });
 }
