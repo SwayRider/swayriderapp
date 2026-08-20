@@ -190,8 +190,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         listenable: widget.viewModel,
                         builder: (context, _) {
                           final suggestions = widget.viewModel.suggestions;
-                          if (suggestions.isEmpty)
+                          if (suggestions.isEmpty) {
                             return const SizedBox.shrink();
+                          }
                           return Positioned(
                             left: 0,
                             right: 0,
