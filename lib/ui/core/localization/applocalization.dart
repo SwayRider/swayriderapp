@@ -76,6 +76,38 @@ class AppLocalization {
 
   String get passwordChanged => _get('passwordChanged');
   String get passwordChangedMessage => _get('passwordChangedMessage');
+
+  String get twoFactorAuthentication => _get('twoFactorAuthentication');
+  String get mfaEnabled => _get('mfaEnabled');
+  String get mfaDisabled => _get('mfaDisabled');
+  String get enableTwoFactor => _get('enableTwoFactor');
+  String get disableTwoFactor => _get('disableTwoFactor');
+
+  String get mfaSetupTitle => _get('mfaSetupTitle');
+  String get mfaSetupFailed => _get('mfaSetupFailed');
+  String get mfaSetupIntro => _get('mfaSetupIntro');
+  String get startSetup => _get('startSetup');
+  String get mfaSecretKey => _get('mfaSecretKey');
+  String get copyKey => _get('copyKey');
+  String get keyCopied => _get('keyCopied');
+  String get mfaQrHint => _get('mfaQrHint');
+  String get mfaAddedKey => _get('mfaAddedKey');
+  String get mfaCodeLabel => _get('mfaCodeLabel');
+  String get verify => _get('verify');
+  String get mfaInvalidCode => _get('mfaInvalidCode');
+  String get mfaBackupCodesTitle => _get('mfaBackupCodesTitle');
+  String get mfaBackupCodesIntro => _get('mfaBackupCodesIntro');
+  String get mfaBackupCodesShownOnce => _get('mfaBackupCodesShownOnce');
+  String get mfaBackupCodesSaved => _get('mfaBackupCodesSaved');
+
+  String get mfaVerifyTitle => _get('mfaVerifyTitle');
+  String get mfaUseBackupCode => _get('mfaUseBackupCode');
+  String get mfaUseVerificationCode => _get('mfaUseVerificationCode');
+
+  String get mfaDisablePasswordPrompt => _get('mfaDisablePasswordPrompt');
+  String get mfaDisableSuccess => _get('mfaDisableSuccess');
+  String get mfaDisableFailed => _get('mfaDisableFailed');
+  String get mfaEnableSuccess => _get('mfaEnableSuccess');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

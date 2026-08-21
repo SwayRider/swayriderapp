@@ -70,6 +70,49 @@ class AppLocalizationNl extends AppLocalization {
 
     'passwordChanged': 'Wachtwoord gewijzigd',
     'passwordChangedMessage': 'Je wachtwoord is succesvol gewijzigd.',
+
+    'twoFactorAuthentication': 'Tweestapsverificatie',
+    'mfaEnabled': 'Tweestapsverificatie: Aan',
+    'mfaDisabled': 'Tweestapsverificatie: Uit',
+    'enableTwoFactor': '2FA inschakelen',
+    'disableTwoFactor': '2FA uitschakelen',
+
+    'mfaSetupTitle': 'Tweestapsverificatie instellen',
+    'mfaSetupFailed': 'Instellen mislukt',
+    'mfaSetupIntro':
+        'Tweestapsverificatie voegt een tweede stap toe aan het inloggen: '
+        'na je wachtwoord voer je een code in uit een authenticator-app.\n\n'
+        'Een authenticator-app van een derde partij (Google Authenticator, '
+        'Authy, 1Password, …) is vereist. Je krijgt een handmatige sleutel '
+        'te zien die je in de app moet invoeren — er wordt ook een QR-code '
+        'getoond voor een tweede apparaat.',
+    'startSetup': 'Instellen starten',
+    'mfaSecretKey': 'Geheime sleutel',
+    'copyKey': 'Sleutel kopiëren',
+    'keyCopied': 'Sleutel gekopieerd naar klembord',
+    'mfaQrHint': 'Scan met een tweede apparaat, of voer de sleutel handmatig in',
+    'mfaAddedKey': 'Ik heb de sleutel toegevoegd',
+    'mfaCodeLabel': 'Verificatiecode',
+    'verify': 'Verifiëren',
+    'mfaInvalidCode': 'Ongeldige code. Probeer het opnieuw.',
+    'mfaBackupCodesTitle': 'Backupcodes',
+    'mfaBackupCodesIntro':
+        'Als je geen toegang meer hebt tot je authenticator-app, gebruik dan '
+        'een van deze eenmalige backupcodes om in te loggen.',
+    'mfaBackupCodesShownOnce':
+        'Deze codes worden slechts één keer getoond. Bewaar ze op een '
+        'veilige plek.',
+    'mfaBackupCodesSaved': 'Ik heb ze bewaard',
+
+    'mfaVerifyTitle': 'Verifieer dat jij het bent',
+    'mfaUseBackupCode': 'Gebruik een backupcode',
+    'mfaUseVerificationCode': 'Gebruik een verificatiecode',
+
+    'mfaDisablePasswordPrompt':
+        'Voer je wachtwoord in om tweestapsverificatie uit te schakelen',
+    'mfaDisableSuccess': 'Tweestapsverificatie uitgeschakeld',
+    'mfaDisableFailed': 'Tweestapsverificatie uitschakelen mislukt',
+    'mfaEnableSuccess': 'Tweestapsverificatie ingeschakeld',
   };
 
   @override

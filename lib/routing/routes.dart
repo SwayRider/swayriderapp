@@ -2,6 +2,7 @@ abstract final class Routes {
   static const home = '/';
   static const login = '/login';
   static const mfaVerify = '/mfa-verify';
+  static const mfaSetup = '/mfa-setup';
   static const signup = '/signup';
   static const verifyEmail = '/verify-email';
   static const emailVerified = '/email-verified';
@@ -16,6 +17,9 @@ abstract final class Routes {
   /// Routes accessible while the user is not authenticated.
   static const publicRoutes = {
     login,
+    // The second-factor step completes a login before any tokens exist, so
+    // it must stay reachable while unauthenticated.
+    mfaVerify,
     signup,
     verifyEmail,
     emailVerified,

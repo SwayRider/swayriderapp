@@ -10,9 +10,14 @@ import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
 import '../ui/login/view_models/login_viewmodel.dart';
 import '../ui/login/widgets/login_screen.dart';
+import '../ui/mfa_setup/view_models/mfa_setup_viewmodel.dart';
+import '../ui/mfa_setup/widgets/mfa_setup_screen.dart';
+import '../ui/mfa_verify/view_models/mfa_verify_viewmodel.dart';
+import '../ui/mfa_verify/widgets/mfa_verify_screen.dart';
 import '../ui/new_password/view_models/new_password_viewmodel.dart';
 import '../ui/new_password/widgets/new_password_screen.dart';
 import '../ui/password_changed/widgets/password_changed_screen.dart';
+import '../ui/profile/view_models/mfa_profile_viewmodel.dart';
 import '../ui/profile/widgets/profile_screen.dart';
 import '../ui/reset_password/view_models/reset_password_viewmodel.dart';
 import '../ui/reset_password/widgets/reset_password_screen.dart';
@@ -39,6 +44,18 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
       builder: (context, state) {
         return LoginScreen(
           viewModel: LoginViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.mfaVerify,
+      builder: (context, state) {
+        final token = state.extra;
+        return MfaVerifyScreen(
+          viewModel: MfaVerifyViewModel(
+            authRepository: context.read(),
+            mfaToken: token is String ? token : '',
+          ),
         );
       },
     ),
@@ -106,7 +123,19 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
     ),
     GoRoute(
       path: Routes.profile,
-      builder: (context, state) => const ProfileScreen(),
+      builder: (context, state) {
+        return ProfileScreen(
+          viewModel: MfaProfileViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.mfaSetup,
+      builder: (context, state) {
+        return MfaSetupScreen(
+          viewModel: MfaSetupViewModel(authRepository: context.read()),
+        );
+      },
     ),
     GoRoute(
       path: Routes.changePassword,
