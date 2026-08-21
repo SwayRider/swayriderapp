@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LoginResponse {
 
-@JsonKey(name: 'access_token') String get accessToken;@JsonKey(name: 'refresh_token') String get refreshToken;
+@JsonKey(name: 'access_token') String get accessToken;@JsonKey(name: 'refresh_token') String get refreshToken;@JsonKey(name: 'mfa_required') bool get mfaRequired;@JsonKey(name: 'mfa_token') String? get mfaToken;
 /// Create a copy of LoginResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $LoginResponseCopyWith<LoginResponse> get copyWith => _$LoginResponseCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.mfaRequired, mfaRequired) || other.mfaRequired == mfaRequired)&&(identical(other.mfaToken, mfaToken) || other.mfaToken == mfaToken));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken);
+int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,mfaRequired,mfaToken);
 
 @override
 String toString() {
-  return 'LoginResponse(accessToken: $accessToken, refreshToken: $refreshToken)';
+  return 'LoginResponse(accessToken: $accessToken, refreshToken: $refreshToken, mfaRequired: $mfaRequired, mfaToken: $mfaToken)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $LoginResponseCopyWith<$Res>  {
   factory $LoginResponseCopyWith(LoginResponse value, $Res Function(LoginResponse) _then) = _$LoginResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'refresh_token') String refreshToken
+@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'refresh_token') String refreshToken,@JsonKey(name: 'mfa_required') bool mfaRequired,@JsonKey(name: 'mfa_token') String? mfaToken
 });
 
 
@@ -65,11 +65,13 @@ class _$LoginResponseCopyWithImpl<$Res>
 
 /// Create a copy of LoginResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? accessToken = null,Object? refreshToken = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? accessToken = null,Object? refreshToken = null,Object? mfaRequired = null,Object? mfaToken = freezed,}) {
   return _then(_self.copyWith(
 accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
 as String,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
-as String,
+as String,mfaRequired: null == mfaRequired ? _self.mfaRequired : mfaRequired // ignore: cast_nullable_to_non_nullable
+as bool,mfaToken: freezed == mfaToken ? _self.mfaToken : mfaToken // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -151,10 +153,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken, @JsonKey(name: 'mfa_required')  bool mfaRequired, @JsonKey(name: 'mfa_token')  String? mfaToken)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _LoginResponse() when $default != null:
-return $default(_that.accessToken,_that.refreshToken);case _:
+return $default(_that.accessToken,_that.refreshToken,_that.mfaRequired,_that.mfaToken);case _:
   return orElse();
 
 }
@@ -172,10 +174,10 @@ return $default(_that.accessToken,_that.refreshToken);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken, @JsonKey(name: 'mfa_required')  bool mfaRequired, @JsonKey(name: 'mfa_token')  String? mfaToken)  $default,) {final _that = this;
 switch (_that) {
 case _LoginResponse():
-return $default(_that.accessToken,_that.refreshToken);}
+return $default(_that.accessToken,_that.refreshToken,_that.mfaRequired,_that.mfaToken);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -189,10 +191,10 @@ return $default(_that.accessToken,_that.refreshToken);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function(@JsonKey(name: 'access_token')  String accessToken, @JsonKey(name: 'refresh_token')  String refreshToken, @JsonKey(name: 'mfa_required')  bool mfaRequired, @JsonKey(name: 'mfa_token')  String? mfaToken)?  $default,) {final _that = this;
 switch (_that) {
 case _LoginResponse() when $default != null:
-return $default(_that.accessToken,_that.refreshToken);case _:
+return $default(_that.accessToken,_that.refreshToken,_that.mfaRequired,_that.mfaToken);case _:
   return null;
 
 }
@@ -204,11 +206,13 @@ return $default(_that.accessToken,_that.refreshToken);case _:
 @JsonSerializable()
 
 class _LoginResponse implements LoginResponse {
-  const _LoginResponse({@JsonKey(name: 'access_token') required this.accessToken, @JsonKey(name: 'refresh_token') required this.refreshToken});
+  const _LoginResponse({@JsonKey(name: 'access_token') required this.accessToken, @JsonKey(name: 'refresh_token') required this.refreshToken, @JsonKey(name: 'mfa_required') this.mfaRequired = false, @JsonKey(name: 'mfa_token') this.mfaToken});
   factory _LoginResponse.fromJson(Map<String, dynamic> json) => _$LoginResponseFromJson(json);
 
 @override@JsonKey(name: 'access_token') final  String accessToken;
 @override@JsonKey(name: 'refresh_token') final  String refreshToken;
+@override@JsonKey(name: 'mfa_required') final  bool mfaRequired;
+@override@JsonKey(name: 'mfa_token') final  String? mfaToken;
 
 /// Create a copy of LoginResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -223,16 +227,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _LoginResponse&&(identical(other.accessToken, accessToken) || other.accessToken == accessToken)&&(identical(other.refreshToken, refreshToken) || other.refreshToken == refreshToken)&&(identical(other.mfaRequired, mfaRequired) || other.mfaRequired == mfaRequired)&&(identical(other.mfaToken, mfaToken) || other.mfaToken == mfaToken));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,accessToken,refreshToken);
+int get hashCode => Object.hash(runtimeType,accessToken,refreshToken,mfaRequired,mfaToken);
 
 @override
 String toString() {
-  return 'LoginResponse(accessToken: $accessToken, refreshToken: $refreshToken)';
+  return 'LoginResponse(accessToken: $accessToken, refreshToken: $refreshToken, mfaRequired: $mfaRequired, mfaToken: $mfaToken)';
 }
 
 
@@ -243,7 +247,7 @@ abstract mixin class _$LoginResponseCopyWith<$Res> implements $LoginResponseCopy
   factory _$LoginResponseCopyWith(_LoginResponse value, $Res Function(_LoginResponse) _then) = __$LoginResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'refresh_token') String refreshToken
+@JsonKey(name: 'access_token') String accessToken,@JsonKey(name: 'refresh_token') String refreshToken,@JsonKey(name: 'mfa_required') bool mfaRequired,@JsonKey(name: 'mfa_token') String? mfaToken
 });
 
 
@@ -260,11 +264,13 @@ class __$LoginResponseCopyWithImpl<$Res>
 
 /// Create a copy of LoginResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? refreshToken = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? accessToken = null,Object? refreshToken = null,Object? mfaRequired = null,Object? mfaToken = freezed,}) {
   return _then(_LoginResponse(
 accessToken: null == accessToken ? _self.accessToken : accessToken // ignore: cast_nullable_to_non_nullable
 as String,refreshToken: null == refreshToken ? _self.refreshToken : refreshToken // ignore: cast_nullable_to_non_nullable
-as String,
+as String,mfaRequired: null == mfaRequired ? _self.mfaRequired : mfaRequired // ignore: cast_nullable_to_non_nullable
+as bool,mfaToken: freezed == mfaToken ? _self.mfaToken : mfaToken // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

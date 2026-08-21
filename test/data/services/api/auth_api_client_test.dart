@@ -972,6 +972,325 @@ void main() {
       );
     });
 
+    group('setupMfa', () {
+      test('200 returns Ok(SetupMFAResponse) with mapped fields', () async {
+        final client = okClient({
+          'secret': 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567',
+          'otpauth_url': 'otpauth://totp/SwayRider:a@b.com?secret=ABC',
+          'qr_png_base64': 'aGVsbG8=',
+        });
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.setupMfa();
+
+        final value = (result as Ok<SetupMFAResponse>).value;
+        expect(value.secret, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567');
+        expect(value.otpauthUrl, 'otpauth://totp/SwayRider:a@b.com?secret=ABC');
+        expect(value.qrPngBase64, 'aGVsbG8=');
+      });
+
+      test('sends POST /mfa/setup with the Authorization header', () async {
+        final client = okClient({'secret': 's', 'otpauth_url': 'u', 'qr_png_base64': 'q'});
+        final api = AuthApiClient(clientFactory: () => client);
+        api.authHeaderProvider = () => 'Bearer test-token';
+
+        await api.setupMfa();
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'POST');
+        expect(sent.uri.path, '/mfa/setup');
+        expect(sent.headers.value('Authorization'), 'Bearer test-token');
+      });
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.setupMfa();
+
+        expect(
+          (result as Error<SetupMFAResponse>).error.toString(),
+          contains('MFA setup error'),
+        );
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.setupMfa();
+
+        expect(
+          (result as Error<SetupMFAResponse>).error,
+          isA<UnauthorizedException>(),
+        );
+      });
+    });
+
+    group('enableMfa', () {
+      test('200 returns Ok(EnableMFAResponse) with mapped fields', () async {
+        final client = okClient({'backup_codes': ['ABCD-EFGH', 'JKLM-NOPQ']});
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.enableMfa('123456');
+
+        final value = (result as Ok<EnableMFAResponse>).value;
+        expect(value.backupCodes, ['ABCD-EFGH', 'JKLM-NOPQ']);
+      });
+
+      test('sends POST /mfa/enable with code and the Authorization header',
+          () async {
+        final client = okClient({'backup_codes': <String>[]});
+        final api = AuthApiClient(clientFactory: () => client);
+        api.authHeaderProvider = () => 'Bearer test-token';
+
+        await api.enableMfa('123456');
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'POST');
+        expect(sent.uri.path, '/mfa/enable');
+        expect(sent.bodyJson, {'code': '123456'});
+        expect(sent.headers.value('Authorization'), 'Bearer test-token');
+      });
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.enableMfa('123456');
+
+        expect(
+          (result as Error<EnableMFAResponse>).error.toString(),
+          contains('MFA enable error'),
+        );
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.enableMfa('123456');
+
+        expect(
+          (result as Error<EnableMFAResponse>).error,
+          isA<UnauthorizedException>(),
+        );
+      });
+    });
+
+    group('disableMfa', () {
+      test('204 returns Ok(null)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(204));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.disableMfa('pw');
+
+        expect(result, isA<Ok<void>>());
+      });
+
+      test('sends POST /mfa/disable with password and the Authorization header',
+          () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(204));
+        final api = AuthApiClient(clientFactory: () => client);
+        api.authHeaderProvider = () => 'Bearer test-token';
+
+        await api.disableMfa('pw');
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'POST');
+        expect(sent.uri.path, '/mfa/disable');
+        expect(sent.bodyJson, {'password': 'pw'});
+        expect(sent.headers.value('Authorization'), 'Bearer test-token');
+      });
+
+      test('non-204 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.disableMfa('pw');
+
+        expect(
+          (result as Error<void>).error.toString(),
+          contains('MFA disable error'),
+        );
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.disableMfa('pw');
+
+        expect(
+          (result as Error<void>).error,
+          isA<UnauthorizedException>(),
+        );
+      });
+    });
+
+    group('getMfaStatus', () {
+      test('200 returns Ok(MfaStatusResponse) with mapped fields', () async {
+        final client = okClient({'enabled': true});
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.getMfaStatus();
+
+        expect((result as Ok<MfaStatusResponse>).value.enabled, isTrue);
+      });
+
+      test('sends GET /mfa/status with the Authorization header', () async {
+        final client = okClient({'enabled': false});
+        final api = AuthApiClient(clientFactory: () => client);
+        api.authHeaderProvider = () => 'Bearer test-token';
+
+        await api.getMfaStatus();
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'GET');
+        expect(sent.uri.path, '/mfa/status');
+        expect(sent.headers.value('Authorization'), 'Bearer test-token');
+      });
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.getMfaStatus();
+
+        expect(
+          (result as Error<MfaStatusResponse>).error.toString(),
+          contains('MFA status error'),
+        );
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.getMfaStatus();
+
+        expect(
+          (result as Error<MfaStatusResponse>).error,
+          isA<UnauthorizedException>(),
+        );
+      });
+    });
+
+    group('verifyMfa', () {
+      test('200 returns Ok(VerifyMFAResponse) with mapped fields', () async {
+        final client = okClient({
+          'access_token': 'access-123',
+          'refresh_token': 'refresh-456',
+        });
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.verifyMfa('challenge-token', '123456');
+
+        final value = (result as Ok<VerifyMFAResponse>).value;
+        expect(value.accessToken, 'access-123');
+        expect(value.refreshToken, 'refresh-456');
+      });
+
+      test('sends POST /mfa/verify with mfa_token and code', () async {
+        final client = okClient({
+          'access_token': 'access-123',
+          'refresh_token': 'refresh-456',
+        });
+        final api = AuthApiClient(clientFactory: () => client);
+
+        await api.verifyMfa('challenge-token', '123456');
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'POST');
+        expect(sent.uri.path, '/mfa/verify');
+        expect(sent.bodyJson, {
+          'mfa_token': 'challenge-token',
+          'code': '123456',
+        });
+      });
+
+      test(
+        'never sends an Authorization header, even if authHeaderProvider is set',
+        () async {
+          final client = okClient({
+            'access_token': 'access-123',
+            'refresh_token': 'refresh-456',
+          });
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
+
+          await api.verifyMfa('challenge-token', '123456');
+
+          expect(client.lastRequest!.headers.value('Authorization'), isNull);
+        },
+      );
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.verifyMfa('challenge-token', '123456');
+
+        expect(
+          (result as Error<VerifyMFAResponse>).error.toString(),
+          contains('MFA verify error'),
+        );
+      });
+    });
+
+    group('generateBackupCodes', () {
+      test('200 returns Ok(EnableMFAResponse) with mapped fields', () async {
+        final client = okClient({'backup_codes': ['NEW1-CODE', 'NEW2-CODE']});
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.generateBackupCodes('pw');
+
+        final value = (result as Ok<EnableMFAResponse>).value;
+        expect(value.backupCodes, ['NEW1-CODE', 'NEW2-CODE']);
+      });
+
+      test(
+        'sends POST /mfa/backup-codes with password and the Authorization header',
+        () async {
+          final client = okClient({'backup_codes': <String>[]});
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
+
+          await api.generateBackupCodes('pw');
+
+          final sent = client.lastRequest!;
+          expect(sent.method, 'POST');
+          expect(sent.uri.path, '/mfa/backup-codes');
+          expect(sent.bodyJson, {'password': 'pw'});
+          expect(sent.headers.value('Authorization'), 'Bearer test-token');
+        },
+      );
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.generateBackupCodes('pw');
+
+        expect(
+          (result as Error<EnableMFAResponse>).error.toString(),
+          contains('MFA backup codes error'),
+        );
+      });
+
+      test('401 returns Result.error(UnauthorizedException)', () async {
+        final client = errorClient(401);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.generateBackupCodes('pw');
+
+        expect(
+          (result as Error<EnableMFAResponse>).error,
+          isA<UnauthorizedException>(),
+        );
+      });
+    });
+
     group('request timeout', () {
       test(
         'a hanging request completes with Result.error after 10 seconds',

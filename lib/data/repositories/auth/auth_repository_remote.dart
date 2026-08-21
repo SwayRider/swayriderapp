@@ -1,6 +1,7 @@
 import 'package:logging/logging.dart';
 
 import '../../../config/app_config.dart';
+import '../../../domain/models/mfa/mfa_setup_info.dart';
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
 import '../../services/api/auth_api_client.dart';
@@ -64,7 +65,7 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
-  Future<Result<void>> login({
+  Future<Result<LoginOutcome>> login({
     required String email,
     required String password,
     bool rememberMe = false,
@@ -74,11 +75,92 @@ class AuthRepositoryRemote extends AuthRepository {
       LoginRequest(email: email, password: password, rememberMe: rememberMe),
     );
     if (result case Ok(:final value)) {
+      if (value.mfaRequired) {
+        // Do not save tokens — the second factor must complete first.
+        return Result.ok(LoginMfaRequired(value.mfaToken ?? ''));
+      }
+      await _saveTokens(value.accessToken, value.refreshToken);
+      notifyListeners();
+      return const Result.ok(LoginSuccess());
+    }
+    return Result.error((result as Error<LoginResponse>).error);
+  }
+
+  @override
+  Future<Result<void>> verifyMfa({
+    required String mfaToken,
+    required String code,
+  }) async {
+    _log.fine('Verifying MFA challenge');
+    final result = await _authApiClient.verifyMfa(mfaToken, code);
+    if (result case Ok(:final value)) {
       await _saveTokens(value.accessToken, value.refreshToken);
       notifyListeners();
       return const Result.ok(null);
     }
-    return Result.error((result as Error<LoginResponse>).error);
+    return Result.error((result as Error<VerifyMFAResponse>).error);
+  }
+
+  @override
+  Future<Result<MfaSetupInfo>> setupMfa() => withAuthRetry(_setupMfaOnce);
+
+  Future<Result<MfaSetupInfo>> _setupMfaOnce() async {
+    final result = await _authApiClient.setupMfa();
+    return switch (result) {
+      Ok(:final value) => Result.ok(
+        MfaSetupInfo(
+          secret: value.secret,
+          otpauthUrl: value.otpauthUrl,
+          qrPngBase64: value.qrPngBase64,
+        ),
+      ),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  @override
+  Future<Result<List<String>>> enableMfa({required String code}) async {
+    _log.fine('Enabling MFA');
+    final result = await withAuthRetry(() => _authApiClient.enableMfa(code));
+    return switch (result) {
+      Ok(:final value) => Result.ok(value.backupCodes),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  @override
+  Future<Result<void>> disableMfa({required String password}) async {
+    _log.fine('Disabling MFA');
+    final result = await withAuthRetry(
+      () => _authApiClient.disableMfa(password),
+    );
+    return switch (result) {
+      Ok() => const Result.ok(null),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  @override
+  Future<Result<bool>> getMfaStatus() async {
+    final result = await withAuthRetry(_authApiClient.getMfaStatus);
+    return switch (result) {
+      Ok(:final value) => Result.ok(value.enabled),
+      Error(:final error) => Result.error(error),
+    };
+  }
+
+  @override
+  Future<Result<List<String>>> generateBackupCodes({
+    required String password,
+  }) async {
+    _log.fine('Generating MFA backup codes');
+    final result = await withAuthRetry(
+      () => _authApiClient.generateBackupCodes(password),
+    );
+    return switch (result) {
+      Ok(:final value) => Result.ok(value.backupCodes),
+      Error(:final error) => Result.error(error),
+    };
   }
 
   @override

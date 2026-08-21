@@ -330,6 +330,141 @@ class AuthApiClient {
     }
   }
 
+  Future<Result<SetupMFAResponse>> setupMfa() async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/setup');
+      await _authHeader(request.headers);
+      final response = await _close(request);
+      if (response.statusCode == 200) {
+        final stringData = await _readBody(response);
+        return Result.ok(SetupMFAResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return const Result.error(HttpException("MFA setup error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Result<EnableMFAResponse>> enableMfa(String code) async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/enable');
+      await _authHeader(request.headers);
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'code': code}));
+      final response = await _close(request);
+      if (response.statusCode == 200) {
+        final stringData = await _readBody(response);
+        return Result.ok(EnableMFAResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return const Result.error(HttpException("MFA enable error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Result<void>> disableMfa(String password) async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/disable');
+      await _authHeader(request.headers);
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'password': password}));
+      final response = await _close(request);
+      if (response.statusCode == 204) {
+        return const Result.ok(null);
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return const Result.error(HttpException("MFA disable error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Result<MfaStatusResponse>> getMfaStatus() async {
+    final client = _newClient();
+    try {
+      final request = await _get(client, '/mfa/status');
+      await _authHeader(request.headers);
+      final response = await _close(request);
+      if (response.statusCode == 200) {
+        final stringData = await _readBody(response);
+        return Result.ok(MfaStatusResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return const Result.error(HttpException("MFA status error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Result<VerifyMFAResponse>> verifyMfa(
+    String mfaToken,
+    String code,
+  ) async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/verify');
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'mfa_token': mfaToken, 'code': code}));
+      final response = await _close(request);
+      if (response.statusCode == 200) {
+        final stringData = await _readBody(response);
+        return Result.ok(VerifyMFAResponse.fromJson(jsonDecode(stringData)));
+      } else {
+        return const Result.error(HttpException("MFA verify error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Future<Result<EnableMFAResponse>> generateBackupCodes(
+    String password,
+  ) async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/backup-codes');
+      await _authHeader(request.headers);
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode({'password': password}));
+      final response = await _close(request);
+      if (response.statusCode == 200) {
+        final stringData = await _readBody(response);
+        return Result.ok(EnableMFAResponse.fromJson(jsonDecode(stringData)));
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return const Result.error(HttpException("MFA backup codes error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
   Future<Result<CheckPasswordStrengthResponse>> checkPasswordStrength(
     CheckPasswordStrengthRequest req,
   ) async {

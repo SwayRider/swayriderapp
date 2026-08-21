@@ -1,9 +1,29 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../domain/models/mfa/mfa_setup_info.dart';
 import '../../../domain/models/user/user.dart';
 import '../../../utils/result.dart';
 import '../../services/api/auth_header_provider.dart';
 import '../../services/api/unauthorized_exception.dart';
+
+/// The outcome of a [AuthRepository.login] attempt.
+sealed class LoginOutcome {
+  const LoginOutcome();
+}
+
+/// Login succeeded and the session is fully established (tokens saved).
+class LoginSuccess extends LoginOutcome {
+  const LoginSuccess();
+}
+
+/// Login succeeded past the password check, but a second factor must be
+/// completed first. No tokens were saved yet; the pending challenge is
+/// identified by [mfaToken].
+class LoginMfaRequired extends LoginOutcome {
+  const LoginMfaRequired(this.mfaToken);
+
+  final String mfaToken;
+}
 
 abstract class AuthRepository extends ChangeNotifier {
   Future<bool> get isAuthenticated;
@@ -17,10 +37,33 @@ abstract class AuthRepository extends ChangeNotifier {
   /// depending on [AuthRepository] internals.
   AuthHeaderProvider get authHeaderProvider;
 
-  Future<Result<void>> login({
+  Future<Result<LoginOutcome>> login({
     required String email,
     required String password,
     bool rememberMe = false,
+  });
+
+  /// Completes a pending MFA login challenge ([mfaToken] comes from a
+  /// [LoginMfaRequired] outcome) with a TOTP or backup code. Saves the
+  /// session tokens on success.
+  Future<Result<void>> verifyMfa({
+    required String mfaToken,
+    required String code,
+  });
+
+  Future<Result<MfaSetupInfo>> setupMfa();
+
+  /// Enables MFA with the given TOTP [code] and returns the one-time
+  /// backup codes.
+  Future<Result<List<String>>> enableMfa({required String code});
+
+  Future<Result<void>> disableMfa({required String password});
+
+  Future<Result<bool>> getMfaStatus();
+
+  /// Invalidates the current backup codes and issues fresh ones.
+  Future<Result<List<String>>> generateBackupCodes({
+    required String password,
   });
 
   Future<Result<void>> refresh();

@@ -1,6 +1,7 @@
 abstract final class Routes {
   static const home = '/';
   static const login = '/login';
+  static const mfaVerify = '/mfa-verify';
   static const signup = '/signup';
   static const verifyEmail = '/verify-email';
   static const emailVerified = '/email-verified';

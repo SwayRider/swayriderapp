@@ -1,23 +1,19 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'login_response.dart';
+part of 'verify_mfa_response.dart';
 
 // **************************************************************************
 // JsonSerializableGenerator
 // **************************************************************************
 
-_LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
-    _LoginResponse(
+_VerifyMFAResponse _$VerifyMFAResponseFromJson(Map<String, dynamic> json) =>
+    _VerifyMFAResponse(
       accessToken: json['access_token'] as String,
       refreshToken: json['refresh_token'] as String,
-      mfaRequired: json['mfa_required'] as bool? ?? false,
-      mfaToken: json['mfa_token'] as String?,
     );
 
-Map<String, dynamic> _$LoginResponseToJson(_LoginResponse instance) =>
+Map<String, dynamic> _$VerifyMFAResponseToJson(_VerifyMFAResponse instance) =>
     <String, dynamic>{
       'access_token': instance.accessToken,
       'refresh_token': instance.refreshToken,
-      'mfa_required': instance.mfaRequired,
-      'mfa_token': instance.mfaToken,
     };

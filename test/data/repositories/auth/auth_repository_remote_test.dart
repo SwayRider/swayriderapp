@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:swayriderapp/data/repositories/auth/auth_repository.dart';
 import 'package:swayriderapp/data/repositories/auth/auth_repository_remote.dart';
 import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 import 'package:swayriderapp/data/services/api/model/auth/auth.dart';
+import 'package:swayriderapp/domain/models/mfa/mfa_setup_info.dart';
 import 'package:swayriderapp/domain/models/user/user.dart';
 import 'package:swayriderapp/utils/result.dart';
 
@@ -208,7 +210,8 @@ void main() {
   });
 
   group('login', () {
-    test('Ok result saves tokens, notifies, and returns Ok(null)', () async {
+    test('Ok result saves tokens, notifies, and returns LoginSuccess',
+        () async {
       when(() => mockApiClient.login(any())).thenAnswer(
         (_) async => const Result.ok(
           LoginResponse(accessToken: 'access-1', refreshToken: 'refresh-1'),
@@ -219,7 +222,8 @@ void main() {
 
       final result = await repository.login(email: 'a@b.com', password: 'pw');
 
-      expect(result, isA<Ok<void>>());
+      final outcome = (result as Ok<LoginOutcome>).value;
+      expect(outcome, isA<LoginSuccess>());
       expect(notified, isTrue);
       verify(() => mockPrefs.saveAccessToken('access-1')).called(1);
       verify(() => mockPrefs.saveRefreshToken('refresh-1')).called(1);
@@ -231,6 +235,40 @@ void main() {
       expect(request.password, 'pw');
       expect(request.rememberMe, isFalse);
     });
+
+    test(
+      'Ok with mfa_required returns LoginMfaRequired and saves no tokens',
+      () async {
+        when(() => mockApiClient.login(any())).thenAnswer(
+          (_) async => const Result.ok(
+            LoginResponse(
+              accessToken: 'access-1',
+              refreshToken: 'refresh-1',
+              mfaRequired: true,
+              mfaToken: 'challenge-token-1',
+            ),
+          ),
+        );
+        when(
+          () => mockPrefs.fetchAccessToken(),
+        ).thenAnswer((_) async => const Result.ok(null));
+        var notified = false;
+        repository.addListener(() => notified = true);
+
+        final result = await repository.login(
+          email: 'a@b.com',
+          password: 'pw',
+        );
+
+        final outcome = (result as Ok<LoginOutcome>).value;
+        expect(outcome, isA<LoginMfaRequired>());
+        expect((outcome as LoginMfaRequired).mfaToken, 'challenge-token-1');
+        expect(notified, isFalse);
+        verifyNever(() => mockPrefs.saveAccessToken(any()));
+        verifyNever(() => mockPrefs.saveRefreshToken(any()));
+        expect(await repository.isAuthenticated, isFalse);
+      },
+    );
 
     test(
       'after success, isAuthenticated is true without querying prefs',
@@ -256,9 +294,228 @@ void main() {
 
       final result = await repository.login(email: 'a@b.com', password: 'pw');
 
+      expect((result as Error<LoginOutcome>).error, exception);
+      verifyNever(() => mockPrefs.saveAccessToken(any()));
+      verifyNever(() => mockPrefs.saveRefreshToken(any()));
+    });
+  });
+
+  group('verifyMfa', () {
+    test('Ok result saves tokens, notifies, and returns Ok(null)', () async {
+      when(() => mockApiClient.verifyMfa(any(), any())).thenAnswer(
+        (_) async => const Result.ok(
+          VerifyMFAResponse(accessToken: 'access-2', refreshToken: 'refresh-2'),
+        ),
+      );
+      var notified = false;
+      repository.addListener(() => notified = true);
+
+      final result = await repository.verifyMfa(
+        mfaToken: 'challenge-token',
+        code: '123456',
+      );
+
+      expect(result, isA<Ok<void>>());
+      expect(notified, isTrue);
+      verify(() => mockPrefs.saveAccessToken('access-2')).called(1);
+      verify(() => mockPrefs.saveRefreshToken('refresh-2')).called(1);
+      final captured =
+          verify(
+                () => mockApiClient.verifyMfa(captureAny(), captureAny()),
+              ).captured
+              .cast<String>();
+      expect(captured, ['challenge-token', '123456']);
+    });
+
+    test('Error result passes through without saving tokens', () async {
+      final exception = Exception('verify failed');
+      when(
+        () => mockApiClient.verifyMfa(any(), any()),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.verifyMfa(
+        mfaToken: 'challenge-token',
+        code: '123456',
+      );
+
       expect((result as Error<void>).error, exception);
       verifyNever(() => mockPrefs.saveAccessToken(any()));
       verifyNever(() => mockPrefs.saveRefreshToken(any()));
+    });
+  });
+
+  group('setupMfa', () {
+    test('Ok result maps to MfaSetupInfo', () async {
+      when(() => mockApiClient.setupMfa()).thenAnswer(
+        (_) async => const Result.ok(
+          SetupMFAResponse(
+            secret: 'ABCD EFGH',
+            otpauthUrl: 'otpauth://totp/SwayRider:a@b.com?secret=ABC',
+            qrPngBase64: 'aGVsbG8=',
+          ),
+        ),
+      );
+
+      final result = await repository.setupMfa();
+
+      final info = (result as Ok<MfaSetupInfo>).value;
+      expect(info.secret, 'ABCD EFGH');
+      expect(info.otpauthUrl, 'otpauth://totp/SwayRider:a@b.com?secret=ABC');
+      expect(info.qrPngBase64, 'aGVsbG8=');
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('setup failed');
+      when(
+        () => mockApiClient.setupMfa(),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.setupMfa();
+
+      expect((result as Error<MfaSetupInfo>).error, exception);
+    });
+
+    test(
+      'UnauthorizedException triggers a transparent refresh and succeeds',
+      () async {
+        when(
+          () => mockPrefs.fetchRefreshToken(),
+        ).thenAnswer((_) async => const Result.ok('stored-refresh'));
+        when(() => mockApiClient.refresh(any())).thenAnswer(
+          (_) async => const Result.ok(
+            RefreshResponse(accessToken: 'access-2', refreshToken: 'refresh-2'),
+          ),
+        );
+
+        var callCount = 0;
+        when(() => mockApiClient.setupMfa()).thenAnswer((_) async {
+          callCount++;
+          if (callCount == 1) {
+            return const Result.error(UnauthorizedException());
+          }
+          return const Result.ok(
+            SetupMFAResponse(secret: 's', otpauthUrl: 'u', qrPngBase64: 'q'),
+          );
+        });
+
+        final result = await repository.setupMfa();
+
+        expect(result, isA<Ok<MfaSetupInfo>>());
+        verify(() => mockApiClient.setupMfa()).called(2);
+        verify(() => mockApiClient.refresh(any())).called(1);
+      },
+    );
+  });
+
+  group('enableMfa', () {
+    test('Ok result returns the backup codes', () async {
+      when(() => mockApiClient.enableMfa(any())).thenAnswer(
+        (_) async => const Result.ok(
+          EnableMFAResponse(backupCodes: ['ABCD-EFGH', 'JKLM-NOPQ']),
+        ),
+      );
+
+      final result = await repository.enableMfa(code: '123456');
+
+      final codes = (result as Ok<List<String>>).value;
+      expect(codes, ['ABCD-EFGH', 'JKLM-NOPQ']);
+      final code =
+          verify(() => mockApiClient.enableMfa(captureAny())).captured.single
+              as String;
+      expect(code, '123456');
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('enable failed');
+      when(
+        () => mockApiClient.enableMfa(any()),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.enableMfa(code: '123456');
+
+      expect((result as Error<List<String>>).error, exception);
+    });
+  });
+
+  group('disableMfa', () {
+    test('Ok result returns Ok(null)', () async {
+      when(
+        () => mockApiClient.disableMfa(any()),
+      ).thenAnswer((_) async => const Result.ok(null));
+
+      final result = await repository.disableMfa(password: 'pw');
+
+      expect(result, isA<Ok<void>>());
+      final password =
+          verify(() => mockApiClient.disableMfa(captureAny())).captured.single
+              as String;
+      expect(password, 'pw');
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('disable failed');
+      when(
+        () => mockApiClient.disableMfa(any()),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.disableMfa(password: 'pw');
+
+      expect((result as Error<void>).error, exception);
+    });
+  });
+
+  group('getMfaStatus', () {
+    test('Ok result returns the enabled flag', () async {
+      when(() => mockApiClient.getMfaStatus()).thenAnswer(
+        (_) async => const Result.ok(MfaStatusResponse(enabled: true)),
+      );
+
+      final result = await repository.getMfaStatus();
+
+      expect((result as Ok<bool>).value, isTrue);
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('status failed');
+      when(
+        () => mockApiClient.getMfaStatus(),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.getMfaStatus();
+
+      expect((result as Error<bool>).error, exception);
+    });
+  });
+
+  group('generateBackupCodes', () {
+    test('Ok result returns the new backup codes', () async {
+      when(() => mockApiClient.generateBackupCodes(any())).thenAnswer(
+        (_) async => const Result.ok(
+          EnableMFAResponse(backupCodes: ['NEW1-CODE', 'NEW2-CODE']),
+        ),
+      );
+
+      final result = await repository.generateBackupCodes(password: 'pw');
+
+      final codes = (result as Ok<List<String>>).value;
+      expect(codes, ['NEW1-CODE', 'NEW2-CODE']);
+      final password =
+          verify(
+                () => mockApiClient.generateBackupCodes(captureAny()),
+              ).captured.single
+              as String;
+      expect(password, 'pw');
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('backup codes failed');
+      when(
+        () => mockApiClient.generateBackupCodes(any()),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.generateBackupCodes(password: 'pw');
+
+      expect((result as Error<List<String>>).error, exception);
     });
   });
 
