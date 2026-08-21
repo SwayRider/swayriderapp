@@ -200,6 +200,30 @@ void main() {
       );
 
       test(
+        '400 with breached-password reason returns Result.error(BreachedPasswordException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'breached_password',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
+
+          final result = await api.register(request);
+
+          expect(
+            (result as Error<RegisterResponse>).error,
+            isA<BreachedPasswordException>(),
+          );
+        },
+      );
+
+      test(
         '400 without weak-password reason returns Result.error(HttpException)',
         () async {
           final client = FakeHttpClient(
@@ -418,6 +442,54 @@ void main() {
           contains('Reset password error'),
         );
       });
+
+      test(
+        '400 with breached-password reason returns Result.error(BreachedPasswordException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'breached_password',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
+
+          final result = await api.resetPassword(request);
+
+          expect(
+            (result as Error<ResetPasswordResponse>).error,
+            isA<BreachedPasswordException>(),
+          );
+        },
+      );
+
+      test(
+        '400 with password-reused reason returns Result.error(PasswordReusedException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'password_reused',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
+
+          final result = await api.resetPassword(request);
+
+          expect(
+            (result as Error<ResetPasswordResponse>).error,
+            isA<PasswordReusedException>(),
+          );
+        },
+      );
     });
 
     group('verifyEmail', () {
@@ -531,6 +603,54 @@ void main() {
           isA<UnauthorizedException>(),
         );
       });
+
+      test(
+        '400 with breached-password reason returns Result.error(BreachedPasswordException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'breached_password',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
+
+          final result = await api.changePassword(request);
+
+          expect(
+            (result as Error<ChangePasswordResponse>).error,
+            isA<BreachedPasswordException>(),
+          );
+        },
+      );
+
+      test(
+        '400 with password-reused reason returns Result.error(PasswordReusedException)',
+        () async {
+          final client = FakeHttpClient(
+            FakeHttpClientResponse(
+              400,
+              jsonEncode({
+                'error': 'invalid argument',
+                'code': 'InvalidArgument',
+                'reason': 'password_reused',
+              }),
+            ),
+          );
+          final api = AuthApiClient(clientFactory: () => client);
+
+          final result = await api.changePassword(request);
+
+          expect(
+            (result as Error<ChangePasswordResponse>).error,
+            isA<PasswordReusedException>(),
+          );
+        },
+      );
 
       test(
         'sends Authorization header when authHeaderProvider is set',

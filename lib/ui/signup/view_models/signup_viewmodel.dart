@@ -32,6 +32,13 @@ class SignupViewModel {
     return result is Error && result.error is WeakPasswordException;
   }
 
+  /// Whether the most recent signup attempt failed because the backend
+  /// rejected the password as breached (appeared in a known data breach).
+  bool get passwordBreached {
+    final result = signup.result;
+    return result is Error && result.error is BreachedPasswordException;
+  }
+
   /// Checks the strength of [password] against the backend.
   Future<Result<bool>> checkPasswordStrength(String password) =>
       _authRepository.checkPasswordStrength(password: password);

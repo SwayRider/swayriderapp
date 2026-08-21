@@ -86,7 +86,8 @@ class _SignupScreenState extends State<SignupScreen> {
           final hasError =
               widget.viewModel.signup.error &&
               !widget.viewModel.invitationRequired &&
-              !widget.viewModel.passwordTooWeak;
+              !widget.viewModel.passwordTooWeak &&
+              !widget.viewModel.passwordBreached;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -122,6 +123,10 @@ class _SignupScreenState extends State<SignupScreen> {
               if (_passwordTooWeak || widget.viewModel.passwordTooWeak) ...[
                 const SizedBox(height: Dimens.paddingVertical),
                 ErrorMessage(text: localization.passwordNotStrongEnough),
+              ],
+              if (widget.viewModel.passwordBreached) ...[
+                const SizedBox(height: Dimens.paddingVertical),
+                ErrorMessage(text: localization.passwordBreached),
               ],
               if (hasError) ...[
                 const SizedBox(height: Dimens.paddingVertical),

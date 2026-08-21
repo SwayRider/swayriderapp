@@ -22,6 +22,11 @@ class AppLocalizationEn extends AppLocalization {
     'noAccount': 'No Account?',
 
     'passwordNotStrongEnough': 'Password is not strong enough',
+    'passwordBreached':
+        'This password has appeared in a known data breach. '
+        'Please choose a different one.',
+    'passwordReused':
+        'This password has been used before. Please choose a different one.',
     'passwordsDoNotMatch': 'Passwords do not match',
     'signupFailed': 'Signup failed',
     'haveAccount': 'Have an Account?',

@@ -85,7 +85,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         listenable: widget.viewModel.changePassword,
         builder: (context, _) {
           final loading = widget.viewModel.changePassword.running;
-          final hasError = widget.viewModel.changePassword.error;
+          final hasError =
+              widget.viewModel.changePassword.error &&
+              !widget.viewModel.passwordBreached &&
+              !widget.viewModel.passwordReused;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,6 +126,14 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
               if (_passwordTooWeak) ...[
                 const SizedBox(height: Dimens.paddingVertical),
                 ErrorMessage(text: localization.passwordNotStrongEnough),
+              ],
+              if (widget.viewModel.passwordBreached) ...[
+                const SizedBox(height: Dimens.paddingVertical),
+                ErrorMessage(text: localization.passwordBreached),
+              ],
+              if (widget.viewModel.passwordReused) ...[
+                const SizedBox(height: Dimens.paddingVertical),
+                ErrorMessage(text: localization.passwordReused),
               ],
               if (hasError) ...[
                 const SizedBox(height: Dimens.paddingVertical),

@@ -152,6 +152,43 @@ void main() {
   });
 
   test(
+    'passwordBreached is true when register fails with BreachedPasswordException',
+    () async {
+      when(
+        () => mockAuthRepository.register(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+          verificationUrl: any(named: 'verificationUrl'),
+        ),
+      ).thenAnswer(
+        (_) async => const Result.error(BreachedPasswordException()),
+      );
+
+      await viewModel.signup.execute(('a@b.com', 'pw'));
+
+      expect(viewModel.passwordBreached, isTrue);
+    },
+  );
+
+  test('passwordBreached is false for other errors', () async {
+    when(
+      () => mockAuthRepository.register(
+        email: any(named: 'email'),
+        password: any(named: 'password'),
+        verificationUrl: any(named: 'verificationUrl'),
+      ),
+    ).thenAnswer((_) async => Result.error(Exception('signup failed')));
+
+    await viewModel.signup.execute(('a@b.com', 'pw'));
+
+    expect(viewModel.passwordBreached, isFalse);
+  });
+
+  test('passwordBreached is false in the initial idle state', () {
+    expect(viewModel.passwordBreached, isFalse);
+  });
+
+  test(
     'checkPasswordStrength delegates to AuthRepository.checkPasswordStrength',
     () async {
       when(
