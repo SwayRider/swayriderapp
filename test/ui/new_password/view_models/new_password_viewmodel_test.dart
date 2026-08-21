@@ -87,7 +87,9 @@ void main() {
           token: any(named: 'token'),
           newPassword: any(named: 'newPassword'),
         ),
-      ).thenAnswer((_) async => const Result.error(BreachedPasswordException()));
+      ).thenAnswer(
+        (_) async => const Result.error(BreachedPasswordException()),
+      );
 
       await viewModel.resetPassword.execute(('user-1', 'token-1', 'new-pw'));
 

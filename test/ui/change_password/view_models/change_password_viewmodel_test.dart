@@ -82,7 +82,9 @@ void main() {
           oldPassword: any(named: 'oldPassword'),
           newPassword: any(named: 'newPassword'),
         ),
-      ).thenAnswer((_) async => const Result.error(BreachedPasswordException()));
+      ).thenAnswer(
+        (_) async => const Result.error(BreachedPasswordException()),
+      );
 
       await viewModel.changePassword.execute(('old-pw', 'new-pw'));
 
