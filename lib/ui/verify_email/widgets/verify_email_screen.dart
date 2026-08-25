@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../data/services/api/connection_exception.dart';
 import '../../../routing/routes.dart';
+import '../../../utils/result.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/dimens.dart';
 import '../../core/ui/auth_prompt.dart';
@@ -47,6 +49,10 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         listenable: viewModel.resendVerification,
         builder: (context, _) {
           final error = viewModel.resendVerification.error;
+          final isConnectionIssue = switch (viewModel.resendVerification.result) {
+            Error(error: ConnectionException()) => true,
+            _ => false,
+          };
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -70,7 +76,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
               ),
               if (error) ...[
                 const SizedBox(height: Dimens.paddingVertical / 2),
-                ErrorMessage(text: localization.resendVerificationFailed),
+                ErrorMessage(
+                  text: isConnectionIssue
+                      ? localization.resendVerificationConnectionFailed
+                      : localization.resendVerificationFailed,
+                ),
               ],
               const SizedBox(height: Dimens.paddingVertical * 4),
               AuthPrompt(

@@ -16,6 +16,7 @@ abstract final class Routes {
   static const profile = '/profile';
   static const account = '/account';
   static const changePassword = '/change-password';
+  static const connectionIssue = '/connection-issue';
 
   /// Routes accessible while the user is not authenticated.
   static const publicRoutes = {
@@ -37,6 +38,10 @@ abstract final class Routes {
     resetPasswordConfirmation,
     newPassword,
     passwordChanged,
+    // Reached from the redirect logic itself when the backend can't be
+    // reached at all (see _redirect's ConnectionException handling) --
+    // must stay reachable regardless of auth state, same as verifyEmail.
+    connectionIssue,
   };
 
   /// Subset of [publicRoutes] that must stay reachable even if the user

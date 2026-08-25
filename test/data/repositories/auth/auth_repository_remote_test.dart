@@ -116,6 +116,23 @@ void main() {
     });
 
     test(
+      'ConnectionException is rethrown instead of collapsed to false',
+      () async {
+        final connectionException = ConnectionException(
+          Exception('Connection timed out'),
+        );
+        when(
+          () => mockApiClient.me(),
+        ).thenAnswer((_) async => Result.error(connectionException));
+
+        await expectLater(
+          () => repository.isVerified,
+          throwsA(same(connectionException)),
+        );
+      },
+    );
+
+    test(
       'UnauthorizedException triggers a transparent refresh and succeeds',
       () async {
         when(

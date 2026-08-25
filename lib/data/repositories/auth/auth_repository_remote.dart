@@ -43,6 +43,9 @@ class AuthRepositoryRemote extends AuthRepository {
     return false;
   }
 
+  // Throws ConnectionException (rather than returning false) when the
+  // backend can't be reached, so callers can distinguish "not verified"
+  // from "we don't actually know" instead of treating them the same.
   @override
   Future<bool> get isVerified async {
     if (_cachedIsVerified != null) return _cachedIsVerified!;
@@ -50,6 +53,7 @@ class AuthRepositoryRemote extends AuthRepository {
     _log.fine('[DIAG] isVerified: me() resolved with $result');
     return switch (result) {
       Ok(:final value) => _cachedIsVerified = value.isVerified,
+      Error(error: final ConnectionException e) => throw e,
       Error() => false,
     };
   }

@@ -58,7 +58,13 @@ class AppLocalizationEn extends AppLocalization {
     'resendEmail': 'Resend Email',
     'alreadyVerified': 'Already verified?',
     'resendVerificationFailed': 'Failed to resend verification email',
+    'resendVerificationConnectionFailed':
+        'Could not reach the server. Check your connection and try again.',
     'resendEmailIn': 'You can resend the email in {seconds}s',
+
+    'connectionIssueTitle': 'Connection Problem',
+    'connectionIssueMessage':
+        'We could not reach the server. Check your connection and try again.',
 
     'resetPasswordFailed': 'Failed to send password reset email',
     'rememberPassword': 'Remember your password?',

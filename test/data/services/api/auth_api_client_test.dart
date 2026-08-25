@@ -1372,6 +1372,10 @@ void main() {
             async.elapse(const Duration(seconds: 11));
 
             expect(result, isA<Error<LoginResponse>>());
+            expect(
+              (result as Error<LoginResponse>).error,
+              isA<ConnectionException>(),
+            );
             expect(client.closed, isTrue);
           });
         },
@@ -1397,6 +1401,46 @@ void main() {
           });
         },
       );
+    });
+
+    group('connection error classification', () {
+      test('SocketException is wrapped as ConnectionException', () async {
+        final client = FakeThrowingHttpClient(
+          const SocketException('Connection refused'),
+        );
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.login(
+          const LoginRequest(email: 'a@b.com', password: 'pw'),
+        );
+
+        expect((result as Error<LoginResponse>).error, isA<ConnectionException>());
+      });
+
+      test('HandshakeException is wrapped as ConnectionException', () async {
+        final client = FakeThrowingHttpClient(
+          const HandshakeException('TLS handshake failed'),
+        );
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.login(
+          const LoginRequest(email: 'a@b.com', password: 'pw'),
+        );
+
+        expect((result as Error<LoginResponse>).error, isA<ConnectionException>());
+      });
+
+      test('other exceptions are left unwrapped', () async {
+        final exception = Exception('some business error');
+        final client = FakeThrowingHttpClient(exception);
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.login(
+          const LoginRequest(email: 'a@b.com', password: 'pw'),
+        );
+
+        expect((result as Error<LoginResponse>).error, same(exception));
+      });
     });
   });
 }

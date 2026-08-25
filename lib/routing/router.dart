@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../ui/account/widgets/account_screen.dart';
 import '../ui/change_password/view_models/change_password_viewmodel.dart';
 import '../ui/change_password/widgets/change_password_screen.dart';
+import '../ui/connection_issue/widgets/connection_issue_screen.dart';
 import '../ui/email_verified/widgets/email_verified_screen.dart';
 import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
@@ -31,6 +32,7 @@ import '../ui/verify_email/view_models/verify_email_viewmodel.dart';
 import '../ui/verify_email/widgets/verify_email_screen.dart';
 import 'routes.dart';
 import '../data/repositories/auth/auth_repository.dart';
+import '../data/services/api/connection_exception.dart';
 
 /// Top go_router entry point.
 ///
@@ -179,6 +181,10 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
         return HomeScreen(viewModel: context.read());
       },
     ),
+    GoRoute(
+      path: Routes.connectionIssue,
+      builder: (context, state) => const ConnectionIssueScreen(),
+    ),
   ],
 );
 
@@ -202,9 +208,17 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
     return onPublicRoute ? null : Routes.login;
   }
 
-  // if the user is logged in but hasn't verified their email yet, send
-  // them to the verify-email screen (unless they're already there)
-  final isVerified = await authRepository.isVerified;
+  // if the backend can't be reached at all, say so instead of treating it
+  // as "not verified" -- ConnectionException means we don't actually know.
+  bool isVerified;
+  try {
+    isVerified = await authRepository.isVerified;
+  } on ConnectionException {
+    _redirectLog.fine('[DIAG] _redirect: connection issue checking isVerified');
+    return state.matchedLocation == Routes.connectionIssue
+        ? null
+        : Routes.connectionIssue;
+  }
   _redirectLog.fine('[DIAG] _redirect: isVerified=$isVerified');
   if (!isVerified) {
     // isVerified may have cleared the session (an expired access token and
