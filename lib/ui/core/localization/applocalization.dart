@@ -42,6 +42,7 @@ class AppLocalization {
 
   String get dashboard => _get('dashboard');
   String get profile => _get('profile');
+  String get account => _get('account');
   String get logout => _get('logout');
   String get comingSoon => _get('comingSoon');
   String get search => _get('search');
@@ -80,6 +81,8 @@ class AppLocalization {
   String get twoFactorAuthentication => _get('twoFactorAuthentication');
   String get mfaEnabled => _get('mfaEnabled');
   String get mfaDisabled => _get('mfaDisabled');
+  String get mfaStatusLoadFailed => _get('mfaStatusLoadFailed');
+  String get retry => _get('retry');
   String get enableTwoFactor => _get('enableTwoFactor');
   String get disableTwoFactor => _get('disableTwoFactor');
 
@@ -101,13 +104,23 @@ class AppLocalization {
   String get mfaBackupCodesSaved => _get('mfaBackupCodesSaved');
 
   String get mfaVerifyTitle => _get('mfaVerifyTitle');
-  String get mfaUseBackupCode => _get('mfaUseBackupCode');
-  String get mfaUseVerificationCode => _get('mfaUseVerificationCode');
 
   String get mfaDisablePasswordPrompt => _get('mfaDisablePasswordPrompt');
   String get mfaDisableSuccess => _get('mfaDisableSuccess');
   String get mfaDisableFailed => _get('mfaDisableFailed');
   String get mfaEnableSuccess => _get('mfaEnableSuccess');
+
+  String get mfaLostAccess => _get('mfaLostAccess');
+
+  String get mfaResetRequestTitle => _get('mfaResetRequestTitle');
+  String get mfaResetRequestIntro => _get('mfaResetRequestIntro');
+  String get mfaResetRequestBackupCodeLabel =>
+      _get('mfaResetRequestBackupCodeLabel');
+  String get mfaResetRequestSubmit => _get('mfaResetRequestSubmit');
+  String get mfaResetRequestFailed => _get('mfaResetRequestFailed');
+  String get mfaResetRequestTryAgain => _get('mfaResetRequestTryAgain');
+  String mfaResetEmailSentTo(String email) =>
+      _get('mfaResetEmailSentTo').replaceFirst('{email}', email);
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

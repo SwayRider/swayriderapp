@@ -46,5 +46,13 @@ void registerFallbacks() {
     const ChangePasswordRequest(oldPassword: '', newPassword: ''),
   );
   registerFallbackValue(const CheckPasswordStrengthRequest(password: ''));
+  registerFallbackValue(
+    const MfaResetRequest(
+      email: '',
+      password: '',
+      backupCode: '',
+      mfaResetUrl: '',
+    ),
+  );
   registerFallbackValue(() => null as String?);
 }

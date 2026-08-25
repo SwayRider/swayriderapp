@@ -33,6 +33,7 @@ class AppLocalizationEn extends AppLocalization {
 
     'dashboard': 'Dashboard',
     'profile': 'Profile',
+    'account': 'Account',
     'logout': 'Logout',
     'comingSoon': 'Coming soon',
     'search': 'Search',
@@ -73,6 +74,8 @@ class AppLocalizationEn extends AppLocalization {
     'twoFactorAuthentication': 'Two-Factor Authentication',
     'mfaEnabled': 'Two-factor authentication: On',
     'mfaDisabled': 'Two-factor authentication: Off',
+    'mfaStatusLoadFailed': "Couldn't load two-factor authentication status.",
+    'retry': 'Retry',
     'enableTwoFactor': 'Enable 2FA',
     'disableTwoFactor': 'Disable 2FA',
 
@@ -103,14 +106,26 @@ class AppLocalizationEn extends AppLocalization {
     'mfaBackupCodesSaved': "I've Saved Them",
 
     'mfaVerifyTitle': "Verify It's You",
-    'mfaUseBackupCode': 'Use a backup code',
-    'mfaUseVerificationCode': 'Use a verification code',
 
     'mfaDisablePasswordPrompt':
         'Enter your password to disable two-factor authentication',
     'mfaDisableSuccess': 'Two-factor authentication disabled',
     'mfaDisableFailed': 'Failed to disable two-factor authentication',
     'mfaEnableSuccess': 'Two-factor authentication enabled',
+
+    'mfaLostAccess': 'Lost access to your authenticator?',
+
+    'mfaResetRequestTitle': 'Reset Authenticator',
+    'mfaResetRequestIntro':
+        "Losing your authenticator means starting over: enter your email, "
+        "password, and one of your backup codes, and we'll send you a link "
+        "to set up a new authenticator.",
+    'mfaResetRequestBackupCodeLabel': 'Backup Code',
+    'mfaResetRequestSubmit': 'Send Reset Link',
+    'mfaResetRequestFailed': 'Failed to send the reset link',
+    'mfaResetRequestTryAgain': 'Try Again',
+    'mfaResetEmailSentTo':
+        'An authenticator reset email has been sent to {email}',
   };
 
   @override

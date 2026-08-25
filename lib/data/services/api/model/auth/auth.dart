@@ -7,6 +7,7 @@ export 'login_request.dart';
 export 'login_response.dart';
 export 'logout_request.dart';
 export 'me_response.dart';
+export 'mfa_reset_request.dart';
 export 'mfa_status_response.dart';
 export 'password_reset_request.dart';
 export 'public_keys_response.dart';

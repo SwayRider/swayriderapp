@@ -22,7 +22,6 @@ class MfaVerifyScreen extends StatefulWidget {
 
 class _MfaVerifyScreenState extends State<MfaVerifyScreen> {
   final _codeController = TextEditingController();
-  bool _useBackupCode = false;
 
   @override
   void dispose() {
@@ -58,16 +57,9 @@ class _MfaVerifyScreenState extends State<MfaVerifyScreen> {
               const SizedBox(height: Dimens.paddingVertical * 2),
               AppTextField(
                 controller: _codeController,
-                hintText: _useBackupCode
-                    ? localization.mfaUseBackupCode
-                    : localization.mfaCodeLabel,
-                keyboardType: _useBackupCode
-                    ? TextInputType.text
-                    : TextInputType.number,
-                // TOTP codes are 6 digits; backup codes are 8-9 characters
-                // (optionally dash-separated), so the field widens in backup
-                // mode. The server accepts either in the same field.
-                maxLength: _useBackupCode ? 9 : 6,
+                hintText: localization.mfaCodeLabel,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _submit(),
               ),
@@ -83,13 +75,8 @@ class _MfaVerifyScreenState extends State<MfaVerifyScreen> {
               ],
               const SizedBox(height: Dimens.paddingVertical / 2),
               TextButton(
-                onPressed: () =>
-                    setState(() => _useBackupCode = !_useBackupCode),
-                child: Text(
-                  _useBackupCode
-                      ? localization.mfaUseVerificationCode
-                      : localization.mfaUseBackupCode,
-                ),
+                onPressed: () => context.push(Routes.mfaResetRequest),
+                child: Text(localization.mfaLostAccess),
               ),
             ],
           );

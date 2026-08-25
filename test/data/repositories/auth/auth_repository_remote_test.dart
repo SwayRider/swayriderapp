@@ -210,31 +210,33 @@ void main() {
   });
 
   group('login', () {
-    test('Ok result saves tokens, notifies, and returns LoginSuccess',
-        () async {
-      when(() => mockApiClient.login(any())).thenAnswer(
-        (_) async => const Result.ok(
-          LoginResponse(accessToken: 'access-1', refreshToken: 'refresh-1'),
-        ),
-      );
-      var notified = false;
-      repository.addListener(() => notified = true);
+    test(
+      'Ok result saves tokens, notifies, and returns LoginSuccess',
+      () async {
+        when(() => mockApiClient.login(any())).thenAnswer(
+          (_) async => const Result.ok(
+            LoginResponse(accessToken: 'access-1', refreshToken: 'refresh-1'),
+          ),
+        );
+        var notified = false;
+        repository.addListener(() => notified = true);
 
-      final result = await repository.login(email: 'a@b.com', password: 'pw');
+        final result = await repository.login(email: 'a@b.com', password: 'pw');
 
-      final outcome = (result as Ok<LoginOutcome>).value;
-      expect(outcome, isA<LoginSuccess>());
-      expect(notified, isTrue);
-      verify(() => mockPrefs.saveAccessToken('access-1')).called(1);
-      verify(() => mockPrefs.saveRefreshToken('refresh-1')).called(1);
+        final outcome = (result as Ok<LoginOutcome>).value;
+        expect(outcome, isA<LoginSuccess>());
+        expect(notified, isTrue);
+        verify(() => mockPrefs.saveAccessToken('access-1')).called(1);
+        verify(() => mockPrefs.saveRefreshToken('refresh-1')).called(1);
 
-      final request =
-          verify(() => mockApiClient.login(captureAny())).captured.single
-              as LoginRequest;
-      expect(request.email, 'a@b.com');
-      expect(request.password, 'pw');
-      expect(request.rememberMe, isFalse);
-    });
+        final request =
+            verify(() => mockApiClient.login(captureAny())).captured.single
+                as LoginRequest;
+        expect(request.email, 'a@b.com');
+        expect(request.password, 'pw');
+        expect(request.rememberMe, isFalse);
+      },
+    );
 
     test(
       'Ok with mfa_required returns LoginMfaRequired and saves no tokens',
@@ -255,10 +257,7 @@ void main() {
         var notified = false;
         repository.addListener(() => notified = true);
 
-        final result = await repository.login(
-          email: 'a@b.com',
-          password: 'pw',
-        );
+        final result = await repository.login(email: 'a@b.com', password: 'pw');
 
         final outcome = (result as Ok<LoginOutcome>).value;
         expect(outcome, isA<LoginMfaRequired>());
@@ -319,11 +318,9 @@ void main() {
       expect(notified, isTrue);
       verify(() => mockPrefs.saveAccessToken('access-2')).called(1);
       verify(() => mockPrefs.saveRefreshToken('refresh-2')).called(1);
-      final captured =
-          verify(
-                () => mockApiClient.verifyMfa(captureAny(), captureAny()),
-              ).captured
-              .cast<String>();
+      final captured = verify(
+        () => mockApiClient.verifyMfa(captureAny(), captureAny()),
+      ).captured.cast<String>();
       expect(captured, ['challenge-token', '123456']);
     });
 
@@ -341,6 +338,48 @@ void main() {
       expect((result as Error<void>).error, exception);
       verifyNever(() => mockPrefs.saveAccessToken(any()));
       verifyNever(() => mockPrefs.saveRefreshToken(any()));
+    });
+  });
+
+  group('requestMfaReset', () {
+    test('maps fields and returns Ok(null)', () async {
+      when(
+        () => mockApiClient.requestMfaReset(any()),
+      ).thenAnswer((_) async => const Result.ok(null));
+
+      final result = await repository.requestMfaReset(
+        email: 'a@b.com',
+        password: 'S3cret!',
+        backupCode: 'ABCD1234',
+        mfaResetUrl: 'https://app/reset-mfa',
+      );
+
+      expect(result, isA<Ok<void>>());
+      final request =
+          verify(
+                () => mockApiClient.requestMfaReset(captureAny()),
+              ).captured.single
+              as MfaResetRequest;
+      expect(request.email, 'a@b.com');
+      expect(request.password, 'S3cret!');
+      expect(request.backupCode, 'ABCD1234');
+      expect(request.mfaResetUrl, 'https://app/reset-mfa');
+    });
+
+    test('Error result passes through', () async {
+      final exception = Exception('mfa reset request failed');
+      when(
+        () => mockApiClient.requestMfaReset(any()),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      final result = await repository.requestMfaReset(
+        email: 'a@b.com',
+        password: 'S3cret!',
+        backupCode: 'ABCD1234',
+        mfaResetUrl: 'https://app/reset-mfa',
+      );
+
+      expect((result as Error<void>).error, exception);
     });
   });
 

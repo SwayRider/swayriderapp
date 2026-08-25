@@ -159,10 +159,7 @@ class _MfaSetupScreenState extends State<MfaSetupScreen> {
           ),
         ),
         const SizedBox(height: Dimens.paddingVertical / 2),
-        PrimaryButton(
-          label: localization.copyKey,
-          onPressed: _copyKey,
-        ),
+        PrimaryButton(label: localization.copyKey, onPressed: _copyKey),
         const SizedBox(height: Dimens.paddingVertical),
         Center(
           child: ClipRRect(

@@ -87,6 +87,17 @@ abstract final class AppConfig {
     defaultValue: 'https://api.swayrider-dev.hevanto-it.com/web/reset-password',
   );
 
+  /// URL the AuthService should redirect users to after they confirm a new
+  /// authenticator via the MFA-reset link sent to their email.
+  ///
+  /// Empty by default — the AuthService falls back to its own default
+  /// reset-mfa landing page. Override with
+  /// `--dart-define=MFA_RESET_REDIRECT_URL=...` at build/run time.
+  static const mfaResetRedirectUrl = String.fromEnvironment(
+    'MFA_RESET_REDIRECT_URL',
+    defaultValue: 'https://api.swayrider-dev.hevanto-it.com/web/reset-mfa',
+  );
+
   /// URL of the SwayRider homepage, shown to users who try to sign up on an
   /// invitation-only backend without an invitation.
   ///

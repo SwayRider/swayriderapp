@@ -44,11 +44,26 @@ abstract class AuthRepository extends ChangeNotifier {
   });
 
   /// Completes a pending MFA login challenge ([mfaToken] comes from a
-  /// [LoginMfaRequired] outcome) with a TOTP or backup code. Saves the
-  /// session tokens on success.
+  /// [LoginMfaRequired] outcome) with a TOTP code. Saves the session tokens
+  /// on success. There is no direct backup-code login -- a lost
+  /// authenticator is recovered via [requestMfaReset] instead.
   Future<Result<void>> verifyMfa({
     required String mfaToken,
     required String code,
+  });
+
+  /// Requests an email-verified MFA/TOTP reset for the account identified by
+  /// [email] and [password] -- the only recovery path for a lost
+  /// authenticator device. Requires one of the account's single-use backup
+  /// codes ([backupCode]) in addition to the password; the code is consumed
+  /// as soon as it's verified, before any email is sent. Since the app has
+  /// no deep-linking yet, the emailed link completes the reset on a web page
+  /// at [mfaResetUrl].
+  Future<Result<void>> requestMfaReset({
+    required String email,
+    required String password,
+    required String backupCode,
+    required String mfaResetUrl,
   });
 
   Future<Result<MfaSetupInfo>> setupMfa();
@@ -62,9 +77,7 @@ abstract class AuthRepository extends ChangeNotifier {
   Future<Result<bool>> getMfaStatus();
 
   /// Invalidates the current backup codes and issues fresh ones.
-  Future<Result<List<String>>> generateBackupCodes({
-    required String password,
-  });
+  Future<Result<List<String>>> generateBackupCodes({required String password});
 
   Future<Result<void>> refresh();
 

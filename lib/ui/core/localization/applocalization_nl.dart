@@ -33,6 +33,7 @@ class AppLocalizationNl extends AppLocalization {
 
     'dashboard': 'Dashboard',
     'profile': 'Profiel',
+    'account': 'Account',
     'logout': 'Uitloggen',
     'comingSoon': 'Binnenkort beschikbaar',
     'search': 'Zoeken',
@@ -74,6 +75,9 @@ class AppLocalizationNl extends AppLocalization {
     'twoFactorAuthentication': 'Tweestapsverificatie',
     'mfaEnabled': 'Tweestapsverificatie: Aan',
     'mfaDisabled': 'Tweestapsverificatie: Uit',
+    'mfaStatusLoadFailed':
+        'Status tweestapsverificatie kon niet worden geladen.',
+    'retry': 'Opnieuw proberen',
     'enableTwoFactor': '2FA inschakelen',
     'disableTwoFactor': '2FA uitschakelen',
 
@@ -90,7 +94,8 @@ class AppLocalizationNl extends AppLocalization {
     'mfaSecretKey': 'Geheime sleutel',
     'copyKey': 'Sleutel kopiëren',
     'keyCopied': 'Sleutel gekopieerd naar klembord',
-    'mfaQrHint': 'Scan met een tweede apparaat, of voer de sleutel handmatig in',
+    'mfaQrHint':
+        'Scan met een tweede apparaat, of voer de sleutel handmatig in',
     'mfaAddedKey': 'Ik heb de sleutel toegevoegd',
     'mfaCodeLabel': 'Verificatiecode',
     'verify': 'Verifiëren',
@@ -105,14 +110,26 @@ class AppLocalizationNl extends AppLocalization {
     'mfaBackupCodesSaved': 'Ik heb ze bewaard',
 
     'mfaVerifyTitle': 'Verifieer dat jij het bent',
-    'mfaUseBackupCode': 'Gebruik een backupcode',
-    'mfaUseVerificationCode': 'Gebruik een verificatiecode',
 
     'mfaDisablePasswordPrompt':
         'Voer je wachtwoord in om tweestapsverificatie uit te schakelen',
     'mfaDisableSuccess': 'Tweestapsverificatie uitgeschakeld',
     'mfaDisableFailed': 'Tweestapsverificatie uitschakelen mislukt',
     'mfaEnableSuccess': 'Tweestapsverificatie ingeschakeld',
+
+    'mfaLostAccess': 'Geen toegang meer tot je authenticator?',
+
+    'mfaResetRequestTitle': 'Authenticator Resetten',
+    'mfaResetRequestIntro':
+        'Je authenticator kwijt betekent opnieuw beginnen: voer je '
+        'e-mailadres, wachtwoord en een van je backupcodes in, en we sturen '
+        'je een link om een nieuwe authenticator in te stellen.',
+    'mfaResetRequestBackupCodeLabel': 'Backupcode',
+    'mfaResetRequestSubmit': 'Resetlink Versturen',
+    'mfaResetRequestFailed': 'Versturen van de resetlink mislukt',
+    'mfaResetRequestTryAgain': 'Opnieuw Proberen',
+    'mfaResetEmailSentTo':
+        'Een e-mail om je authenticator te resetten is verstuurd naar {email}',
   };
 
   @override

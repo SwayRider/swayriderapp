@@ -990,7 +990,11 @@ void main() {
       });
 
       test('sends POST /mfa/setup with the Authorization header', () async {
-        final client = okClient({'secret': 's', 'otpauth_url': 'u', 'qr_png_base64': 'q'});
+        final client = okClient({
+          'secret': 's',
+          'otpauth_url': 'u',
+          'qr_png_base64': 'q',
+        });
         final api = AuthApiClient(clientFactory: () => client);
         api.authHeaderProvider = () => 'Bearer test-token';
 
@@ -1029,7 +1033,9 @@ void main() {
 
     group('enableMfa', () {
       test('200 returns Ok(EnableMFAResponse) with mapped fields', () async {
-        final client = okClient({'backup_codes': ['ABCD-EFGH', 'JKLM-NOPQ']});
+        final client = okClient({
+          'backup_codes': ['ABCD-EFGH', 'JKLM-NOPQ'],
+        });
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.enableMfa('123456');
@@ -1038,20 +1044,22 @@ void main() {
         expect(value.backupCodes, ['ABCD-EFGH', 'JKLM-NOPQ']);
       });
 
-      test('sends POST /mfa/enable with code and the Authorization header',
-          () async {
-        final client = okClient({'backup_codes': <String>[]});
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'sends POST /mfa/enable with code and the Authorization header',
+        () async {
+          final client = okClient({'backup_codes': <String>[]});
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.enableMfa('123456');
+          await api.enableMfa('123456');
 
-        final sent = client.lastRequest!;
-        expect(sent.method, 'POST');
-        expect(sent.uri.path, '/mfa/enable');
-        expect(sent.bodyJson, {'code': '123456'});
-        expect(sent.headers.value('Authorization'), 'Bearer test-token');
-      });
+          final sent = client.lastRequest!;
+          expect(sent.method, 'POST');
+          expect(sent.uri.path, '/mfa/enable');
+          expect(sent.bodyJson, {'code': '123456'});
+          expect(sent.headers.value('Authorization'), 'Bearer test-token');
+        },
+      );
 
       test('non-200 returns Result.error(HttpException)', () async {
         final client = errorClient();
@@ -1088,20 +1096,22 @@ void main() {
         expect(result, isA<Ok<void>>());
       });
 
-      test('sends POST /mfa/disable with password and the Authorization header',
-          () async {
-        final client = FakeHttpClient(FakeHttpClientResponse(204));
-        final api = AuthApiClient(clientFactory: () => client);
-        api.authHeaderProvider = () => 'Bearer test-token';
+      test(
+        'sends POST /mfa/disable with password and the Authorization header',
+        () async {
+          final client = FakeHttpClient(FakeHttpClientResponse(204));
+          final api = AuthApiClient(clientFactory: () => client);
+          api.authHeaderProvider = () => 'Bearer test-token';
 
-        await api.disableMfa('pw');
+          await api.disableMfa('pw');
 
-        final sent = client.lastRequest!;
-        expect(sent.method, 'POST');
-        expect(sent.uri.path, '/mfa/disable');
-        expect(sent.bodyJson, {'password': 'pw'});
-        expect(sent.headers.value('Authorization'), 'Bearer test-token');
-      });
+          final sent = client.lastRequest!;
+          expect(sent.method, 'POST');
+          expect(sent.uri.path, '/mfa/disable');
+          expect(sent.bodyJson, {'password': 'pw'});
+          expect(sent.headers.value('Authorization'), 'Bearer test-token');
+        },
+      );
 
       test('non-204 returns Result.error(HttpException)', () async {
         final client = errorClient();
@@ -1121,10 +1131,7 @@ void main() {
 
         final result = await api.disableMfa('pw');
 
-        expect(
-          (result as Error<void>).error,
-          isA<UnauthorizedException>(),
-        );
+        expect((result as Error<void>).error, isA<UnauthorizedException>());
       });
     });
 
@@ -1238,9 +1245,67 @@ void main() {
       });
     });
 
+    group('requestMfaReset', () {
+      const request = MfaResetRequest(
+        email: 'a@b.com',
+        password: 'S3cret!',
+        backupCode: 'ABCD1234',
+        mfaResetUrl: 'https://app/reset-mfa',
+      );
+
+      test('200 returns Ok(null)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(200));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.requestMfaReset(request);
+
+        expect(result, isA<Ok<void>>());
+      });
+
+      test('204 returns Ok(null)', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(204));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.requestMfaReset(request);
+
+        expect(result, isA<Ok<void>>());
+      });
+
+      test('sends POST /mfa/reset/request with mapped body', () async {
+        final client = FakeHttpClient(FakeHttpClientResponse(200));
+        final api = AuthApiClient(clientFactory: () => client);
+
+        await api.requestMfaReset(request);
+
+        final sent = client.lastRequest!;
+        expect(sent.method, 'POST');
+        expect(sent.uri.path, '/mfa/reset/request');
+        expect(sent.bodyJson, {
+          'email': 'a@b.com',
+          'password': 'S3cret!',
+          'backup_code': 'ABCD1234',
+          'mfa_reset_url': 'https://app/reset-mfa',
+        });
+      });
+
+      test('non-200 returns Result.error(HttpException)', () async {
+        final client = errorClient();
+        final api = AuthApiClient(clientFactory: () => client);
+
+        final result = await api.requestMfaReset(request);
+
+        expect(
+          (result as Error<void>).error.toString(),
+          contains('MFA reset request error'),
+        );
+      });
+    });
+
     group('generateBackupCodes', () {
       test('200 returns Ok(EnableMFAResponse) with mapped fields', () async {
-        final client = okClient({'backup_codes': ['NEW1-CODE', 'NEW2-CODE']});
+        final client = okClient({
+          'backup_codes': ['NEW1-CODE', 'NEW2-CODE'],
+        });
         final api = AuthApiClient(clientFactory: () => client);
 
         final result = await api.generateBackupCodes('pw');

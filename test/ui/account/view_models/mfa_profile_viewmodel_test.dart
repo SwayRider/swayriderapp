@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:swayriderapp/ui/profile/view_models/mfa_profile_viewmodel.dart';
+import 'package:swayriderapp/ui/account/view_models/mfa_profile_viewmodel.dart';
 import 'package:swayriderapp/utils/result.dart';
 
 import '../../../helpers/mocks.dart';
@@ -56,6 +56,28 @@ void main() {
       expect(viewModel.error, isTrue);
       expect((viewModel.load.result as Error).error, exception);
       expect(viewModel.enabled, isNull);
+    });
+  });
+
+  group('confirmEnabled', () {
+    test('sets enabled to true without calling the repository', () {
+      viewModel.confirmEnabled();
+
+      expect(viewModel.enabled, isTrue);
+      verifyNever(() => mockAuthRepository.getMfaStatus());
+    });
+
+    test('a subsequent failed load does not revert enabled', () async {
+      viewModel.confirmEnabled();
+      final exception = Exception('status failed');
+      when(
+        () => mockAuthRepository.getMfaStatus(),
+      ).thenAnswer((_) async => Result.error(exception));
+
+      await viewModel.load.execute();
+
+      expect(viewModel.enabled, isTrue);
+      expect(viewModel.error, isTrue);
     });
   });
 

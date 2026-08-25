@@ -417,6 +417,25 @@ class AuthApiClient {
     }
   }
 
+  Future<Result<void>> requestMfaReset(MfaResetRequest req) async {
+    final client = _newClient();
+    try {
+      final request = await _post(client, '/mfa/reset/request');
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode(req));
+      final response = await _close(request);
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return const Result.ok(null);
+      } else {
+        return const Result.error(HttpException("MFA reset request error"));
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
   Future<Result<VerifyMFAResponse>> verifyMfa(
     String mfaToken,
     String code,
@@ -440,9 +459,7 @@ class AuthApiClient {
     }
   }
 
-  Future<Result<EnableMFAResponse>> generateBackupCodes(
-    String password,
-  ) async {
+  Future<Result<EnableMFAResponse>> generateBackupCodes(String password) async {
     final client = _newClient();
     try {
       final request = await _post(client, '/mfa/backup-codes');

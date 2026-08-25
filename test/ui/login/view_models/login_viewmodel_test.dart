@@ -60,25 +60,27 @@ void main() {
     expect(viewModel.mfaToken, isNull);
   });
 
-  test('Ok(LoginMfaRequired) exposes the token without marking an error',
-      () async {
-    when(
-      () => mockAuthRepository.login(
-        email: any(named: 'email'),
-        password: any(named: 'password'),
-      ),
-    ).thenAnswer(
-      (_) async => const Result.ok(LoginMfaRequired('challenge-token-1')),
-    );
+  test(
+    'Ok(LoginMfaRequired) exposes the token without marking an error',
+    () async {
+      when(
+        () => mockAuthRepository.login(
+          email: any(named: 'email'),
+          password: any(named: 'password'),
+        ),
+      ).thenAnswer(
+        (_) async => const Result.ok(LoginMfaRequired('challenge-token-1')),
+      );
 
-    await viewModel.login.execute(('a@b.com', 'pw'));
+      await viewModel.login.execute(('a@b.com', 'pw'));
 
-    expect(viewModel.login.completed, isTrue);
-    expect(viewModel.login.error, isFalse);
-    expect(viewModel.loginOutcome, isA<LoginMfaRequired>());
-    expect(viewModel.mfaRequired, isTrue);
-    expect(viewModel.mfaToken, 'challenge-token-1');
-  });
+      expect(viewModel.login.completed, isTrue);
+      expect(viewModel.login.error, isFalse);
+      expect(viewModel.loginOutcome, isA<LoginMfaRequired>());
+      expect(viewModel.mfaRequired, isTrue);
+      expect(viewModel.mfaToken, 'challenge-token-1');
+    },
+  );
 
   test('Error(e) marks the command as error and preserves the error', () async {
     final exception = Exception('login failed');
@@ -137,24 +139,26 @@ void main() {
   });
 
   group('verifyMfa', () {
-    test('execute calls AuthRepository.verifyMfa with the token and code',
-        () async {
-      when(
-        () => mockAuthRepository.verifyMfa(
-          mfaToken: any(named: 'mfaToken'),
-          code: any(named: 'code'),
-        ),
-      ).thenAnswer((_) async => const Result.ok(null));
+    test(
+      'execute calls AuthRepository.verifyMfa with the token and code',
+      () async {
+        when(
+          () => mockAuthRepository.verifyMfa(
+            mfaToken: any(named: 'mfaToken'),
+            code: any(named: 'code'),
+          ),
+        ).thenAnswer((_) async => const Result.ok(null));
 
-      await viewModel.verifyMfa.execute(('challenge-token-1', '123456'));
+        await viewModel.verifyMfa.execute(('challenge-token-1', '123456'));
 
-      verify(
-        () => mockAuthRepository.verifyMfa(
-          mfaToken: 'challenge-token-1',
-          code: '123456',
-        ),
-      ).called(1);
-    });
+        verify(
+          () => mockAuthRepository.verifyMfa(
+            mfaToken: 'challenge-token-1',
+            code: '123456',
+          ),
+        ).called(1);
+      },
+    );
 
     test('Ok result marks the command as completed', () async {
       when(

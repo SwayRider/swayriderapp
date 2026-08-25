@@ -29,6 +29,13 @@ class MfaProfileViewModel extends ChangeNotifier {
   bool get loading => load.running;
   bool get error => load.error;
 
+  /// Marks MFA enabled immediately; call once setup itself already confirmed
+  /// success server-side, so a later [load] refetch failure can't hide it.
+  void confirmEnabled() {
+    _enabled = true;
+    notifyListeners();
+  }
+
   Future<Result<void>> _load() async {
     final result = await _authRepository.getMfaStatus();
     switch (result) {

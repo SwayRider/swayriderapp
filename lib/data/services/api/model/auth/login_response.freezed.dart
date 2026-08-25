@@ -206,7 +206,7 @@ return $default(_that.accessToken,_that.refreshToken,_that.mfaRequired,_that.mfa
 @JsonSerializable()
 
 class _LoginResponse implements LoginResponse {
-  const _LoginResponse({@JsonKey(name: 'access_token') required this.accessToken, @JsonKey(name: 'refresh_token') required this.refreshToken, @JsonKey(name: 'mfa_required') this.mfaRequired = false, @JsonKey(name: 'mfa_token') this.mfaToken});
+  const _LoginResponse({@JsonKey(name: 'access_token') this.accessToken = '', @JsonKey(name: 'refresh_token') this.refreshToken = '', @JsonKey(name: 'mfa_required') this.mfaRequired = false, @JsonKey(name: 'mfa_token') this.mfaToken});
   factory _LoginResponse.fromJson(Map<String, dynamic> json) => _$LoginResponseFromJson(json);
 
 @override@JsonKey(name: 'access_token') final  String accessToken;

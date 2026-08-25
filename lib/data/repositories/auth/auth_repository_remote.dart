@@ -102,6 +102,28 @@ class AuthRepositoryRemote extends AuthRepository {
   }
 
   @override
+  Future<Result<void>> requestMfaReset({
+    required String email,
+    required String password,
+    required String backupCode,
+    required String mfaResetUrl,
+  }) async {
+    _log.fine('Requesting MFA reset for $email');
+    final result = await _authApiClient.requestMfaReset(
+      MfaResetRequest(
+        email: email,
+        password: password,
+        backupCode: backupCode,
+        mfaResetUrl: mfaResetUrl,
+      ),
+    );
+    if (result is Error<void>) {
+      _log.warning('MFA reset request failed! ${result.error}');
+    }
+    return result;
+  }
+
+  @override
   Future<Result<MfaSetupInfo>> setupMfa() => withAuthRetry(_setupMfaOnce);
 
   Future<Result<MfaSetupInfo>> _setupMfaOnce() async {

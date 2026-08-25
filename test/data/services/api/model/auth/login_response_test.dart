@@ -53,11 +53,17 @@ void main() {
       expect(response.toJson()['mfa_token'], 'challenge-token-789');
     });
 
-    test('fromJson throws when a required key is missing', () {
-      expect(
-        () => LoginResponse.fromJson({'access_token': 'access-123'}),
-        throwsA(isA<TypeError>()),
-      );
+    test('fromJson defaults access/refresh tokens when omitted, as sent for '
+        'an MFA challenge response', () {
+      final response = LoginResponse.fromJson({
+        'mfa_required': true,
+        'mfa_token': 'challenge-token-789',
+      });
+
+      expect(response.accessToken, '');
+      expect(response.refreshToken, '');
+      expect(response.mfaRequired, isTrue);
+      expect(response.mfaToken, 'challenge-token-789');
     });
   });
 }
