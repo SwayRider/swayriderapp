@@ -33,6 +33,7 @@ class AppLocalizationEn extends AppLocalization {
 
     'dashboard': 'Dashboard',
     'profile': 'Profile',
+    'account': 'Account',
     'logout': 'Logout',
     'comingSoon': 'Coming soon',
     'search': 'Search',
@@ -69,6 +70,62 @@ class AppLocalizationEn extends AppLocalization {
 
     'passwordChanged': 'Password Changed',
     'passwordChangedMessage': 'Your password has been successfully changed.',
+
+    'twoFactorAuthentication': 'Two-Factor Authentication',
+    'mfaEnabled': 'Two-factor authentication: On',
+    'mfaDisabled': 'Two-factor authentication: Off',
+    'mfaStatusLoadFailed': "Couldn't load two-factor authentication status.",
+    'retry': 'Retry',
+    'enableTwoFactor': 'Enable 2FA',
+    'disableTwoFactor': 'Disable 2FA',
+
+    'mfaSetupTitle': 'Set Up Two-Factor Authentication',
+    'mfaSetupFailed': 'Failed to start setup',
+    'mfaSetupIntro':
+        'Two-factor authentication adds a second step to logging in: '
+        'after your password, you enter a code from an authenticator app.\n\n'
+        'A third-party authenticator app (Google Authenticator, Authy, '
+        '1Password, …) is required. You will be shown a manual key to enter '
+        'into the app — a QR code is also shown for enrolling on a second '
+        'device.',
+    'startSetup': 'Start Setup',
+    'mfaSecretKey': 'Secret Key',
+    'copyKey': 'Copy Key',
+    'keyCopied': 'Key copied to clipboard',
+    'mfaQrHint': 'Scan with a second device, or enter the key manually',
+    'mfaAddedKey': "I've Added the Key",
+    'mfaCodeLabel': 'Verification Code',
+    'verify': 'Verify',
+    'mfaInvalidCode': 'Invalid code. Please try again.',
+    'mfaBackupCodesTitle': 'Backup Codes',
+    'mfaBackupCodesIntro':
+        'If you ever lose access to your authenticator app, use one of '
+        'these one-time backup codes to log in.',
+    'mfaBackupCodesShownOnce':
+        'These codes are shown only once. Store them somewhere safe.',
+    'mfaBackupCodesSaved': "I've Saved Them",
+
+    'mfaVerifyTitle': "Verify It's You",
+
+    'mfaDisablePasswordPrompt':
+        'Enter your password to disable two-factor authentication',
+    'mfaDisableSuccess': 'Two-factor authentication disabled',
+    'mfaDisableFailed': 'Failed to disable two-factor authentication',
+    'mfaEnableSuccess': 'Two-factor authentication enabled',
+
+    'mfaLostAccess': 'Lost access to your authenticator?',
+
+    'mfaResetRequestTitle': 'Reset Authenticator',
+    'mfaResetRequestIntro':
+        "Losing your authenticator means starting over: enter your email, "
+        "password, and one of your backup codes, and we'll send you a link "
+        "to set up a new authenticator.",
+    'mfaResetRequestBackupCodeLabel': 'Backup Code',
+    'mfaResetRequestSubmit': 'Send Reset Link',
+    'mfaResetRequestFailed': 'Failed to send the reset link',
+    'mfaResetRequestTryAgain': 'Try Again',
+    'mfaResetEmailSentTo':
+        'An authenticator reset email has been sent to {email}',
   };
 
   @override

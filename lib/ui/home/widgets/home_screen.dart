@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../data/services/api/model/search/search_result_item.dart';
-import '../../../routing/routes.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
 import '../../core/themes/dimens.dart';
 import '../../core/ui/app_text_field.dart';
 import '../../core/ui/branded_app_bar.dart';
 import '../../core/ui/circle_icon_button.dart';
+import '../../core/ui/profile_menu_button.dart';
 import '../../core/ui/vehicle_type_pill.dart';
 import '../view_models/home_viewmodel.dart';
-
-enum _ProfileMenuAction { profile, logout }
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.viewModel});
@@ -83,51 +80,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       suffixIcon: const Icon(Icons.search),
                     ),
                   ),
-                  PopupMenuButton<_ProfileMenuAction>(
-                    icon: const Icon(
-                      Icons.account_circle,
-                      color: AppColors.grey3,
-                    ),
-                    color: AppColors.black,
-                    onSelected: (action) {
-                      switch (action) {
-                        case _ProfileMenuAction.profile:
-                          context.push(Routes.profile);
-                        case _ProfileMenuAction.logout:
-                          widget.viewModel.logout.execute();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(
-                        value: _ProfileMenuAction.profile,
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.person_outline,
-                              color: AppColors.white,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              localization.profile,
-                              style: const TextStyle(color: AppColors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: _ProfileMenuAction.logout,
-                        child: Row(
-                          children: [
-                            const Icon(Icons.logout, color: AppColors.white),
-                            const SizedBox(width: 12),
-                            Text(
-                              localization.logout,
-                              style: const TextStyle(color: AppColors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  ProfileMenuButton(
+                    onLogout: () => widget.viewModel.logout.execute(),
                   ),
                 ],
               ),

@@ -8,9 +8,13 @@ import 'package:swayriderapp/data/repositories/auth/auth_repository.dart';
 import 'package:swayriderapp/data/repositories/auth/auth_repository_remote.dart';
 import 'package:swayriderapp/data/services/api/auth_api_client.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
+import 'package:swayriderapp/data/services/api/model/auth/me_response.dart';
 import 'package:swayriderapp/routing/router.dart';
+import 'package:swayriderapp/routing/routes.dart';
 import 'package:swayriderapp/ui/core/localization/applocalization.dart';
+import 'package:swayriderapp/ui/home/widgets/home_screen.dart';
 import 'package:swayriderapp/ui/login/widgets/login_screen.dart';
+import 'package:swayriderapp/ui/mfa_reset_request/widgets/mfa_reset_request_screen.dart';
 import 'package:swayriderapp/utils/result.dart';
 
 import '../helpers/mocks.dart';
@@ -87,4 +91,63 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(LoginScreen), findsOneWidget);
   });
+
+  testWidgets(
+    'an unauthenticated user can reach /mfa-reset-request without being '
+    'bounced to /login',
+    (tester) async {
+      when(
+        () => mockPrefs.fetchAccessToken(),
+      ).thenAnswer((_) async => const Result.ok(null));
+      when(
+        () => mockPrefs.fetchRefreshToken(),
+      ).thenAnswer((_) async => const Result.ok(null));
+
+      final goRouter = router(authRepository);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AuthRepository>.value(
+          value: authRepository,
+          child: MaterialApp.router(
+            localizationsDelegates: [AppLocalizationDelegate()],
+            routerConfig: goRouter,
+          ),
+        ),
+      );
+      goRouter.go(Routes.mfaResetRequest);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MfaResetRequestScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'an authenticated, verified user can reach /mfa-reset-request without '
+    'being bounced to /home (alwaysAccessibleRoutes regression guard)',
+    (tester) async {
+      when(
+        () => mockPrefs.fetchAccessToken(),
+      ).thenAnswer((_) async => const Result.ok('valid-access-token'));
+      when(() => mockApiClient.me()).thenAnswer(
+        (_) async => Result.ok(
+          MeResponse(userId: 'u1', email: 'a@b.com', emailVerified: true),
+        ),
+      );
+
+      final goRouter = router(authRepository);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<AuthRepository>.value(
+          value: authRepository,
+          child: MaterialApp.router(
+            localizationsDelegates: [AppLocalizationDelegate()],
+            routerConfig: goRouter,
+          ),
+        ),
+      );
+      goRouter.go(Routes.mfaResetRequest);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MfaResetRequestScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsNothing);
+    },
+  );
 }

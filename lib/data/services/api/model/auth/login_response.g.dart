@@ -8,12 +8,16 @@ part of 'login_response.dart';
 
 _LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) =>
     _LoginResponse(
-      accessToken: json['access_token'] as String,
-      refreshToken: json['refresh_token'] as String,
+      accessToken: json['access_token'] as String? ?? '',
+      refreshToken: json['refresh_token'] as String? ?? '',
+      mfaRequired: json['mfa_required'] as bool? ?? false,
+      mfaToken: json['mfa_token'] as String?,
     );
 
 Map<String, dynamic> _$LoginResponseToJson(_LoginResponse instance) =>
     <String, dynamic>{
       'access_token': instance.accessToken,
       'refresh_token': instance.refreshToken,
+      'mfa_required': instance.mfaRequired,
+      'mfa_token': instance.mfaToken,
     };

@@ -33,12 +33,20 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     FocusScope.of(context).unfocus();
-    widget.viewModel.login.execute((
+    await widget.viewModel.login.execute((
       _emailController.text.trim(),
       _passwordController.text,
     ));
+    if (!mounted) return;
+    if (widget.viewModel.mfaRequired) {
+      // Second factor required — the code-entry screen (Plan 5) completes
+      // the login via LoginViewModel.verifyMfa.
+      context.push(Routes.mfaVerify, extra: widget.viewModel.mfaToken);
+    } else if (widget.viewModel.login.completed) {
+      context.go(Routes.home);
+    }
   }
 
   @override

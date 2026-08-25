@@ -12,6 +12,7 @@ class AppTextField extends StatelessWidget {
     this.onSubmitted,
     this.obscureText = false,
     this.suffixIcon,
+    this.maxLength,
   });
 
   final TextEditingController controller;
@@ -21,6 +22,7 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final bool obscureText;
   final Widget? suffixIcon;
+  final int? maxLength;
 
   @override
   Widget build(BuildContext context) {
@@ -30,11 +32,14 @@ class AppTextField extends StatelessWidget {
       textInputAction: textInputAction,
       onSubmitted: onSubmitted,
       obscureText: obscureText,
+      maxLength: maxLength,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
         fillColor: Theme.of(context).colorScheme.surface,
         suffixIcon: suffixIcon,
+        // Hide the character counter for fixed-length fields (e.g. TOTP codes).
+        counterText: maxLength == null ? null : '',
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(4),
           borderSide: const BorderSide(color: AppColors.black1),

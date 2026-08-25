@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
+import '../ui/account/widgets/account_screen.dart';
 import '../ui/change_password/view_models/change_password_viewmodel.dart';
 import '../ui/change_password/widgets/change_password_screen.dart';
 import '../ui/email_verified/widgets/email_verified_screen.dart';
@@ -10,6 +11,13 @@ import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
 import '../ui/login/view_models/login_viewmodel.dart';
 import '../ui/login/widgets/login_screen.dart';
+import '../ui/mfa_reset_confirmation/widgets/mfa_reset_confirmation_screen.dart';
+import '../ui/mfa_reset_request/view_models/mfa_reset_request_viewmodel.dart';
+import '../ui/mfa_reset_request/widgets/mfa_reset_request_screen.dart';
+import '../ui/mfa_setup/view_models/mfa_setup_viewmodel.dart';
+import '../ui/mfa_setup/widgets/mfa_setup_screen.dart';
+import '../ui/mfa_verify/view_models/mfa_verify_viewmodel.dart';
+import '../ui/mfa_verify/widgets/mfa_verify_screen.dart';
 import '../ui/new_password/view_models/new_password_viewmodel.dart';
 import '../ui/new_password/widgets/new_password_screen.dart';
 import '../ui/password_changed/widgets/password_changed_screen.dart';
@@ -39,6 +47,18 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
       builder: (context, state) {
         return LoginScreen(
           viewModel: LoginViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.mfaVerify,
+      builder: (context, state) {
+        final token = state.extra;
+        return MfaVerifyScreen(
+          viewModel: MfaVerifyViewModel(
+            authRepository: context.read(),
+            mfaToken: token is String ? token : '',
+          ),
         );
       },
     ),
@@ -106,7 +126,44 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
     ),
     GoRoute(
       path: Routes.profile,
+      // ProfileScreen owns its own MfaProfileViewModel (built once in
+      // initState) rather than receiving one from here: go_router
+      // re-invokes this builder on every navigation event (including a
+      // push/pop into MFA setup), so a view model constructed here would
+      // be silently replaced with a fresh, never-loaded instance each
+      // time, discarding any status already confirmed.
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: Routes.account,
+      // Same reasoning as Routes.profile above: AccountScreen owns its own
+      // MfaProfileViewModel so it survives go_router re-invoking this
+      // builder on push/pop into MFA setup.
+      builder: (context, state) => const AccountScreen(),
+    ),
+    GoRoute(
+      path: Routes.mfaSetup,
+      builder: (context, state) {
+        return MfaSetupScreen(
+          viewModel: MfaSetupViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.mfaResetRequest,
+      builder: (context, state) {
+        return MfaResetRequestScreen(
+          viewModel: MfaResetRequestViewModel(authRepository: context.read()),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.mfaResetConfirmation,
+      builder: (context, state) {
+        final extra = state.extra;
+        final email = extra is String ? extra : '';
+        return MfaResetConfirmationScreen(email: email);
+      },
     ),
     GoRoute(
       path: Routes.changePassword,
@@ -171,8 +228,10 @@ Future<String?> _redirect(BuildContext context, GoRouterState state) async {
   }
 
   // if the user is logged in but on a public route, send them to the
-  // home page
-  if (onPublicRoute) {
+  // home page -- except the routes that must stay reachable regardless of
+  // auth state (see Routes.alwaysAccessibleRoutes)
+  if (onPublicRoute &&
+      !Routes.alwaysAccessibleRoutes.contains(state.matchedLocation)) {
     _redirectLog.fine(
       '[DIAG] _redirect: on public route while verified, returning ${Routes.home}',
     );
