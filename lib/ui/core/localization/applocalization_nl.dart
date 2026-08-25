@@ -59,7 +59,13 @@ class AppLocalizationNl extends AppLocalization {
     'resendEmail': 'E-mail opnieuw verzenden',
     'alreadyVerified': 'Al geverifieerd?',
     'resendVerificationFailed': 'Verzenden van verificatie-e-mail mislukt',
+    'resendVerificationConnectionFailed':
+        'De server kon niet bereikt worden. Controleer je verbinding en probeer opnieuw.',
     'resendEmailIn': 'Je kan de e-mail opnieuw verzenden in {seconds}s',
+
+    'connectionIssueTitle': 'Verbindingsprobleem',
+    'connectionIssueMessage':
+        'De server kon niet bereikt worden. Controleer je verbinding en probeer opnieuw.',
 
     'resetPasswordFailed': 'Versturen van wachtwoord-reset e-mail mislukt',
     'rememberPassword': 'Wachtwoord toch nog gekend?',

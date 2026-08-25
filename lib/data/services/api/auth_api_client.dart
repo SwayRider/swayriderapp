@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,9 +6,11 @@ import 'package:logging/logging.dart';
 import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 
 import 'model/auth/auth.dart';
+import 'connection_exception.dart';
 import 'unauthorized_exception.dart';
 import '../../../utils/result.dart';
 
+export 'connection_exception.dart';
 export 'unauthorized_exception.dart';
 
 /// Thrown when [AuthApiClient.register] fails because the backend is
@@ -121,6 +124,18 @@ class AuthApiClient {
     return null;
   }
 
+  // Distinguishes "couldn't reach the server" from a response the server
+  // actually sent, so callers don't have to guess by inspecting exception
+  // types themselves.
+  Exception _classify(Exception e) {
+    if (e is SocketException ||
+        e is TimeoutException ||
+        e is HandshakeException) {
+      return ConnectionException(e);
+    }
+    return e;
+  }
+
   String _fullPath(String path) => '$_pathPrefix$path';
 
   Uri _uri(String path) =>
@@ -140,7 +155,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Login error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -172,7 +187,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Register error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -196,7 +211,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Refresh error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -215,7 +230,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Logout error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -234,7 +249,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Password reset error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -268,7 +283,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Reset password error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -287,7 +302,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Verify email error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -324,7 +339,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Change password error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -345,7 +360,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA setup error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -368,7 +383,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA enable error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -390,7 +405,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA disable error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -411,7 +426,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA status error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -430,7 +445,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA reset request error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -453,7 +468,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA verify error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -476,7 +491,7 @@ class AuthApiClient {
         return const Result.error(HttpException("MFA backup codes error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -502,7 +517,7 @@ class AuthApiClient {
         );
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -523,7 +538,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Who am I error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -544,7 +559,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Me error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }
@@ -562,7 +577,7 @@ class AuthApiClient {
         return const Result.error(HttpException("Public keys error"));
       }
     } on Exception catch (e) {
-      return Result.error(e);
+      return Result.error(_classify(e));
     } finally {
       client.close();
     }

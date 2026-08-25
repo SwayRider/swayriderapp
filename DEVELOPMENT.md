@@ -77,6 +77,40 @@ flutter run \
   --dart-define=AUTH_API_PATH_PREFIX=/api/v1/auth
 ```
 
+### Debugging against dev-mini
+
+`api.swayrider-dev.hevanto-it.com` uses split-horizon DNS: on the home
+LAN it resolves to a private IP that's directly reachable; from anywhere
+else (a public resolver, an Android emulator's own virtual network) it
+resolves to a public IP that currently **does not accept connections on
+port 443 at all** (no HAProxy/port-forward in front of dev-mini's Traefik
+is exposed publicly for this deployment). A desktop tool run on the Mac
+(e.g. Bruno) gets the private answer and works; the Android emulator /
+iOS Simulator can fail to reach the backend for this reason alone, which
+the app previously misreported as "email not verified" instead of a
+connection problem (now fixed — see `ConnectionException` in
+`lib/data/services/api/connection_exception.dart` and the
+`/connection-issue` route in `lib/routing/router.dart`).
+
+**iOS Simulator** needs no special handling — it shares the Mac's real
+network stack and resolver directly, so it already gets the same
+LAN answer as the Mac.
+
+**Android emulator** runs its own virtual network with its own DNS, so it
+does not automatically pick up the LAN answer. The workspace-root
+`.vscode/` debug configs (the canonical ones — this app's own `.vscode/`
+is deprecated, do not add configs there) have a launch configuration and
+`preLaunchTask` that boot the AVD with a `-dns-server` override pointed
+at your LAN router, so it resolves the same private IP the Mac does. See
+[`../.vscode/README.md`](../.vscode/README.md) ("Mobile app") for setup
+and the exact config name.
+
+Alternatively, for a one-off run without touching DNS at all, bypass the
+hostname entirely with `--dart-define=AUTH_API_HOST=<LAN IP>` (or the
+WireGuard address from the `testing/bruno` dev-mini environments), or fix
+the public-facing path (HAProxy/port-forward) so the public DNS answer is
+actually reachable.
+
 ---
 
 ## Static Analysis & Tests

@@ -11,10 +11,12 @@ import 'package:swayriderapp/data/services/api/auth_header_provider.dart';
 import 'package:swayriderapp/data/services/api/model/auth/me_response.dart';
 import 'package:swayriderapp/routing/router.dart';
 import 'package:swayriderapp/routing/routes.dart';
+import 'package:swayriderapp/ui/connection_issue/widgets/connection_issue_screen.dart';
 import 'package:swayriderapp/ui/core/localization/applocalization.dart';
 import 'package:swayriderapp/ui/home/widgets/home_screen.dart';
 import 'package:swayriderapp/ui/login/widgets/login_screen.dart';
 import 'package:swayriderapp/ui/mfa_reset_request/widgets/mfa_reset_request_screen.dart';
+import 'package:swayriderapp/ui/verify_email/widgets/verify_email_screen.dart';
 import 'package:swayriderapp/utils/result.dart';
 
 import '../helpers/mocks.dart';
@@ -150,4 +152,21 @@ void main() {
       expect(find.byType(HomeScreen), findsNothing);
     },
   );
+
+  testWidgets('a ConnectionException while checking isVerified shows the '
+      'connection-issue screen instead of verify-email', (tester) async {
+    when(
+      () => mockPrefs.fetchAccessToken(),
+    ).thenAnswer((_) async => const Result.ok('valid-access-token'));
+    when(() => mockApiClient.me()).thenAnswer(
+      (_) async =>
+          Result.error(ConnectionException(Exception('Connection timed out'))),
+    );
+
+    await pumpApp(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ConnectionIssueScreen), findsOneWidget);
+    expect(find.byType(VerifyEmailScreen), findsNothing);
+  });
 }

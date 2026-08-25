@@ -64,8 +64,13 @@ class AppLocalization {
   String get resendEmail => _get('resendEmail');
   String get alreadyVerified => _get('alreadyVerified');
   String get resendVerificationFailed => _get('resendVerificationFailed');
+  String get resendVerificationConnectionFailed =>
+      _get('resendVerificationConnectionFailed');
   String resendEmailIn(int seconds) =>
       _get('resendEmailIn').replaceFirst('{seconds}', '$seconds');
+
+  String get connectionIssueTitle => _get('connectionIssueTitle');
+  String get connectionIssueMessage => _get('connectionIssueMessage');
 
   String get resetPasswordFailed => _get('resetPasswordFailed');
   String get rememberPassword => _get('rememberPassword');
