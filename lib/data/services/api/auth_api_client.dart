@@ -128,7 +128,9 @@ class AuthApiClient {
   // actually sent, so callers don't have to guess by inspecting exception
   // types themselves.
   Exception _classify(Exception e) {
-    if (e is SocketException || e is TimeoutException || e is HandshakeException) {
+    if (e is SocketException ||
+        e is TimeoutException ||
+        e is HandshakeException) {
       return ConnectionException(e);
     }
     return e;

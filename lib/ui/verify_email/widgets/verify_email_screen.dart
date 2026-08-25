@@ -49,10 +49,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         listenable: viewModel.resendVerification,
         builder: (context, _) {
           final error = viewModel.resendVerification.error;
-          final isConnectionIssue = switch (viewModel.resendVerification.result) {
-            Error(error: ConnectionException()) => true,
-            _ => false,
-          };
+          final isConnectionIssue =
+              switch (viewModel.resendVerification.result) {
+                Error(error: ConnectionException()) => true,
+                _ => false,
+              };
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,

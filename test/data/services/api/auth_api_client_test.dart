@@ -1414,7 +1414,10 @@ void main() {
           const LoginRequest(email: 'a@b.com', password: 'pw'),
         );
 
-        expect((result as Error<LoginResponse>).error, isA<ConnectionException>());
+        expect(
+          (result as Error<LoginResponse>).error,
+          isA<ConnectionException>(),
+        );
       });
 
       test('HandshakeException is wrapped as ConnectionException', () async {
@@ -1427,7 +1430,10 @@ void main() {
           const LoginRequest(email: 'a@b.com', password: 'pw'),
         );
 
-        expect((result as Error<LoginResponse>).error, isA<ConnectionException>());
+        expect(
+          (result as Error<LoginResponse>).error,
+          isA<ConnectionException>(),
+        );
       });
 
       test('other exceptions are left unwrapped', () async {

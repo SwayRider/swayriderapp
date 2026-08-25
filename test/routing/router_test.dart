@@ -153,24 +153,20 @@ void main() {
     },
   );
 
-  testWidgets(
-    'a ConnectionException while checking isVerified shows the '
-    'connection-issue screen instead of verify-email',
-    (tester) async {
-      when(
-        () => mockPrefs.fetchAccessToken(),
-      ).thenAnswer((_) async => const Result.ok('valid-access-token'));
-      when(() => mockApiClient.me()).thenAnswer(
-        (_) async => Result.error(
-          ConnectionException(Exception('Connection timed out')),
-        ),
-      );
+  testWidgets('a ConnectionException while checking isVerified shows the '
+      'connection-issue screen instead of verify-email', (tester) async {
+    when(
+      () => mockPrefs.fetchAccessToken(),
+    ).thenAnswer((_) async => const Result.ok('valid-access-token'));
+    when(() => mockApiClient.me()).thenAnswer(
+      (_) async =>
+          Result.error(ConnectionException(Exception('Connection timed out'))),
+    );
 
-      await pumpApp(tester);
-      await tester.pumpAndSettle();
+    await pumpApp(tester);
+    await tester.pumpAndSettle();
 
-      expect(find.byType(ConnectionIssueScreen), findsOneWidget);
-      expect(find.byType(VerifyEmailScreen), findsNothing);
-    },
-  );
+    expect(find.byType(ConnectionIssueScreen), findsOneWidget);
+    expect(find.byType(VerifyEmailScreen), findsNothing);
+  });
 }
