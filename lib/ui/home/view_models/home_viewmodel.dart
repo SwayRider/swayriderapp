@@ -24,6 +24,15 @@ const _minSearchTextLength = 2;
 /// Delay after the last keystroke before triggering an autocomplete request.
 const _searchDebounce = Duration(milliseconds: 400);
 
+/// Arguments for [HomeViewModel.resolveHouseNumber]: the street the house
+/// number is being resolved on, the number as typed by the user, and the
+/// locale to query with.
+typedef ResolveHouseNumberArgs = ({
+  SearchResultItem street,
+  String houseNumber,
+  String language,
+});
+
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel({
     required this._authRepository,
@@ -33,6 +42,9 @@ class HomeViewModel extends ChangeNotifier {
   }) {
     logout = Command0<void>(_logout);
     loadMap = Command0<void>(_loadMap);
+    resolveHouseNumber = Command1<SearchResultItem, ResolveHouseNumberArgs>(
+      _resolveHouseNumber,
+    );
   }
 
   final AuthRepository _authRepository;
@@ -43,6 +55,7 @@ class HomeViewModel extends ChangeNotifier {
 
   late Command0 logout;
   late Command0<void> loadMap;
+  late Command1<SearchResultItem, ResolveHouseNumberArgs> resolveHouseNumber;
 
   LatLng? location;
   String? mapStyle;
@@ -119,6 +132,41 @@ class HomeViewModel extends ChangeNotifier {
     }
     isSearchLoading = false;
     notifyListeners();
+  }
+
+  /// Resolves [ResolveHouseNumberArgs.houseNumber] on
+  /// [ResolveHouseNumberArgs.street] to a concrete address. The backend picks
+  /// the numerically closest known house number on that street to the one
+  /// requested, so the result may not be an exact match.
+  Future<Result<SearchResultItem>> _resolveHouseNumber(
+    ResolveHouseNumberArgs args,
+  ) async {
+    final query = [
+      args.street.street ?? args.street.label,
+      args.houseNumber,
+      args.street.locality,
+    ].where((part) => part.trim().isNotEmpty).join(' ');
+
+    final result = await _searchRepository.autocomplete(
+      text: query,
+      focusPoint: LatLng(args.street.lat, args.street.lon),
+      language: args.language,
+      targetHousenumber: args.houseNumber,
+    );
+
+    switch (result) {
+      case Ok(:final value):
+        for (final r in value) {
+          if (r.street == args.street.street &&
+              r.locality == args.street.locality) {
+            return Result.ok(r);
+          }
+        }
+        return Result.error(Exception('No address found on this street'));
+      case Error(:final error):
+        _log.warning('House number resolution failed: $error');
+        return Result.error(error);
+    }
   }
 
   /// Clears any pending search results and cancels a pending debounce.

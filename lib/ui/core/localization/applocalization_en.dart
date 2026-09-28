@@ -132,6 +132,10 @@ class AppLocalizationEn extends AppLocalization {
     'mfaResetRequestTryAgain': 'Try Again',
     'mfaResetEmailSentTo':
         'An authenticator reset email has been sent to {email}',
+
+    'houseNumber': 'House Number',
+    'houseNumberPrompt': 'Enter your house number',
+    'houseNumberNotFound': 'No address found for this street',
   };
 
   @override

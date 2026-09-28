@@ -126,6 +126,10 @@ class AppLocalization {
   String get mfaResetRequestTryAgain => _get('mfaResetRequestTryAgain');
   String mfaResetEmailSentTo(String email) =>
       _get('mfaResetEmailSentTo').replaceFirst('{email}', email);
+
+  String get houseNumber => _get('houseNumber');
+  String get houseNumberPrompt => _get('houseNumberPrompt');
+  String get houseNumberNotFound => _get('houseNumberNotFound');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

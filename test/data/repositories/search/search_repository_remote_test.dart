@@ -27,6 +27,7 @@ void main() {
           text: any(named: 'text'),
           focusPoint: any(named: 'focusPoint'),
           language: any(named: 'language'),
+          targetHousenumber: any(named: 'targetHousenumber'),
         ),
       ).thenAnswer((_) async => const Result.error(UnauthorizedException()));
       when(
@@ -57,4 +58,46 @@ void main() {
       ).called(1);
     },
   );
+
+  test('autocomplete forwards targetHousenumber to the api client', () async {
+    final mockApiClient = MockSearchApiClient();
+    final mockAuthRepository = MockAuthRepository();
+    when(() => mockApiClient.authHeaderProvider = any()).thenReturn(() => null);
+    when(() => mockAuthRepository.authHeaderProvider).thenReturn(() => null);
+    when(
+      () => mockApiClient.autocomplete(
+        text: any(named: 'text'),
+        focusPoint: any(named: 'focusPoint'),
+        language: any(named: 'language'),
+        targetHousenumber: any(named: 'targetHousenumber'),
+      ),
+    ).thenAnswer((_) async => const Result.ok([]));
+    when(
+      () => mockAuthRepository.withAuthRetry<List<SearchResultItem>>(any()),
+    ).thenAnswer(
+      (invocation) =>
+          (invocation.positionalArguments.single
+              as Future<Result<List<SearchResultItem>>> Function())(),
+    );
+
+    final repository = SearchRepositoryRemote(
+      searchApiClient: mockApiClient,
+      authRepository: mockAuthRepository,
+    );
+
+    await repository.autocomplete(
+      text: 'Kerkstraat 15',
+      focusPoint: const LatLng(51.2194, 4.4025),
+      targetHousenumber: '15',
+    );
+
+    verify(
+      () => mockApiClient.autocomplete(
+        text: 'Kerkstraat 15',
+        focusPoint: const LatLng(51.2194, 4.4025),
+        language: 'en',
+        targetHousenumber: '15',
+      ),
+    ).called(1);
+  });
 }

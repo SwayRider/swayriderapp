@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../data/services/api/model/search/search_result_item.dart';
+import '../../../utils/result.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
 import '../../core/themes/dimens.dart';
@@ -45,10 +46,50 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _selectSuggestion(SearchResultItem item) {
-    _searchController.text = item.label;
+  void _selectStreet(SearchResultItem item) {
+    final text = [
+      item.street ?? item.label,
+      item.locality,
+    ].where((part) => part.trim().isNotEmpty).join(', ');
+    _applySelection(text);
+  }
+
+  void _selectAddress(SearchResultItem item) => _applySelection(item.label);
+
+  void _applySelection(String text) {
+    _searchController.text = text;
     widget.viewModel.clearSuggestions();
     FocusScope.of(context).unfocus();
+  }
+
+  Future<void> _onPickHouseNumber(SearchResultItem item) async {
+    final houseNumber = await showDialog<String>(
+      context: context,
+      builder: (context) => _HouseNumberDialog(street: item),
+    );
+    if (houseNumber == null || houseNumber.trim().isEmpty || !mounted) {
+      return;
+    }
+
+    await widget.viewModel.resolveHouseNumber.execute((
+      street: item,
+      houseNumber: houseNumber.trim(),
+      language: Localizations.localeOf(context).languageCode,
+    ));
+    if (!mounted) return;
+
+    final result = widget.viewModel.resolveHouseNumber.result;
+    if (result is Ok<SearchResultItem>) {
+      _selectAddress(result.value);
+    } else {
+      // Best-effort fallback: nothing usable came back for this street.
+      _selectStreet(item);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.of(context).houseNumberNotFound),
+        ),
+      );
+    }
   }
 
   @override
@@ -153,7 +194,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             top: 0,
                             child: _SuggestionsList(
                               suggestions: suggestions,
-                              onSelected: _selectSuggestion,
+                              onSelected: _selectStreet,
+                              onPickHouseNumber: _onPickHouseNumber,
                             ),
                           );
                         },
@@ -171,10 +213,15 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _SuggestionsList extends StatelessWidget {
-  const _SuggestionsList({required this.suggestions, required this.onSelected});
+  const _SuggestionsList({
+    required this.suggestions,
+    required this.onSelected,
+    required this.onPickHouseNumber,
+  });
 
   final List<SearchResultItem> suggestions;
   final ValueChanged<SearchResultItem> onSelected;
+  final ValueChanged<SearchResultItem> onPickHouseNumber;
 
   @override
   Widget build(BuildContext context) {
@@ -192,6 +239,9 @@ class _SuggestionsList extends StatelessWidget {
               item.locality,
               item.country,
             ].where((part) => part.isNotEmpty).join(', ');
+            final hasStreet =
+                item.layer == 'address' &&
+                (item.street?.trim().isNotEmpty ?? false);
             return ListTile(
               leading: const Icon(Icons.location_on, color: AppColors.grey3),
               title: Text(
@@ -204,11 +254,66 @@ class _SuggestionsList extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(color: AppColors.grey3),
                     ),
+              trailing: hasStreet
+                  ? IconButton(
+                      icon: const Icon(
+                        Icons.pin_drop_outlined,
+                        color: AppColors.grey3,
+                      ),
+                      tooltip: AppLocalization.of(context).houseNumber,
+                      onPressed: () => onPickHouseNumber(item),
+                    )
+                  : null,
               onTap: () => onSelected(item),
             );
           },
         ),
       ),
+    );
+  }
+}
+
+/// Collects a house number for [street]; pops with the entered text, or
+/// null when dismissed.
+class _HouseNumberDialog extends StatefulWidget {
+  const _HouseNumberDialog({required this.street});
+
+  final SearchResultItem street;
+
+  @override
+  State<_HouseNumberDialog> createState() => _HouseNumberDialogState();
+}
+
+class _HouseNumberDialogState extends State<_HouseNumberDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final localization = AppLocalization.of(context);
+
+    return AlertDialog(
+      title: Text(widget.street.street ?? widget.street.label),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(labelText: localization.houseNumberPrompt),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(localization.close),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: Text(localization.confirm),
+        ),
+      ],
     );
   }
 }
