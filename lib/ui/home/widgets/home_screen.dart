@@ -47,9 +47,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _selectStreet(SearchResultItem item) {
+    // Belgian municipality names often land in `localAdmin` rather than
+    // `locality` (Pelias reserves `locality` for smaller named places), so
+    // fall back to it to avoid dropping the city entirely.
+    final city = item.locality.trim().isNotEmpty
+        ? item.locality
+        : (item.localAdmin ?? '');
     final text = [
       item.street ?? item.label,
-      item.locality,
+      city,
     ].where((part) => part.trim().isNotEmpty).join(', ');
     _applySelection(text);
   }
