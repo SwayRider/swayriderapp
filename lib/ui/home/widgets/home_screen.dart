@@ -240,10 +240,12 @@ class _SuggestionsList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.black,
-      child: ListView.builder(
+      child: ListView.separated(
         padding: EdgeInsets.zero,
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         itemCount: suggestions.length,
+        separatorBuilder: (context, index) =>
+            const Divider(height: 1, thickness: 1, color: AppColors.darkGrey),
         itemBuilder: (context, index) {
           final item = suggestions[index];
           final subtitleText = [
@@ -276,7 +278,7 @@ class _SuggestionsList extends StatelessWidget {
                         ),
                       if (hasStreetText)
                         Padding(
-                          padding: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.only(top: 12),
                           child: OutlinedButton(
                             onPressed: () => onPickHouseNumber(item),
                             style: OutlinedButton.styleFrom(
