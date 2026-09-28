@@ -3,11 +3,14 @@ import 'package:provider/single_child_widget.dart';
 
 import '../data/repositories/auth/auth_repository.dart';
 import '../data/repositories/auth/auth_repository_remote.dart';
+import '../data/repositories/router/router_repository.dart';
+import '../data/repositories/router/router_repository_remote.dart';
 import '../data/repositories/search/search_repository.dart';
 import '../data/repositories/search/search_repository_remote.dart';
 import '../data/repositories/tiles/tiles_repository.dart';
 import '../data/repositories/tiles/tiles_repository_remote.dart';
 import '../data/services/api/auth_api_client.dart';
+import '../data/services/api/router_api_client.dart';
 import '../data/services/api/search_api_client.dart';
 import '../data/services/api/tiles_api_client.dart';
 import '../data/services/location_service.dart';
@@ -63,6 +66,20 @@ List<SingleChildWidget> get providerDev {
         authRepository: context.read(),
       ),
     ),
+    Provider(
+      create: (context) => RouterApiClient(
+        scheme: AppConfig.routerApiScheme,
+        host: AppConfig.routerApiHost,
+        port: AppConfig.routerApiPort,
+        pathPrefix: AppConfig.routerApiPathPrefix,
+      ),
+    ),
+    Provider<RouterRepository>(
+      create: (context) => RouterRepositoryRemote(
+        routerApiClient: context.read(),
+        authRepository: context.read(),
+      ),
+    ),
     Provider<TilesRepository>(
       create: (context) => TilesRepositoryRemote(
         tilesApiClient: context.read(),
@@ -83,6 +100,7 @@ List<SingleChildWidget> get providerDev {
         tilesRepository: context.read(),
         locationService: context.read(),
         searchRepository: context.read(),
+        routerRepository: context.read(),
       ),
     ),
     ..._sharedProviders,

@@ -136,6 +136,25 @@ class AppLocalizationEn extends AppLocalization {
     'houseNumber': '+ Add house number',
     'houseNumberPrompt': 'Enter your house number',
     'houseNumberNotFound': 'No address found for this street',
+
+    'setAsDestination': 'Set as destination',
+    'setAsStartPoint': 'Set as start point',
+    'setAsWaypoint': 'Set as waypoint',
+    'routePointsTitle': 'Route points',
+    'noRoutePointsYet': 'No route points yet',
+    'currentLocation': 'Current location',
+    'routeRoleStart': 'Start',
+    'routeRoleWaypoint': 'Waypoint',
+    'routeRoleDestination': 'Destination',
+    'routePointsBack': 'Back',
+    'routePointsSave': 'Save route',
+    'routePointsClearAll': 'Clear route',
+    'deleteWaypoint': 'Delete waypoint',
+    'roundTrip': 'Round trip',
+    'currentPosition': 'Current position',
+    'routeStart': 'Route start',
+    'routeEnd': 'Route end',
+    'completeRoute': 'Complete route',
   };
 
   @override
