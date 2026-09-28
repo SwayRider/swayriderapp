@@ -133,7 +133,7 @@ class AppLocalizationEn extends AppLocalization {
     'mfaResetEmailSentTo':
         'An authenticator reset email has been sent to {email}',
 
-    'houseNumber': 'House Number',
+    'houseNumber': '+ Add house number',
     'houseNumberPrompt': 'Enter your house number',
     'houseNumberNotFound': 'No address found for this street',
   };

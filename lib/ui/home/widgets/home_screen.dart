@@ -13,6 +13,23 @@ import '../../core/ui/profile_menu_button.dart';
 import '../../core/ui/vehicle_type_pill.dart';
 import '../view_models/home_viewmodel.dart';
 
+/// Street + city text for an address result, with no house number — used
+/// both for the street-only search box text and an address row's title, so
+/// what's shown always matches what tapping the row searches for.
+///
+/// Belgian municipality names often land in `localAdmin` rather than
+/// `locality` (Pelias reserves `locality` for smaller named places), so fall
+/// back to it to avoid dropping the city entirely.
+String _streetLabel(SearchResultItem item) {
+  final city = item.locality.trim().isNotEmpty
+      ? item.locality
+      : (item.localAdmin ?? '');
+  return [
+    item.street ?? item.label,
+    city,
+  ].where((part) => part.trim().isNotEmpty).join(', ');
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key, required this.viewModel});
 
@@ -46,19 +63,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _selectStreet(SearchResultItem item) {
-    // Belgian municipality names often land in `localAdmin` rather than
-    // `locality` (Pelias reserves `locality` for smaller named places), so
-    // fall back to it to avoid dropping the city entirely.
-    final city = item.locality.trim().isNotEmpty
-        ? item.locality
-        : (item.localAdmin ?? '');
-    final text = [
-      item.street ?? item.label,
-      city,
-    ].where((part) => part.trim().isNotEmpty).join(', ');
-    _applySelection(text);
-  }
+  void _selectStreet(SearchResultItem item) =>
+      _applySelection(_streetLabel(item));
 
   void _selectAddress(SearchResultItem item) => _applySelection(item.label);
 
@@ -241,33 +247,49 @@ class _SuggestionsList extends StatelessWidget {
           itemCount: suggestions.length,
           itemBuilder: (context, index) {
             final item = suggestions[index];
-            final subtitle = [
+            final subtitleText = [
               item.locality,
               item.country,
             ].where((part) => part.isNotEmpty).join(', ');
-            final hasStreet =
-                item.layer == 'address' &&
-                (item.street?.trim().isNotEmpty ?? false);
+            final hasStreetText = item.street?.trim().isNotEmpty ?? false;
+            // Only address-layer rows have a housenumber baked into their
+            // label (the backend's arbitrary "best match" pick) — strip it
+            // there so the title matches what tapping the row will search
+            // for. Rows without a parsed `street` (e.g. a venue whose name
+            // merely mentions a street) never had one to begin with, and
+            // have no street to search a house number on either.
+            final isMislabeledAddress =
+                item.layer == 'address' && hasStreetText;
             return ListTile(
               leading: const Icon(Icons.location_on, color: AppColors.grey3),
               title: Text(
-                item.label,
+                isMislabeledAddress ? _streetLabel(item) : item.label,
                 style: const TextStyle(color: AppColors.white),
               ),
-              subtitle: subtitle.isEmpty
-                  ? null
-                  : Text(
-                      subtitle,
-                      style: const TextStyle(color: AppColors.grey3),
-                    ),
-              trailing: hasStreet
-                  ? IconButton(
-                      icon: const Icon(
-                        Icons.pin_drop_outlined,
-                        color: AppColors.grey3,
-                      ),
-                      tooltip: AppLocalization.of(context).houseNumber,
-                      onPressed: () => onPickHouseNumber(item),
+              subtitle: (hasStreetText || subtitleText.isNotEmpty)
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (hasStreetText)
+                          TextButton(
+                            onPressed: () => onPickHouseNumber(item),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: AppColors.apexOrange,
+                            ),
+                            child: Text(
+                              AppLocalization.of(context).houseNumber,
+                            ),
+                          ),
+                        if (subtitleText.isNotEmpty)
+                          Text(
+                            subtitleText,
+                            style: const TextStyle(color: AppColors.grey3),
+                          ),
+                      ],
                     )
                   : null,
               onTap: () => onSelected(item),

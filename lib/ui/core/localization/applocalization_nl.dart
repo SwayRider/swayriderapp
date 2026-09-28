@@ -137,7 +137,7 @@ class AppLocalizationNl extends AppLocalization {
     'mfaResetEmailSentTo':
         'Een e-mail om je authenticator te resetten is verstuurd naar {email}',
 
-    'houseNumber': 'Huisnummer',
+    'houseNumber': '+ Huisnummer toevoegen',
     'houseNumberPrompt': 'Voer je huisnummer in',
     'houseNumberNotFound': 'Geen adres gevonden voor deze straat',
   };
