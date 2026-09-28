@@ -23,11 +23,13 @@ class SearchRepositoryRemote implements SearchRepository {
     required String text,
     required LatLng focusPoint,
     String language = 'en',
+    String targetHousenumber = '',
   }) => _authRepository.withAuthRetry(
     () => _searchApiClient.autocomplete(
       text: text,
       focusPoint: focusPoint,
       language: language,
+      targetHousenumber: targetHousenumber,
     ),
   );
 }

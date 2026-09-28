@@ -58,6 +58,7 @@ class SearchApiClient {
     required LatLng focusPoint,
     int size = 10,
     String language = 'en',
+    String targetHousenumber = '',
   }) async {
     final client = _newClient();
     try {
@@ -73,6 +74,7 @@ class SearchApiClient {
           },
           'size': size,
           'language': language,
+          'targetHousenumber': targetHousenumber,
         }),
       );
       final response = await _close(request);

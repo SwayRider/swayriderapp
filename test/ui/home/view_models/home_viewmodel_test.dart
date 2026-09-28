@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:mocktail/mocktail.dart';
+import 'package:swayriderapp/data/services/api/model/search/search_result_item.dart';
 import 'package:swayriderapp/ui/home/view_models/home_viewmodel.dart';
 import 'package:swayriderapp/utils/result.dart';
 
@@ -18,6 +19,10 @@ void main() {
   late MockLocationService mockLocationService;
   late MockSearchRepository mockSearchRepository;
   late HomeViewModel viewModel;
+
+  setUpAll(() {
+    registerFallbackValue(const LatLng(0, 0));
+  });
 
   setUp(() {
     mockAuthRepository = MockAuthRepository();
@@ -170,6 +175,186 @@ void main() {
       await viewModel.loadMap.execute();
 
       expect(notifications, 2);
+    });
+  });
+
+  group('resolveHouseNumber', () {
+    const street = SearchResultItem(
+      label: 'Kerkstraat, Diest',
+      locality: 'Diest',
+      region: '',
+      country: 'Belgium',
+      confidence: 1.0,
+      layer: 'street',
+      lat: 50.98,
+      lon: 5.05,
+      street: 'Kerkstraat',
+    );
+
+    void stubAutocomplete(Result<List<SearchResultItem>> result) {
+      when(
+        () => mockSearchRepository.autocomplete(
+          text: any(named: 'text'),
+          focusPoint: any(named: 'focusPoint'),
+          language: any(named: 'language'),
+          targetHousenumber: any(named: 'targetHousenumber'),
+        ),
+      ).thenAnswer((_) async => result);
+    }
+
+    test('resolves to the result matching the street and locality', () async {
+      const resolved = SearchResultItem(
+        label: 'Kerkstraat 16, Diest, Belgium',
+        locality: 'Diest',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.9,
+        layer: 'address',
+        lat: 50.98,
+        lon: 5.05,
+        street: 'Kerkstraat',
+        houseNumber: '16',
+      );
+      stubAutocomplete(const Result.ok([resolved]));
+
+      await viewModel.resolveHouseNumber.execute((
+        street: street,
+        houseNumber: '15',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.completed, isTrue);
+      expect(
+        (viewModel.resolveHouseNumber.result as Ok<SearchResultItem>).value,
+        resolved,
+      );
+    });
+
+    test('ignores results for a different street', () async {
+      const otherStreet = SearchResultItem(
+        label: 'Molenstraat 16, Diest, Belgium',
+        locality: 'Diest',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.9,
+        layer: 'address',
+        lat: 50.98,
+        lon: 5.05,
+        street: 'Molenstraat',
+        houseNumber: '16',
+      );
+      stubAutocomplete(const Result.ok([otherStreet]));
+
+      await viewModel.resolveHouseNumber.execute((
+        street: street,
+        houseNumber: '15',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.error, isTrue);
+    });
+
+    test('picks the candidate nearest the selected street when the same '
+        'street name exists in multiple villages', () async {
+      // Reproduces a real scenario: "Erkstraat" exists in Bocholt,
+      // Kaulille and Balenhoek. Selecting the Kaulille row (lat/lon near
+      // it) must not resolve to the Bocholt candidate just because it's
+      // also named "Erkstraat" and happens to come back first.
+      const near = SearchResultItem(
+        label: 'Erkstraat 5, Kaulille, Belgium',
+        locality: 'Kaulille',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.5,
+        layer: 'address',
+        lat: 51.10,
+        lon: 5.30,
+        street: 'Erkstraat',
+        houseNumber: '5',
+      );
+      const far = SearchResultItem(
+        label: 'Erkstraat 5, Bocholt, Belgium',
+        locality: 'Bocholt',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.9,
+        layer: 'address',
+        lat: 51.18,
+        lon: 5.58,
+        street: 'Erkstraat',
+        houseNumber: '5',
+      );
+      // far listed first: a naive "take the first match" would pick it.
+      stubAutocomplete(const Result.ok([far, near]));
+
+      const kaulilleStreet = SearchResultItem(
+        label: 'Erkstraat, Kaulille',
+        locality: 'Kaulille',
+        region: '',
+        country: 'Belgium',
+        confidence: 1.0,
+        layer: 'address',
+        lat: 51.10,
+        lon: 5.30,
+        street: 'Erkstraat',
+      );
+
+      await viewModel.resolveHouseNumber.execute((
+        street: kaulilleStreet,
+        houseNumber: '5',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.completed, isTrue);
+      expect(
+        (viewModel.resolveHouseNumber.result as Ok<SearchResultItem>).value,
+        near,
+      );
+    });
+
+    test('errors when nothing at all comes back', () async {
+      stubAutocomplete(const Result.ok([]));
+
+      await viewModel.resolveHouseNumber.execute((
+        street: street,
+        houseNumber: '15',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.error, isTrue);
+    });
+
+    test('propagates a repository error', () async {
+      final exception = Exception('network error');
+      stubAutocomplete(Result.error(exception));
+
+      await viewModel.resolveHouseNumber.execute((
+        street: street,
+        houseNumber: '15',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.error, isTrue);
+      expect((viewModel.resolveHouseNumber.result as Error).error, exception);
+    });
+
+    test('passes the typed house number as targetHousenumber', () async {
+      stubAutocomplete(const Result.ok([]));
+
+      await viewModel.resolveHouseNumber.execute((
+        street: street,
+        houseNumber: '15',
+        language: 'en',
+      ));
+
+      verify(
+        () => mockSearchRepository.autocomplete(
+          text: any(named: 'text'),
+          focusPoint: any(named: 'focusPoint'),
+          language: 'en',
+          targetHousenumber: '15',
+        ),
+      ).called(1);
     });
   });
 }
