@@ -65,6 +65,27 @@ abstract final class AppConfig {
     defaultValue: '/api/v1',
   );
 
+  /// Router API connection settings.
+  ///
+  /// Defaults match the dev backend. Override at build/run time via
+  /// `--dart-define=ROUTER_API_HOST=...` etc.
+  static const routerApiScheme = String.fromEnvironment(
+    'ROUTER_API_SCHEME',
+    defaultValue: 'https',
+  );
+  static const routerApiHost = String.fromEnvironment(
+    'ROUTER_API_HOST',
+    defaultValue: 'api.swayrider-dev.hevanto-it.com',
+  );
+  static const routerApiPort = int.fromEnvironment(
+    'ROUTER_API_PORT',
+    defaultValue: 443,
+  );
+  static const routerApiPathPrefix = String.fromEnvironment(
+    'ROUTER_API_PATH_PREFIX',
+    defaultValue: '/api/v1',
+  );
+
   /// URL the AuthService should redirect users to after they confirm their
   /// email address via the verification link sent during signup.
   ///

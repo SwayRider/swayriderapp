@@ -5,10 +5,12 @@ import 'package:logging/logging.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
 import '../../../data/repositories/auth/auth_repository.dart';
+import '../../../data/repositories/router/router_repository.dart';
 import '../../../data/repositories/search/search_repository.dart';
 import '../../../data/repositories/tiles/tiles_repository.dart';
 import '../../../data/services/api/model/search/search_result_item.dart';
 import '../../../data/services/location_service.dart';
+import '../../../domain/models/route/route_point.dart';
 import '../../../utils/command.dart';
 import '../../../utils/result.dart';
 
@@ -47,6 +49,7 @@ class HomeViewModel extends ChangeNotifier {
     required this._tilesRepository,
     required this._locationService,
     required this._searchRepository,
+    required this._routerRepository,
   }) {
     logout = Command0<void>(_logout);
     loadMap = Command0<void>(_loadMap);
@@ -59,6 +62,7 @@ class HomeViewModel extends ChangeNotifier {
   final TilesRepository _tilesRepository;
   final LocationService _locationService;
   final SearchRepository _searchRepository;
+  final RouterRepository _routerRepository;
   final _log = Logger('HomeViewModel');
 
   late Command0 logout;
@@ -71,7 +75,17 @@ class HomeViewModel extends ChangeNotifier {
   List<SearchResultItem> suggestions = [];
   bool isSearchLoading = false;
 
+  List<RoutePoint> routePoints = [];
+  bool isRoundTrip = false;
+
+  /// The current route's path geometry, or `null` while there are fewer
+  /// than two [routePoints] or the last calculation failed. Recalculated
+  /// automatically by every method below that mutates [routePoints] or
+  /// [isRoundTrip].
+  List<LatLng>? routePath;
+
   Timer? _searchDebounceTimer;
+  int _routeGeneration = 0;
 
   Future<Result<void>> _logout() async {
     final result = await _authRepository.logout();
@@ -196,6 +210,129 @@ class HomeViewModel extends ChangeNotifier {
         _log.warning('House number resolution failed: $error');
         return Result.error(error);
     }
+  }
+
+  /// Appends [point] as the destination. If no start point exists yet, the
+  /// current device location is inserted as the start first. `location` is
+  /// non-null in practice: the map (and therefore any selection) isn't
+  /// reachable until `loadMap` has resolved it.
+  void setAsDestination(RoutePoint point) {
+    if (routePoints.isEmpty) {
+      final currentLocation = location;
+      if (currentLocation != null) {
+        routePoints.add(
+          RoutePoint(
+            label: '',
+            point: currentLocation,
+            isCurrentLocation: true,
+          ),
+        );
+      }
+    }
+    routePoints.add(point);
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Only offered by the UI while `routePoints` is empty, so this always
+  /// produces a single-item list; the non-empty branch is defensive
+  /// insurance, not reachable via the current UI.
+  void setAsStartPoint(RoutePoint point) {
+    if (routePoints.isEmpty) {
+      routePoints.add(point);
+    } else {
+      routePoints[0] = point;
+    }
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Inserts [point] immediately before the current destination (the last
+  /// item). Only offered once a start + destination already exist.
+  void setAsWaypoint(RoutePoint point) {
+    if (routePoints.isEmpty) {
+      routePoints.add(point);
+    } else {
+      routePoints.insert(routePoints.length - 1, point);
+    }
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Mirrors ReorderableListView's `onReorderItem` contract: [newIndex] is
+  /// already adjusted for the removal at [oldIndex].
+  void reorderRoutePoints(int oldIndex, int newIndex) {
+    final point = routePoints.removeAt(oldIndex);
+    routePoints.insert(newIndex, point);
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Clears the entire route — the route points sheet's "trash" action.
+  void clearRoutePoints() {
+    routePoints = [];
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Removes [point] from the route. Only meaningful for waypoints — the
+  /// UI only offers this for waypoint rows via the route points sheet's
+  /// long-press menu; a no-op if [point]'s current role (see
+  /// [routeRoleAt], which accounts for [isRoundTrip]) isn't a waypoint,
+  /// since the start/destination positions aren't valid removal targets.
+  void removeWaypoint(RoutePoint point) {
+    final index = routePoints.indexOf(point);
+    if (index == -1) return;
+    final role = routeRoleAt(
+      index,
+      routePoints.length,
+      isRoundTrip: isRoundTrip,
+    );
+    if (role != RouteRole.waypoint) return;
+    routePoints.removeAt(index);
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Toggles round-trip mode: the start point doubles as the final
+  /// destination, so the route's current last point is displayed and
+  /// removable as a waypoint rather than the destination (see
+  /// [routeRoleAt]).
+  void setRoundTrip(bool value) {
+    isRoundTrip = value;
+    notifyListeners();
+    _scheduleRouteRecalculation();
+  }
+
+  /// Kicks off [_recalculateRoute] without awaiting it, tagged with a
+  /// generation number so an overlapping earlier call can't clobber a
+  /// later one's result.
+  void _scheduleRouteRecalculation() {
+    final generation = ++_routeGeneration;
+    unawaited(_recalculateRoute(generation));
+  }
+
+  Future<void> _recalculateRoute(int generation) async {
+    if (routePoints.length < 2) {
+      if (routePath != null) {
+        routePath = null;
+        notifyListeners();
+      }
+      return;
+    }
+    final result = await _routerRepository.calculateRoute(
+      points: [for (final point in routePoints) point.point],
+      isRoundTrip: isRoundTrip,
+    );
+    if (generation != _routeGeneration) return;
+    switch (result) {
+      case Ok(:final value):
+        routePath = value;
+      case Error(:final error):
+        _log.warning('Route calculation failed: $error');
+        routePath = null;
+    }
+    notifyListeners();
   }
 
   /// Clears any pending search results and cancels a pending debounce.

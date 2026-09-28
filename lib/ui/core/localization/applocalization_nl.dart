@@ -140,6 +140,25 @@ class AppLocalizationNl extends AppLocalization {
     'houseNumber': '+ Huisnummer toevoegen',
     'houseNumberPrompt': 'Voer je huisnummer in',
     'houseNumberNotFound': 'Geen adres gevonden voor deze straat',
+
+    'setAsDestination': 'Instellen als bestemming',
+    'setAsStartPoint': 'Instellen als startpunt',
+    'setAsWaypoint': 'Instellen als tussenstop',
+    'routePointsTitle': 'Routepunten',
+    'noRoutePointsYet': 'Nog geen routepunten',
+    'currentLocation': 'Huidige locatie',
+    'routeRoleStart': 'Start',
+    'routeRoleWaypoint': 'Tussenstop',
+    'routeRoleDestination': 'Bestemming',
+    'routePointsBack': 'Terug',
+    'routePointsSave': 'Route opslaan',
+    'routePointsClearAll': 'Route wissen',
+    'deleteWaypoint': 'Tussenstop verwijderen',
+    'roundTrip': 'Rondrit',
+    'currentPosition': 'Huidige positie',
+    'routeStart': 'Startpunt route',
+    'routeEnd': 'Eindpunt route',
+    'completeRoute': 'Volledige route',
   };
 
   @override

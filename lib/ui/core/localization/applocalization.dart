@@ -130,6 +130,25 @@ class AppLocalization {
   String get houseNumber => _get('houseNumber');
   String get houseNumberPrompt => _get('houseNumberPrompt');
   String get houseNumberNotFound => _get('houseNumberNotFound');
+
+  String get setAsDestination => _get('setAsDestination');
+  String get setAsStartPoint => _get('setAsStartPoint');
+  String get setAsWaypoint => _get('setAsWaypoint');
+  String get routePointsTitle => _get('routePointsTitle');
+  String get noRoutePointsYet => _get('noRoutePointsYet');
+  String get currentLocation => _get('currentLocation');
+  String get routeRoleStart => _get('routeRoleStart');
+  String get routeRoleWaypoint => _get('routeRoleWaypoint');
+  String get routeRoleDestination => _get('routeRoleDestination');
+  String get routePointsBack => _get('routePointsBack');
+  String get routePointsSave => _get('routePointsSave');
+  String get routePointsClearAll => _get('routePointsClearAll');
+  String get deleteWaypoint => _get('deleteWaypoint');
+  String get roundTrip => _get('roundTrip');
+  String get currentPosition => _get('currentPosition');
+  String get routeStart => _get('routeStart');
+  String get routeEnd => _get('routeEnd');
+  String get completeRoute => _get('completeRoute');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {
