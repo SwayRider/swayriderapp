@@ -61,6 +61,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _searchController = TextEditingController();
+  MapLibreMapController? _mapController;
+  Circle? _searchMarker;
 
   @override
   void initState() {
@@ -84,12 +86,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _selectStreet(SearchResultItem item) =>
-      _applySelection(_streetLabel(item));
+      _applySelection(_streetLabel(item), LatLng(item.lat, item.lon));
 
-  void _applySelection(String text) {
+  void _applySelection(String text, LatLng point) {
     _searchController.text = text;
     widget.viewModel.clearSuggestions();
     FocusScope.of(context).unfocus();
+    _showSearchMarker(point);
+  }
+
+  Future<void> _showSearchMarker(LatLng point) async {
+    final controller = _mapController;
+    if (controller == null) return;
+    final marker = _searchMarker;
+    if (marker != null) {
+      await controller.updateCircle(marker, CircleOptions(geometry: point));
+    } else {
+      _searchMarker = await controller.addCircle(
+        CircleOptions(
+          geometry: point,
+          circleColor: '#FF7A00',
+          circleRadius: 8,
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 2,
+        ),
+      );
+    }
+    await controller.animateCamera(CameraUpdate.newLatLng(point));
+  }
+
+  Future<void> _recenterToCurrentLocation() async {
+    final controller = _mapController;
+    final marker = _searchMarker;
+    if (controller != null && marker != null) {
+      await controller.removeCircle(marker);
+      _searchMarker = null;
+    }
+    final location = widget.viewModel.location;
+    if (controller != null && location != null) {
+      await controller.animateCamera(CameraUpdate.newLatLng(location));
+    }
   }
 
   Future<void> _onPickHouseNumber(SearchResultItem item) async {
@@ -110,7 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = widget.viewModel.resolveHouseNumber.result;
     if (result is Ok<SearchResultItem>) {
-      _applySelection(_resolvedAddressLabel(item, result.value));
+      _applySelection(
+        _resolvedAddressLabel(item, result.value),
+        LatLng(result.value.lat, result.value.lon),
+      );
     } else {
       // Best-effort fallback: nothing usable came back for this street.
       _selectStreet(item);
@@ -148,7 +187,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: AppTextField(
                       controller: _searchController,
                       hintText: localization.search,
-                      suffixIcon: const Icon(Icons.search),
+                      suffixIcon: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, _) {
+                          if (value.text.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+                          return IconButton(
+                            icon: const Icon(Icons.cancel),
+                            onPressed: _searchController.clear,
+                          );
+                        },
+                      ),
                     ),
                   ),
                   ProfileMenuButton(
@@ -181,6 +231,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         // high-density displays (upstream maplibre rendering
                         // issue), so disable it.
                         compassEnabled: false,
+                        onMapCreated: (controller) =>
+                            _mapController = controller,
                       ),
                       Positioned(
                         left: dimens.paddingScreenHorizontal,
@@ -208,7 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         bottom: dimens.paddingScreenVertical,
                         child: CircleIconButton(
                           icon: Icons.my_location,
-                          onPressed: () {},
+                          onPressed: _recenterToCurrentLocation,
                         ),
                       ),
                       ListenableBuilder(
