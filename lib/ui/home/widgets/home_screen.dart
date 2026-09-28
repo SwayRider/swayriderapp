@@ -13,20 +13,40 @@ import '../../core/ui/profile_menu_button.dart';
 import '../../core/ui/vehicle_type_pill.dart';
 import '../view_models/home_viewmodel.dart';
 
+/// The city name to display for a result: `locality` when set, falling back
+/// to `localAdmin` (Belgian municipality names often land there rather than
+/// in `locality`, which Pelias reserves for smaller named places such as a
+/// hamlet within that municipality) so the city isn't dropped entirely.
+String _cityFor(SearchResultItem item) =>
+    item.locality.trim().isNotEmpty ? item.locality : (item.localAdmin ?? '');
+
 /// Street + city text for an address result, with no house number — used
 /// both for the street-only search box text and an address row's title, so
 /// what's shown always matches what tapping the row searches for.
-///
-/// Belgian municipality names often land in `localAdmin` rather than
-/// `locality` (Pelias reserves `locality` for smaller named places), so fall
-/// back to it to avoid dropping the city entirely.
 String _streetLabel(SearchResultItem item) {
-  final city = item.locality.trim().isNotEmpty
-      ? item.locality
-      : (item.localAdmin ?? '');
   return [
     item.street ?? item.label,
-    city,
+    _cityFor(item),
+  ].where((part) => part.trim().isNotEmpty).join(', ');
+}
+
+/// Street + house number + city text for a resolved address, built from
+/// [original]'s city rather than [resolved]'s own label. The same street can
+/// be filed under different city names depending on which record matched
+/// (e.g. a hamlet vs. the municipality it belongs to) even though it's the
+/// same physical location — using [original]'s city keeps the result
+/// consistent with the row the user actually picked.
+String _resolvedAddressLabel(
+  SearchResultItem original,
+  SearchResultItem resolved,
+) {
+  final streetAndNumber = [
+    resolved.street ?? original.street ?? original.label,
+    resolved.houseNumber,
+  ].where((part) => part != null && part.trim().isNotEmpty).join(' ');
+  return [
+    streetAndNumber,
+    _cityFor(original),
   ].where((part) => part.trim().isNotEmpty).join(', ');
 }
 
@@ -66,8 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _selectStreet(SearchResultItem item) =>
       _applySelection(_streetLabel(item));
 
-  void _selectAddress(SearchResultItem item) => _applySelection(item.label);
-
   void _applySelection(String text) {
     _searchController.text = text;
     widget.viewModel.clearSuggestions();
@@ -92,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final result = widget.viewModel.resolveHouseNumber.result;
     if (result is Ok<SearchResultItem>) {
-      _selectAddress(result.value);
+      _applySelection(_resolvedAddressLabel(item, result.value));
     } else {
       // Best-effort fallback: nothing usable came back for this street.
       _selectStreet(item);

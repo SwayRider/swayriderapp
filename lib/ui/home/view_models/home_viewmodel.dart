@@ -33,6 +33,14 @@ typedef ResolveHouseNumberArgs = ({
   String language,
 });
 
+/// Squared Euclidean distance in degrees — good enough to rank a handful of
+/// nearby candidates by proximity without needing a true geodesic formula.
+double _squaredDistance(double lat1, double lon1, double lat2, double lon2) {
+  final dLat = lat1 - lat2;
+  final dLon = lon1 - lon2;
+  return dLat * dLat + dLon * dLon;
+}
+
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel({
     required this._authRepository,
@@ -141,10 +149,15 @@ class HomeViewModel extends ChangeNotifier {
   Future<Result<SearchResultItem>> _resolveHouseNumber(
     ResolveHouseNumberArgs args,
   ) async {
+    // Deliberately no locality/city text here: `locality` is inconsistently
+    // tagged in the source data (e.g. a hamlet name that differs from the
+    // municipality the address is actually filed under), so including it
+    // can make an otherwise-findable address match nothing. Disambiguation
+    // instead comes from focusPoint (centered on the original street match)
+    // and targetHousenumber.
     final query = [
       args.street.street ?? args.street.label,
       args.houseNumber,
-      args.street.locality,
     ].where((part) => part.trim().isNotEmpty).join(' ');
 
     final result = await _searchRepository.autocomplete(
@@ -156,12 +169,28 @@ class HomeViewModel extends ChangeNotifier {
 
     switch (result) {
       case Ok(:final value):
+        // Match by street name, then pick the candidate closest to the
+        // originally selected street's coordinates. Locality text can't be
+        // used to disambiguate (see above) — but nearby villages can share
+        // a street name (e.g. three separate "Erkstraat"s a few km apart),
+        // so name alone isn't enough either. Coordinates are reliable where
+        // the text fields aren't.
+        SearchResultItem? closest;
+        double? closestDistance;
         for (final r in value) {
-          if (r.street == args.street.street &&
-              r.locality == args.street.locality) {
-            return Result.ok(r);
+          if (r.street != args.street.street) continue;
+          final distance = _squaredDistance(
+            r.lat,
+            r.lon,
+            args.street.lat,
+            args.street.lon,
+          );
+          if (closestDistance == null || distance < closestDistance) {
+            closest = r;
+            closestDistance = distance;
           }
         }
+        if (closest != null) return Result.ok(closest);
         return Result.error(Exception('No address found on this street'));
       case Error(:final error):
         _log.warning('House number resolution failed: $error');

@@ -254,6 +254,64 @@ void main() {
       expect(viewModel.resolveHouseNumber.error, isTrue);
     });
 
+    test('picks the candidate nearest the selected street when the same '
+        'street name exists in multiple villages', () async {
+      // Reproduces a real scenario: "Erkstraat" exists in Bocholt,
+      // Kaulille and Balenhoek. Selecting the Kaulille row (lat/lon near
+      // it) must not resolve to the Bocholt candidate just because it's
+      // also named "Erkstraat" and happens to come back first.
+      const near = SearchResultItem(
+        label: 'Erkstraat 5, Kaulille, Belgium',
+        locality: 'Kaulille',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.5,
+        layer: 'address',
+        lat: 51.10,
+        lon: 5.30,
+        street: 'Erkstraat',
+        houseNumber: '5',
+      );
+      const far = SearchResultItem(
+        label: 'Erkstraat 5, Bocholt, Belgium',
+        locality: 'Bocholt',
+        region: '',
+        country: 'Belgium',
+        confidence: 0.9,
+        layer: 'address',
+        lat: 51.18,
+        lon: 5.58,
+        street: 'Erkstraat',
+        houseNumber: '5',
+      );
+      // far listed first: a naive "take the first match" would pick it.
+      stubAutocomplete(const Result.ok([far, near]));
+
+      const kaulilleStreet = SearchResultItem(
+        label: 'Erkstraat, Kaulille',
+        locality: 'Kaulille',
+        region: '',
+        country: 'Belgium',
+        confidence: 1.0,
+        layer: 'address',
+        lat: 51.10,
+        lon: 5.30,
+        street: 'Erkstraat',
+      );
+
+      await viewModel.resolveHouseNumber.execute((
+        street: kaulilleStreet,
+        houseNumber: '5',
+        language: 'en',
+      ));
+
+      expect(viewModel.resolveHouseNumber.completed, isTrue);
+      expect(
+        (viewModel.resolveHouseNumber.result as Ok<SearchResultItem>).value,
+        near,
+      );
+    });
+
     test('errors when nothing at all comes back', () async {
       stubAutocomplete(const Result.ok([]));
 
