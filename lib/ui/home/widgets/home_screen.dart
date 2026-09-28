@@ -204,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             left: 0,
                             right: 0,
                             top: 0,
+                            bottom: 0,
                             child: _SuggestionsList(
                               suggestions: suggestions,
                               onSelected: _selectStreet,
@@ -239,63 +240,68 @@ class _SuggestionsList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: AppColors.black,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxHeight: 240),
-        child: ListView.builder(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          itemCount: suggestions.length,
-          itemBuilder: (context, index) {
-            final item = suggestions[index];
-            final subtitleText = [
-              item.locality,
-              item.country,
-            ].where((part) => part.isNotEmpty).join(', ');
-            final hasStreetText = item.street?.trim().isNotEmpty ?? false;
-            // Only address-layer rows have a housenumber baked into their
-            // label (the backend's arbitrary "best match" pick) — strip it
-            // there so the title matches what tapping the row will search
-            // for. Rows without a parsed `street` (e.g. a venue whose name
-            // merely mentions a street) never had one to begin with, and
-            // have no street to search a house number on either.
-            final isMislabeledAddress =
-                item.layer == 'address' && hasStreetText;
-            return ListTile(
-              leading: const Icon(Icons.location_on, color: AppColors.grey3),
-              title: Text(
-                isMislabeledAddress ? _streetLabel(item) : item.label,
-                style: const TextStyle(color: AppColors.white),
-              ),
-              subtitle: (hasStreetText || subtitleText.isNotEmpty)
-                  ? Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (hasStreetText)
-                          TextButton(
+      child: ListView.builder(
+        padding: EdgeInsets.zero,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        itemCount: suggestions.length,
+        itemBuilder: (context, index) {
+          final item = suggestions[index];
+          final subtitleText = [
+            item.locality,
+            item.country,
+          ].where((part) => part.isNotEmpty).join(', ');
+          final hasStreetText = item.street?.trim().isNotEmpty ?? false;
+          // Only address-layer rows have a housenumber baked into their
+          // label (the backend's arbitrary "best match" pick) — strip it
+          // there so the title matches what tapping the row will search
+          // for. Rows without a parsed `street` (e.g. a venue whose name
+          // merely mentions a street) never had one to begin with, and
+          // have no street to search a house number on either.
+          final isMislabeledAddress = item.layer == 'address' && hasStreetText;
+          return ListTile(
+            leading: const Icon(Icons.location_on, color: AppColors.grey3),
+            title: Text(
+              isMislabeledAddress ? _streetLabel(item) : item.label,
+              style: const TextStyle(color: AppColors.white),
+            ),
+            subtitle: (hasStreetText || subtitleText.isNotEmpty)
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (subtitleText.isNotEmpty)
+                        Text(
+                          subtitleText,
+                          style: const TextStyle(color: AppColors.grey3),
+                        ),
+                      if (hasStreetText)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: OutlinedButton(
                             onPressed: () => onPickHouseNumber(item),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               foregroundColor: AppColors.apexOrange,
+                              side: const BorderSide(
+                                color: AppColors.apexOrange,
+                              ),
                             ),
                             child: Text(
                               AppLocalization.of(context).houseNumber,
                             ),
                           ),
-                        if (subtitleText.isNotEmpty)
-                          Text(
-                            subtitleText,
-                            style: const TextStyle(color: AppColors.grey3),
-                          ),
-                      ],
-                    )
-                  : null,
-              onTap: () => onSelected(item),
-            );
-          },
-        ),
+                        ),
+                    ],
+                  )
+                : null,
+            onTap: () => onSelected(item),
+          );
+        },
       ),
     );
   }
