@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>SwayRider uses the camera only to measure how bright it is around you, for the automatic day/night map style. No pictures are taken or stored.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>SwayRider uses your location to center the map on your current position.</string>
 	<key>UIApplicationSceneManifest</key>

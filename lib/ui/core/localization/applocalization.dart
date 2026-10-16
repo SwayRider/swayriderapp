@@ -146,6 +146,17 @@ class AppLocalization {
   String get deleteWaypoint => _get('deleteWaypoint');
   String get roundTrip => _get('roundTrip');
   String get currentPosition => _get('currentPosition');
+
+  String get mapStyleTitle => _get('mapStyleTitle');
+  String get mapStyleDay => _get('mapStyleDay');
+  String get mapStyleNight => _get('mapStyleNight');
+  String get mapStyleAuto => _get('mapStyleAuto');
+  String get mapStyleAutoHint => _get('mapStyleAutoHint');
+  String get mapStyleAutoCameraHint => _get('mapStyleAutoCameraHint');
+  String get mapStyleSwitchFailed => _get('mapStyleSwitchFailed');
+  String get compassPointNorth => _get('compassPointNorth');
+  String get compassFollowHeading => _get('compassFollowHeading');
+  String get compassFollowingHeading => _get('compassFollowingHeading');
   String get routeStart => _get('routeStart');
   String get routeEnd => _get('routeEnd');
   String get completeRoute => _get('completeRoute');

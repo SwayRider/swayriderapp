@@ -7,7 +7,6 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import '../../../data/repositories/auth/auth_repository.dart';
 import '../../../data/repositories/router/router_repository.dart';
 import '../../../data/repositories/search/search_repository.dart';
-import '../../../data/repositories/tiles/tiles_repository.dart';
 import '../../../data/services/api/model/search/search_result_item.dart';
 import '../../../data/services/location_service.dart';
 import '../../../domain/models/route/route_point.dart';
@@ -43,11 +42,9 @@ double _squaredDistance(double lat1, double lon1, double lat2, double lon2) {
 class HomeViewModel extends ChangeNotifier {
   HomeViewModel({
     required this._authRepository,
-    required this._tilesRepository,
     required this._locationService,
     required this._searchRepository,
     required this._routerRepository,
-    required this._mapStyleName,
   }) {
     logout = Command0<void>(_logout);
     loadMap = Command0<void>(_loadMap);
@@ -57,14 +54,10 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   final AuthRepository _authRepository;
-  final TilesRepository _tilesRepository;
   final LocationService _locationService;
   final SearchRepository _searchRepository;
   final RouterRepository _routerRepository;
 
-  /// Style served by tilesservice as `<style id>/<variant>`, e.g.
-  /// `swayrider/light`. See `AppConfig.tilesStyle`.
-  final String _mapStyleName;
   final _log = Logger('HomeViewModel');
 
   late Command0 logout;
@@ -72,7 +65,6 @@ class HomeViewModel extends ChangeNotifier {
   late Command1<SearchResultItem, ResolveHouseNumberArgs> resolveHouseNumber;
 
   LatLng? location;
-  String? mapStyle;
 
   List<SearchResultItem> suggestions = [];
   bool isSearchLoading = false;
@@ -98,24 +90,12 @@ class HomeViewModel extends ChangeNotifier {
   }
 
   Future<Result<void>> _loadMap() async {
-    final (locationResult, styleResult) = await (
-      _locationService.getCurrentLocation(),
-      _tilesRepository.getMapStyle(name: _mapStyleName),
-    ).wait;
-
+    final locationResult = await _locationService.getCurrentLocation();
     location = switch (locationResult) {
       Ok(:final value) => value,
       Error(:final error) => _fallbackLocation(error),
     };
-
-    switch (styleResult) {
-      case Ok(:final value):
-        mapStyle = value;
-        return const Result.ok(null);
-      case Error(:final error):
-        _log.warning('Failed to load map style: $error');
-        return Result.error(error);
-    }
+    return const Result.ok(null);
   }
 
   LatLng _fallbackLocation(Object error) {

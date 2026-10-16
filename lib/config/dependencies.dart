@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
@@ -12,11 +13,14 @@ import '../data/repositories/tiles/tiles_repository_remote.dart';
 import '../data/services/api/auth_api_client.dart';
 import '../data/services/api/router_api_client.dart';
 import '../data/services/api/search_api_client.dart';
+import '../data/services/ambient_light_service.dart';
 import '../data/services/api/tiles_api_client.dart';
 import '../data/services/location_service.dart';
+import '../data/services/map_style_preference_service.dart';
 import '../data/services/secure_token_storage_service.dart';
 import '../data/services/tile_cache.dart';
 import '../ui/home/view_models/home_viewmodel.dart';
+import '../ui/home/view_models/map_style_view_model.dart';
 import 'app_config.dart';
 
 /// Shared providers for all configurations.
@@ -97,11 +101,23 @@ List<SingleChildWidget> get providerDev {
     ChangeNotifierProvider<HomeViewModel>(
       create: (context) => HomeViewModel(
         authRepository: context.read(),
-        tilesRepository: context.read(),
         locationService: context.read(),
         searchRepository: context.read(),
         routerRepository: context.read(),
-        mapStyleName: AppConfig.tilesStyle,
+      ),
+    ),
+    Provider(create: (context) => MapStylePreferenceService()),
+    Provider<AmbientLightService>(
+      create: (context) => AmbientLightServicePlugin(),
+    ),
+    ChangeNotifierProvider<MapStyleViewModel>(
+      create: (context) => MapStyleViewModel(
+        tilesRepository: context.read(),
+        preferences: context.read(),
+        ambientLight: context.read(),
+        styleId: AppConfig.tilesStyleId,
+        platformBrightness: () =>
+            WidgetsBinding.instance.platformDispatcher.platformBrightness,
       ),
     ),
     ..._sharedProviders,
