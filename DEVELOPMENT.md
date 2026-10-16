@@ -66,6 +66,11 @@ build-time configuration, supplied via `--dart-define` and defined in
 | `AUTH_API_PATH_PREFIX` | `/api/v1/auth` | Base path for auth endpoints |
 | `VERIFICATION_REDIRECT_URL` | `https://api.swayrider-dev.hevanto-it.com/web/verify-user` | Redirect target after email verification |
 | `HOMEPAGE_URL` | _(empty)_ | SwayRider homepage link shown on the invitation-only screen |
+| `TILES_API_SCHEME` | `https` | Scheme used to reach the tiles API (through the gateway) |
+| `TILES_API_HOST` | `api.swayrider-dev.hevanto-it.com` | Tiles API host |
+| `TILES_API_PORT` | `443` | Tiles API port |
+| `TILES_API_PATH_PREFIX` | `/v1/tiles` | Base path of the tiles API |
+| `TILES_STYLE` | `swayrider/light` | Map style as `<style id>/<variant>` (`light` or `dark`). The style id is set in the data-manager (Settings → Map style) and listed by `GET /v1/tiles/styles`. Do not use the bare `light`/`dark`: while the legacy tileset is deployed they return the legacy style |
 
 Example — pointing the app at a locally running AuthService:
 

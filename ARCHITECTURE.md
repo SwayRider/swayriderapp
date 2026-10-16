@@ -14,6 +14,7 @@ For setup, running the app, configuration, and contributing, see
 - [Technology Stack](#technology-stack)
 - [Layers](#layers)
 - [Navigation Flow](#navigation-flow)
+- [Map Tiles](#map-tiles)
 - [Project Structure](#project-structure)
 
 ---
@@ -94,6 +95,37 @@ LoginScreen
 `router.dart` redirects unauthenticated users to `/login`, and unverified users
 to `/verify-email`, based on `AuthRepository.isAuthenticated` /
 `isVerified`.
+
+---
+
+## Map Tiles
+
+The map is `maplibre_gl`. Its native renderer fetches style, tiles, glyphs and
+sprites itself and cannot attach an `Authorization` header, but the tiles API
+(behind `swayrider-api`) needs the user's bearer token on every request.
+`TilesRepositoryRemote` bridges that:
+
+1. `getMapStyle` fetches `GET {prefix}/styles/<style id>/<variant>`
+   (`AppConfig.tilesStyle`) with the token.
+2. It rewrites every string in the style that contains `/v1/tiles/` (tile
+   template, glyphs, sprite) to point at a loopback HTTP server on `127.0.0.1`,
+   and returns that JSON as `MapLibreMap.styleString`.
+3. The loopback server forwards each request to the tiles API with the current
+   token (`shelf_proxy`). It only serves what MapLibre fetches by itself:
+   `GET`/`HEAD` of `/v1/tiles/{tileset}/{z}/{x}/{y}`, `/v1/tiles/fonts/…/{a}-{b}.pbf`
+   and `/v1/tiles/sprites/{name}[@2x].{json,png}`. Everything else is `404`
+   (`405` for other methods), so other apps on the device cannot use it to make
+   authenticated requests.
+
+Notes:
+- The server stores tiles gzipped; `shelf_proxy` decodes them and drops
+  `Content-Encoding`, so MapLibre and the optional `TileCache` see plain MVT.
+- `204` (no tile at that zoom/area; MapLibre over-zooms) and `304` pass through
+  and are never cached; only a `200` is written to the `TileCache`.
+- `TileCache` is a no-op today. A real offline cache needs a build/release id in
+  its key, because planet releases replace tiles under the same URL.
+- Tiles are rate limited per user by the gateway (a map view is dozens of
+  requests); a `429` shows as holes in the map until the next move.
 
 ---
 

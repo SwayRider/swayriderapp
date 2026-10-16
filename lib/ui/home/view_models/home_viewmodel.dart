@@ -17,9 +17,6 @@ import '../../../utils/result.dart';
 /// Map center used when the device's current location can't be determined.
 const _defaultLocation = LatLng(51.2194, 4.4025);
 
-/// Style served by tilesservice; see `tilesservice/assets/map/styles/`.
-const _mapStyleName = 'light';
-
 /// Minimum query length before triggering an autocomplete request.
 const _minSearchTextLength = 2;
 
@@ -50,6 +47,7 @@ class HomeViewModel extends ChangeNotifier {
     required this._locationService,
     required this._searchRepository,
     required this._routerRepository,
+    required this._mapStyleName,
   }) {
     logout = Command0<void>(_logout);
     loadMap = Command0<void>(_loadMap);
@@ -63,6 +61,10 @@ class HomeViewModel extends ChangeNotifier {
   final LocationService _locationService;
   final SearchRepository _searchRepository;
   final RouterRepository _routerRepository;
+
+  /// Style served by tilesservice as `<style id>/<variant>`, e.g.
+  /// `swayrider/light`. See `AppConfig.tilesStyle`.
+  final String _mapStyleName;
   final _log = Logger('HomeViewModel');
 
   late Command0 logout;

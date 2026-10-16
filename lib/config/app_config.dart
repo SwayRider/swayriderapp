@@ -44,6 +44,17 @@ abstract final class AppConfig {
     defaultValue: '/v1/tiles',
   );
 
+  /// Style to load, as `<style id>/<variant>` (`light` or `dark`), served at
+  /// `{prefix}/styles/<style id>/<variant>`. The style id is set in the
+  /// data-manager (Settings -> Map style) and listed by `GET {prefix}/styles`.
+  ///
+  /// Do not use the bare names `light`/`dark`: while the legacy tileset is
+  /// still deployed they return the legacy style, not the planet one.
+  static const tilesStyle = String.fromEnvironment(
+    'TILES_STYLE',
+    defaultValue: 'swayrider/light',
+  );
+
   /// Search API connection settings.
   ///
   /// Defaults match the dev backend. Override at build/run time via

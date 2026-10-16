@@ -15,6 +15,7 @@ const _testLocation = LatLng(50.8503, 4.3517);
 const _testStyle = '{"version": 8}';
 
 void main() {
+  const mapStyleName = 'swayrider/light';
   late MockAuthRepository mockAuthRepository;
   late MockTilesRepository mockTilesRepository;
   late MockLocationService mockLocationService;
@@ -45,6 +46,7 @@ void main() {
       locationService: mockLocationService,
       searchRepository: mockSearchRepository,
       routerRepository: mockRouterRepository,
+      mapStyleName: mapStyleName,
     );
   });
 
@@ -128,7 +130,7 @@ void main() {
         () => mockLocationService.getCurrentLocation(),
       ).thenAnswer((_) async => const Result.ok(_testLocation));
       when(
-        () => mockTilesRepository.getMapStyle(name: 'light'),
+        () => mockTilesRepository.getMapStyle(name: mapStyleName),
       ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       await viewModel.loadMap.execute();
@@ -144,7 +146,7 @@ void main() {
         () => mockLocationService.getCurrentLocation(),
       ).thenAnswer((_) async => Result.error(Exception('denied')));
       when(
-        () => mockTilesRepository.getMapStyle(name: 'light'),
+        () => mockTilesRepository.getMapStyle(name: mapStyleName),
       ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       await viewModel.loadMap.execute();
@@ -161,7 +163,7 @@ void main() {
         () => mockLocationService.getCurrentLocation(),
       ).thenAnswer((_) async => const Result.ok(_testLocation));
       when(
-        () => mockTilesRepository.getMapStyle(name: 'light'),
+        () => mockTilesRepository.getMapStyle(name: mapStyleName),
       ).thenAnswer((_) async => Result.error(exception));
 
       await viewModel.loadMap.execute();
@@ -177,7 +179,7 @@ void main() {
         () => mockLocationService.getCurrentLocation(),
       ).thenAnswer((_) async => const Result.ok(_testLocation));
       when(
-        () => mockTilesRepository.getMapStyle(name: 'light'),
+        () => mockTilesRepository.getMapStyle(name: mapStyleName),
       ).thenAnswer((_) async => const Result.ok(_testStyle));
 
       var notifications = 0;

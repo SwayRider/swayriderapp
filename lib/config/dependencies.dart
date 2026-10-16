@@ -101,6 +101,7 @@ List<SingleChildWidget> get providerDev {
         locationService: context.read(),
         searchRepository: context.read(),
         routerRepository: context.read(),
+        mapStyleName: AppConfig.tilesStyle,
       ),
     ),
     ..._sharedProviders,
