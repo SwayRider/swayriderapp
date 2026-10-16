@@ -156,6 +156,24 @@ class AppLocalizationNl extends AppLocalization {
     'deleteWaypoint': 'Tussenstop verwijderen',
     'roundTrip': 'Rondrit',
     'currentPosition': 'Huidige positie',
+    'mapStyleTitle': 'Kaartstijl',
+    'mapStyleDay': 'Dag',
+    'mapStyleNight': 'Nacht',
+    'mapStyleAuto': 'Automatisch',
+    'mapStyleAutoHint':
+        'Wisselt tussen dag en nacht op basis van het licht om je heen.',
+    'mapStyleAutoCameraHint':
+        'Op iPhone meet de camera het licht. Er worden geen foto\'s gemaakt '
+        'of bewaard.',
+    'mapStyleSwitchFailed': 'Kaartstijl wijzigen mislukt',
+    'compassPointNorth': 'Kaart naar het noorden richten',
+    'compassFollowHeading': 'Kompasrichting volgen',
+    'compassFollowingHeading':
+        'Kompasrichting wordt gevolgd. Tik om de kaart '
+        'naar het noorden te richten.',
+    'compassNeedsCalibration':
+        'Het kompas is onnauwkeurig. Beweeg je telefoon in een 8 om het te '
+        'kalibreren.',
     'routeStart': 'Startpunt route',
     'routeEnd': 'Eindpunt route',
     'completeRoute': 'Volledige route',

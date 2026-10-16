@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
@@ -12,7 +14,13 @@ import '../../core/ui/branded_app_bar.dart';
 import '../../core/ui/circle_icon_button.dart';
 import '../../core/ui/profile_menu_button.dart';
 import '../../core/ui/vehicle_type_pill.dart';
+import '../view_models/compass_state.dart';
+import '../view_models/follow_gesture_detector.dart';
+import '../view_models/follow_heading_controller.dart';
 import '../view_models/home_viewmodel.dart';
+import '../view_models/map_style_view_model.dart';
+import 'compass_button.dart';
+import 'map_style_button.dart';
 
 /// The city name to display for a result: `locality` when set, falling back
 /// to `localAdmin` (Belgian municipality names often land there rather than
@@ -59,38 +67,182 @@ enum _LocationMenuAction {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.viewModel});
+  const HomeScreen({
+    super.key,
+    required this.viewModel,
+    required this.styleViewModel,
+    required this.followController,
+  });
 
   final HomeViewModel viewModel;
+  final MapStyleViewModel styleViewModel;
+  final FollowHeadingController followController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _searchController = TextEditingController();
   MapLibreMapController? _mapController;
   Circle? _searchMarker;
+  LatLng? _searchMarkerPoint;
   final List<Circle> _routeMarkers = [];
   Future<void>? _markerSyncFuture;
   Line? _routeLine;
   Future<void>? _lineSyncFuture;
   List<LatLng>? _syncedRoutePath;
 
+  // The map's bearing, for the compass button.
+  final _bearing = ValueNotifier<double>(0);
+  int _seenStyleSwitchFailures = 0;
+
+  // Watches the fingers on the map to notice the user taking over while the
+  // map follows the heading.
+  final _gestures = FollowGestureDetector();
+  bool _calibrationHintShown = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.viewModel.loadMap.execute();
+    widget.styleViewModel.load.execute();
     _searchController.addListener(_onSearchTextChanged);
     widget.viewModel.addListener(_onViewModelChanged);
+    widget.styleViewModel.addListener(_onStyleViewModelChanged);
+    widget.followController.bind(_applyFollowCamera);
+    widget.followController.addListener(_onFollowChanged);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    widget.styleViewModel.removeListener(_onStyleViewModelChanged);
+    widget.followController.removeListener(_onFollowChanged);
+    widget.followController.bind(null);
+    widget.followController.stop();
+    _mapController?.removeListener(_onCameraChanged);
+    _bearing.dispose();
     widget.viewModel.removeListener(_onViewModelChanged);
     _searchController.removeListener(_onSearchTextChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  // The light sensor only runs while the app is in the foreground.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    widget.styleViewModel.setAppActive(state == AppLifecycleState.resumed);
+  }
+
+  // Auto follows the system appearance when there is no sensor reading.
+  @override
+  void didChangePlatformBrightness() {
+    widget.styleViewModel.onPlatformBrightnessChanged();
+  }
+
+  void _onStyleViewModelChanged() {
+    final failures = widget.styleViewModel.switchFailures;
+    if (failures > _seenStyleSwitchFailures) {
+      _seenStyleSwitchFailures = failures;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.of(context).mapStyleSwitchFailed),
+        ),
+      );
+    }
+  }
+
+  // A new style wipes every annotation: the handles we hold point at managers
+  // that no longer exist, so drop them (without removing) and add everything
+  // again. This also runs for the first style load.
+  Future<void> _onStyleLoaded() async {
+    _routeMarkers.clear();
+    _routeLine = null;
+    _searchMarker = null;
+    await _syncRouteMarkers();
+    await _syncRouteLine();
+    final point = _searchMarkerPoint;
+    final controller = _mapController;
+    if (point != null && controller != null) {
+      _searchMarker = await controller.addCircle(_searchMarkerOptions(point));
+    }
+  }
+
+  void _onCameraChanged() {
+    final bearing = _mapController?.cameraPosition?.bearing ?? 0;
+    _bearing.value = bearing;
+    widget.followController.onCameraBearing(bearing);
+  }
+
+  void _onUserLocation(UserLocation location) {
+    widget.followController.onUserLocation(
+      position: location.position,
+      course: location.bearing,
+      speed: location.speed,
+    );
+  }
+
+  // While following, the app moves the camera itself: MapLibre's own compass
+  // tracking cannot be smoothed. The zoom and tilt are the user's, so they are
+  // read from the camera as it is.
+  void _applyFollowCamera(LatLng? position, double? bearing) {
+    final controller = _mapController;
+    final camera = controller?.cameraPosition;
+    if (controller == null || camera == null) return;
+    unawaited(
+      controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: position ?? camera.target,
+            bearing: bearing ?? camera.bearing,
+            zoom: camera.zoom,
+            tilt: camera.tilt,
+          ),
+        ),
+        duration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
+  void _onFollowChanged() {
+    final follow = widget.followController;
+    if (!follow.following) {
+      _calibrationHintShown = false;
+    } else if (follow.compassUnreliable && !_calibrationHintShown) {
+      _calibrationHintShown = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.of(context).compassNeedsCalibration),
+        ),
+      );
+    }
+    if (mounted) setState(() {});
+  }
+
+  void _onPointer(PointerEvent event, FollowBreak? Function() update) {
+    final broke = update();
+    widget.followController.setTouching(_gestures.isTouching);
+    if (broke != null && widget.followController.following) {
+      widget.followController.stop();
+    }
+  }
+
+  Future<void> _onCompassPressed() async {
+    final controller = _mapController;
+    if (controller == null) return;
+    final mode = CompassState.modeFor(
+      bearing: _bearing.value,
+      following: widget.followController.following,
+    );
+    switch (CompassState.actionFor(mode)) {
+      case CompassAction.pointNorth:
+        widget.followController.stop();
+        await controller.animateCamera(CameraUpdate.bearingTo(0));
+      case CompassAction.followHeading:
+        widget.followController.start();
+    }
   }
 
   // The route line depends on an async network result, unlike the point
@@ -153,6 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _mapController?.removeCircle(marker);
       _searchMarker = null;
     }
+    _searchMarkerPoint = null;
 
     await _syncRouteMarkers();
     _searchController.clear();
@@ -259,22 +412,23 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showSearchMarker(LatLng point) async {
     final controller = _mapController;
     if (controller == null) return;
+    _searchMarkerPoint = point;
     final marker = _searchMarker;
     if (marker != null) {
       await controller.updateCircle(marker, CircleOptions(geometry: point));
     } else {
-      _searchMarker = await controller.addCircle(
-        CircleOptions(
-          geometry: point,
-          circleColor: '#FF7A00',
-          circleRadius: 8,
-          circleStrokeColor: '#FFFFFF',
-          circleStrokeWidth: 2,
-        ),
-      );
+      _searchMarker = await controller.addCircle(_searchMarkerOptions(point));
     }
     await controller.animateCamera(CameraUpdate.newLatLng(point));
   }
+
+  CircleOptions _searchMarkerOptions(LatLng point) => CircleOptions(
+    geometry: point,
+    circleColor: '#FF7A00',
+    circleRadius: 8,
+    circleStrokeColor: '#FFFFFF',
+    circleStrokeWidth: 2,
+  );
 
   Future<void> _recenterToCurrentLocation() async {
     final controller = _mapController;
@@ -283,6 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await controller.removeCircle(marker);
       _searchMarker = null;
     }
+    _searchMarkerPoint = null;
     final location = widget.viewModel.location;
     if (controller != null && location != null) {
       await controller.animateCamera(CameraUpdate.newLatLng(location));
@@ -468,33 +623,87 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             Expanded(
               child: ListenableBuilder(
-                listenable: widget.viewModel.loadMap,
+                listenable: Listenable.merge([
+                  widget.viewModel.loadMap,
+                  widget.styleViewModel,
+                ]),
                 builder: (context, _) {
                   final location = widget.viewModel.location;
-                  final mapStyle = widget.viewModel.mapStyle;
+                  final mapStyle = widget.styleViewModel.mapStyle;
                   if (location == null || mapStyle == null) {
                     return const Center(child: CircularProgressIndicator());
                   }
                   return Stack(
                     children: [
-                      MapLibreMap(
-                        styleString: mapStyle,
-                        initialCameraPosition: CameraPosition(
-                          target: location,
-                          zoom: 15,
+                      Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (e) => _onPointer(
+                          e,
+                          () =>
+                              _gestures.pointerDown(e.pointer, e.localPosition),
                         ),
-                        myLocationEnabled: true,
-                        myLocationRenderMode: MyLocationRenderMode.normal,
-                        // The compass mockup doesn't include one, and the
-                        // default icon renders as a clipped half-circle on
-                        // high-density displays (upstream maplibre rendering
-                        // issue), so disable it.
-                        compassEnabled: false,
-                        onMapCreated: (controller) {
-                          _mapController = controller;
-                          _syncRouteMarkers();
-                          _syncRouteLine();
-                        },
+                        onPointerMove: (e) => _onPointer(
+                          e,
+                          () =>
+                              _gestures.pointerMove(e.pointer, e.localPosition),
+                        ),
+                        onPointerUp: (e) => _onPointer(e, () {
+                          _gestures.pointerUp(e.pointer);
+                          return null;
+                        }),
+                        onPointerCancel: (e) => _onPointer(e, () {
+                          _gestures.pointerUp(e.pointer);
+                          return null;
+                        }),
+                        child: MapLibreMap(
+                          styleString: mapStyle,
+                          initialCameraPosition: CameraPosition(
+                            target: location,
+                            zoom: 15,
+                          ),
+                          myLocationEnabled: true,
+                          myLocationRenderMode: MyLocationRenderMode.normal,
+                          // The compass mockup doesn't include one, and the
+                          // default icon renders as a clipped half-circle on
+                          // high-density displays (upstream maplibre rendering
+                          // issue), so disable it.
+                          compassEnabled: false,
+                          // Our own compass button needs the live bearing.
+                          trackCameraPosition: true,
+                          onMapCreated: (controller) {
+                            _mapController = controller;
+                            controller.addListener(_onCameraChanged);
+                          },
+                          onStyleLoadedCallback: _onStyleLoaded,
+                          onUserLocationUpdated: _onUserLocation,
+                        ),
+                      ),
+                      Positioned(
+                        left: dimens.paddingScreenHorizontal,
+                        top: dimens.paddingScreenVertical,
+                        child: MapStyleButton(
+                          mode: widget.styleViewModel.mode,
+                          variant: widget.styleViewModel.variant,
+                          onPressed: () => showMapStyleSheet(
+                            context,
+                            viewModel: widget.styleViewModel,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: dimens.paddingScreenHorizontal,
+                        top: dimens.paddingScreenVertical,
+                        child: ListenableBuilder(
+                          listenable: _bearing,
+                          builder: (context, _) => CompassButton(
+                            bearing: _bearing.value,
+                            mode: CompassState.modeFor(
+                              bearing: _bearing.value,
+                              following: widget.followController.following,
+                            ),
+                            onPressed: _onCompassPressed,
+                          ),
+                        ),
                       ),
                       Positioned(
                         left: dimens.paddingScreenHorizontal,

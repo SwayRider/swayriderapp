@@ -37,7 +37,18 @@ class TilesRepositoryRemote implements TilesRepository {
   /// Matches `/v1/tiles/{tileset}/{z}/{x}/{y}` requests, with or without a
   /// leading slash.
   static final _tilePathRegExp = RegExp(
-    r'^/?v1/tiles/([^/]+)/(\d+)/(\d+)/(\d+)$',
+    r'^/?v1/tiles/([A-Za-z0-9_-]+)/(\d+)/(\d+)/(\d+)$',
+  );
+
+  /// Matches glyph ranges, `/v1/tiles/fonts/{fontstack}/{start}-{end}.pbf`.
+  /// The font stack stays percent-encoded in the path (`Noto%20Sans%20Regular`).
+  static final _glyphPathRegExp = RegExp(
+    r'^/?v1/tiles/fonts/[A-Za-z0-9%_,()+-]+/\d+-\d+\.pbf$',
+  );
+
+  /// Matches sprite sheets, `/v1/tiles/sprites/{name}[@2x].{json,png}`.
+  static final _spritePathRegExp = RegExp(
+    r'^/?v1/tiles/sprites/[A-Za-z0-9_-]+(@2x)?\.(json|png)$',
   );
 
   /// Marks where, in any style JSON string value, the tiles API path begins.
@@ -83,10 +94,22 @@ class TilesRepositoryRemote implements TilesRepository {
     await (await serverFuture).close(force: true);
   }
 
+  /// Serves only what MapLibre fetches by itself: tiles, glyph ranges and
+  /// sprites, with GET/HEAD. The style is fetched by [getMapStyle], never
+  /// through here. Anything else is refused, so other apps on the device
+  /// cannot use this loopback server to make authenticated requests for
+  /// arbitrary backend paths.
   Future<shelf.Response> _handleRequest(shelf.Request request) async {
-    final match = _tilePathRegExp.firstMatch(request.url.path);
+    if (request.method != 'GET' && request.method != 'HEAD') {
+      return shelf.Response(HttpStatus.methodNotAllowed);
+    }
+    final path = request.url.path;
+    final match = _tilePathRegExp.firstMatch(path);
     if (match == null) {
-      return _forward(request);
+      if (_glyphPathRegExp.hasMatch(path) || _spritePathRegExp.hasMatch(path)) {
+        return _forward(request);
+      }
+      return shelf.Response.notFound('Not found');
     }
 
     final tileset = match.group(1)!;
@@ -102,6 +125,11 @@ class TilesRepositoryRemote implements TilesRepository {
       );
     }
 
+    // shelf_proxy hands back decoded bytes (it gunzips the backend's
+    // `Content-Encoding: gzip` tiles and drops that header), so the bytes
+    // cached below match the plain MVT served on a cache hit.
+    // Only a 200 is cached: 204 (no tile, MapLibre over-zooms) and 304 pass
+    // through untouched.
     final response = await _forward(request);
     if (response.statusCode == 200) {
       final bytes = Uint8List.fromList(

@@ -178,7 +178,11 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
     GoRoute(
       path: Routes.home,
       builder: (context, state) {
-        return HomeScreen(viewModel: context.read());
+        return HomeScreen(
+          viewModel: context.read(),
+          styleViewModel: context.read(),
+          followController: context.read(),
+        );
       },
     ),
     GoRoute(

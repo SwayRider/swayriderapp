@@ -152,6 +152,24 @@ class AppLocalizationEn extends AppLocalization {
     'deleteWaypoint': 'Delete waypoint',
     'roundTrip': 'Round trip',
     'currentPosition': 'Current position',
+    'mapStyleTitle': 'Map style',
+    'mapStyleDay': 'Day',
+    'mapStyleNight': 'Night',
+    'mapStyleAuto': 'Auto',
+    'mapStyleAutoHint':
+        'Switches between day and night depending on the light around you.',
+    'mapStyleAutoCameraHint':
+        'On iPhone the camera measures the light. No pictures are taken or '
+        'stored.',
+    'mapStyleSwitchFailed': 'Could not change the map style',
+    'compassPointNorth': 'Point the map north',
+    'compassFollowHeading': 'Follow the compass heading',
+    'compassFollowingHeading':
+        'Following the compass heading. Tap to point '
+        'the map north.',
+    'compassNeedsCalibration':
+        'The compass is inaccurate. Move your phone in a figure 8 to '
+        'calibrate it.',
     'routeStart': 'Route start',
     'routeEnd': 'Route end',
     'completeRoute': 'Complete route',
