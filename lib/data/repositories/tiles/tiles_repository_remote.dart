@@ -141,14 +141,74 @@ class TilesRepositoryRemote implements TilesRepository {
     return response;
   }
 
+  /// Forwards [request] to the backend with the current bearer token. When the
+  /// backend answers 401 the access token has expired (the proxy is the only
+  /// thing talking to the server during a long ride, so nothing else would
+  /// refresh it): refresh it once and retry.
   Future<shelf.Response> _forward(shelf.Request request) async {
-    final authHeader = _authRepository.authHeaderProvider();
-    final forwarded = authHeader == null
-        ? request
-        : request.change(
-            headers: {HttpHeaders.authorizationHeader: authHeader},
-          );
-    return _proxyHandler(forwarded);
+    final usedAuth = _authRepository.authHeaderProvider();
+    final response = await _proxyHandler(_withAuth(request, usedAuth));
+    if (response.statusCode != HttpStatus.unauthorized) return response;
+
+    if (!await _refreshAccessToken(usedAuth)) return response;
+    await response.read().drain<void>();
+    return _proxyHandler(
+      _withAuth(request, _authRepository.authHeaderProvider()),
+    );
+  }
+
+  /// A fresh copy of [request] carrying [authHeader]: a shelf request body
+  /// can only be read once, so each attempt needs its own request. Only
+  /// body-less GET/HEAD requests get here.
+  shelf.Request _withAuth(shelf.Request request, String? authHeader) =>
+      shelf.Request(
+        request.method,
+        request.requestedUri,
+        protocolVersion: request.protocolVersion,
+        headers: {
+          ...request.headers,
+          HttpHeaders.authorizationHeader: ?authHeader,
+        },
+        handlerPath: request.handlerPath,
+        url: request.url,
+        context: request.context,
+      );
+
+  /// A refresh that finished less than this long ago is not repeated: if the
+  /// backend still answers 401 with a fresh token, refreshing again won't help
+  /// (e.g. the token lacks access), and each refresh rotates the single-use
+  /// refresh token.
+  static const _refreshCooldown = Duration(seconds: 30);
+
+  Future<bool>? _refreshInFlight;
+  DateTime? _lastRefreshAt;
+
+  /// Returns whether a retry is worthwhile: the token was just refreshed,
+  /// either by this call, by another tile request that got there first, or by
+  /// anything else since [rejectedAuth] was sent. All concurrent tile
+  /// requests share one refresh, because MapLibre fetches dozens of tiles at
+  /// once and refresh tokens are single-use.
+  ///
+  /// A failed refresh (e.g. an invalid refresh token) is left to the normal
+  /// API calls, whose `withAuthRetry` signs the user out.
+  Future<bool> _refreshAccessToken(String? rejectedAuth) {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    if (_authRepository.authHeaderProvider() != rejectedAuth) {
+      return Future.value(true); // already refreshed since the request left
+    }
+    final last = _lastRefreshAt;
+    if (last != null && DateTime.now().difference(last) < _refreshCooldown) {
+      return Future.value(false);
+    }
+    return _refreshInFlight = _authRepository
+        .refresh()
+        .then((result) {
+          _lastRefreshAt = DateTime.now();
+          return result is Ok<void>;
+        })
+        .onError<Object>((_, _) => false)
+        .whenComplete(() => _refreshInFlight = null);
   }
 
   /// Recursively walks [json], rewriting any string value that contains
