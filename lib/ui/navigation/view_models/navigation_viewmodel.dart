@@ -10,6 +10,7 @@ import '../../../domain/models/location/location_fix.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/navigation/announcer.dart';
+import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/route_progress.dart';
 
 /// Turn-by-turn state for one navigation session along a fixed [RoutePlan].
@@ -112,6 +113,13 @@ class NavigationViewModel extends ChangeNotifier {
       double.infinity,
     );
   }
+
+  /// The zoom the camera should head for: wide while cruising, in close to
+  /// the upcoming maneuver (see [CameraZoom]).
+  double get targetZoom => CameraZoom.target(
+    speedMps: _fix?.speedMps ?? 0,
+    distanceToManeuverMeters: _arrived ? null : distanceToUpcomingMeters,
+  );
 
   int? get _upcomingIndex {
     final snapshot = _snapshot;

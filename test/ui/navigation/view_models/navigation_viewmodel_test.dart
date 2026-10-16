@@ -118,6 +118,36 @@ void main() {
     expect(viewModel.upcoming?.type, 4);
   });
 
+  test(
+    'target zoom is wide while cruising and closes in on the turn',
+    () async {
+      final cruise = viewModel.targetZoom;
+      expect(cruise, 16.5); // no fix yet: cruise zoom at standstill
+
+      location.emit(at(5), speedMps: 10); // 1500 m before the turn at 2000 m
+      await pump();
+      final far = viewModel.targetZoom;
+      expect(far, lessThan(16.5));
+      expect(far, greaterThan(14.5));
+
+      location.emit(at(18), speedMps: 10); // 200 m before
+      await pump();
+      final near = viewModel.targetZoom;
+      expect(near, greaterThan(far));
+
+      location.emit(at(19.5), speedMps: 10); // 50 m before
+      await pump();
+      expect(viewModel.targetZoom, 17.5);
+
+      location.emit(
+        at(22),
+        speedMps: 10,
+      ); // turn passed, destination 800 m away
+      await pump();
+      expect(viewModel.targetZoom, closeTo(far, 0.3));
+    },
+  );
+
   test('a fix beside the route is snapped onto it', () async {
     location.emit(const LatLng(51.0045, 4.0002));
     await pump();

@@ -10,6 +10,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../data/services/location_service.dart';
 import '../../../data/services/speech_service.dart';
 import '../../../domain/models/route/route_plan.dart';
+import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/geo.dart';
 import '../../../utils/distance_format.dart';
 import '../../core/localization/applocalization.dart';
@@ -44,7 +45,6 @@ class NavigationScreen extends StatefulWidget {
 
 class _NavigationScreenState extends State<NavigationScreen> {
   static const _tilt = 60.0;
-  static const _defaultZoom = 17.0;
   static const _tickPeriod = Duration(milliseconds: 100);
 
   /// Share of the screen height the dot is moved down from the centre.
@@ -54,6 +54,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// and camera glide between the ~1 Hz GPS fixes.
   static const _positionSmoothing = 0.3;
   static const _bearingSmoothing = 0.2;
+  static const _zoomSmoothing = 0.1;
 
   final _log = Logger('NavigationScreen');
 
@@ -66,6 +67,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   LatLng? _position;
   double _bearing = 0;
+  double _zoom = CameraZoom.target(speedMps: 0, distanceToManeuverMeters: null);
+  double? _appliedZoom;
   bool _bearingInitialised = false;
   LatLng? _appliedCenter;
   double? _appliedBearing;
@@ -150,11 +153,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
           360;
     }
 
+    _zoom += (_viewModel.targetZoom - _zoom) * _zoomSmoothing;
+
     final dotAt = _position!;
     final center = destinationPoint(
       dotAt,
       _bearing,
-      _aheadMeters(dotAt.latitude, camera.zoom),
+      _aheadMeters(dotAt.latitude, _zoom),
     );
     final moved = _appliedCenter == null
         ? double.infinity
@@ -162,7 +167,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
     final turned = _appliedBearing == null
         ? double.infinity
         : shortestAngleDelta(_appliedBearing!, _bearing).abs();
-    if (moved < 0.2 && turned < 0.2 && _dot != null) return;
+    final zoomed = _appliedZoom == null
+        ? double.infinity
+        : (_zoom - _appliedZoom!).abs();
+    if (moved < 0.2 && turned < 0.2 && zoomed < 0.005 && _dot != null) return;
 
     _busy = true;
     try {
@@ -177,13 +185,14 @@ class _NavigationScreenState extends State<NavigationScreen> {
           CameraPosition(
             target: center,
             bearing: _bearing,
-            zoom: camera.zoom,
+            zoom: _zoom,
             tilt: _tilt,
           ),
         ),
       );
       _appliedCenter = center;
       _appliedBearing = _bearing;
+      _appliedZoom = _zoom;
     } on Object catch (e) {
       _log.fine('Camera/dot update failed: $e');
     } finally {
@@ -253,7 +262,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   styleString: style,
                   initialCameraPosition: CameraPosition(
                     target: path.first,
-                    zoom: _defaultZoom,
+                    zoom: _zoom,
                     tilt: _tilt,
                     bearing: path.length > 1
                         ? bearingDegrees(path[0], path[1])
@@ -262,7 +271,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   myLocationEnabled: false,
                   compassEnabled: false,
                   trackCameraPosition: true,
-                  // The app drives the camera; only pinch-zoom stays free.
+                  // The app drives the camera, zoom included.
+                  zoomGesturesEnabled: false,
                   scrollGesturesEnabled: false,
                   rotateGesturesEnabled: false,
                   tiltGesturesEnabled: false,
