@@ -86,7 +86,7 @@ class RouterApiClient {
           .join()
           .timeout(_routeResponseTimeout);
       if (response.statusCode == 200) {
-        return _parseSse(stringData);
+        return _parseSse(stringData, language);
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {
@@ -154,7 +154,7 @@ class RouterApiClient {
   /// `JobResult` envelope (`{success, data, error}`), or surfaces the
   /// message from a terminal `error` frame (queue-full, timeout, not
   /// found).
-  Result<RoutePlan> _parseSse(String body) {
+  Result<RoutePlan> _parseSse(String body, String requestedLanguage) {
     Map<String, dynamic>? result;
     Map<String, dynamic>? sseError;
     for (final block in body.split('\n\n')) {
@@ -186,7 +186,7 @@ class RouterApiClient {
       if (legs.isEmpty) {
         return Result.error(Exception('No route found'));
       }
-      return Result.ok(_planFromTrip(trip!, legs));
+      return Result.ok(_planFromTrip(trip!, legs, requestedLanguage));
     }
 
     if (sseError != null) {
@@ -199,7 +199,11 @@ class RouterApiClient {
   /// shape, so a leg's maneuver shape indices are shifted by the number of
   /// points already accumulated; the first point of every later leg repeats
   /// the previous leg's last point and is dropped.
-  RoutePlan _planFromTrip(Map<String, dynamic> trip, List<dynamic> legs) {
+  RoutePlan _planFromTrip(
+    Map<String, dynamic> trip,
+    List<dynamic> legs,
+    String requestedLanguage,
+  ) {
     final path = <LatLng>[];
     final maneuvers = <RouteManeuver>[];
     for (final raw in legs) {
@@ -221,7 +225,7 @@ class RouterApiClient {
       // Requested in kilometers.
       distanceMeters: ((summary?['length'] as num?) ?? 0) * 1000.0,
       durationSeconds: ((summary?['time'] as num?) ?? 0).toDouble(),
-      language: (trip['language'] as String?) ?? 'en-US',
+      language: _nonEmpty(trip['language']) ?? requestedLanguage,
     );
   }
 

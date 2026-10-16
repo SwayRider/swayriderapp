@@ -133,6 +133,28 @@ void main() {
       expect(maneuver.verbalPre, isNull);
     });
 
+    test(
+      'falls back to the requested language when the response has none',
+      () async {
+        final client = _sseClient({
+          'legs': [
+            {
+              'shape': _encode([a, b]),
+              'maneuvers': [],
+            },
+          ],
+        });
+        final api = RouterApiClient(clientFactory: () => client);
+
+        final result = await api.calculateRoute(
+          points: const [a, b],
+          language: 'nl-NL',
+        );
+
+        expect((result as Ok<RoutePlan>).value.language, 'nl-NL');
+      },
+    );
+
     test('sends language and km unit in the request body', () async {
       final client = _sseClient({
         'legs': [
