@@ -9,6 +9,7 @@ import '../../../data/repositories/router/router_repository.dart';
 import '../../../data/repositories/search/search_repository.dart';
 import '../../../data/services/api/model/search/search_result_item.dart';
 import '../../../data/services/location_service.dart';
+import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/models/route/route_point.dart';
 import '../../../utils/command.dart';
 import '../../../utils/result.dart';
@@ -76,7 +77,11 @@ class HomeViewModel extends ChangeNotifier {
   /// than two [routePoints] or the last calculation failed. Recalculated
   /// automatically by every method below that mutates [routePoints] or
   /// [isRoundTrip].
-  List<LatLng>? routePath;
+  List<LatLng>? get routePath => routePlan?.path;
+
+  /// The current route including its turn-by-turn maneuvers (same lifecycle
+  /// as [routePath]); this is what navigation starts from.
+  RoutePlan? routePlan;
 
   Timer? _searchDebounceTimer;
   int _routeGeneration = 0;
@@ -296,8 +301,8 @@ class HomeViewModel extends ChangeNotifier {
 
   Future<void> _recalculateRoute(int generation) async {
     if (routePoints.length < 2) {
-      if (routePath != null) {
-        routePath = null;
+      if (routePlan != null) {
+        routePlan = null;
         notifyListeners();
       }
       return;
@@ -305,14 +310,17 @@ class HomeViewModel extends ChangeNotifier {
     final result = await _routerRepository.calculateRoute(
       points: [for (final point in routePoints) point.point],
       isRoundTrip: isRoundTrip,
+      language: routeLanguageFor(
+        PlatformDispatcher.instance.locale.languageCode,
+      ),
     );
     if (generation != _routeGeneration) return;
     switch (result) {
       case Ok(:final value):
-        routePath = value;
+        routePlan = value;
       case Error(:final error):
         _log.warning('Route calculation failed: $error');
-        routePath = null;
+        routePlan = null;
     }
     notifyListeners();
   }

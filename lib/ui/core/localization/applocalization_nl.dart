@@ -177,6 +177,16 @@ class AppLocalizationNl extends AppLocalization {
     'routeStart': 'Startpunt route',
     'routeEnd': 'Eindpunt route',
     'completeRoute': 'Volledige route',
+    'startNavigation': 'Start',
+    'endNavigation': 'Navigatie stoppen',
+    'navigationWaitingForGps': 'Wachten op GPS\u2026',
+    'navigationLocationError':
+        'Locatie niet beschikbaar. Controleer of locatie aan staat en is '
+        'toegestaan.',
+    'navigationOffRoute': 'Van de route',
+    'navigationArrived': 'U bent aangekomen',
+    'navigationDone': 'Klaar',
+    'navigationRemaining': 'Nog {distance}',
   };
 
   @override

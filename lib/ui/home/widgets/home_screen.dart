@@ -1,10 +1,13 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../data/services/api/model/search/search_result_item.dart';
+import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/models/route/route_point.dart';
+import '../../../routing/routes.dart';
 import '../../../utils/result.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
@@ -227,6 +230,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (broke != null && widget.followController.following) {
       widget.followController.stop();
     }
+  }
+
+  void _startNavigation(RoutePlan plan) {
+    // The home camera must not keep following while the navigation screen
+    // drives its own.
+    widget.followController.stop();
+    unawaited(context.push(Routes.navigation, extra: plan));
   }
 
   Future<void> _onCompassPressed() async {
@@ -732,6 +742,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             label: localization.standardMotorcycle,
                             onTap: () {},
                           ),
+                        ),
+                      ),
+                      Positioned(
+                        right: dimens.paddingScreenHorizontal,
+                        bottom: dimens.paddingScreenVertical + 48 + 12,
+                        child: ListenableBuilder(
+                          listenable: widget.viewModel,
+                          builder: (context, _) {
+                            final plan = widget.viewModel.routePlan;
+                            if (plan == null || !plan.canNavigate) {
+                              return const SizedBox.shrink();
+                            }
+                            return FloatingActionButton.extended(
+                              heroTag: 'start-navigation',
+                              backgroundColor: AppColors.apexOrange,
+                              foregroundColor: AppColors.black1,
+                              onPressed: () => _startNavigation(plan),
+                              icon: const Icon(Icons.navigation),
+                              label: Text(localization.startNavigation),
+                            );
+                          },
                         ),
                       ),
                       Positioned(

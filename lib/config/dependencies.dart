@@ -17,6 +17,7 @@ import '../data/services/ambient_light_service.dart';
 import '../data/services/api/tiles_api_client.dart';
 import '../data/services/compass_service.dart';
 import '../data/services/location_service.dart';
+import '../data/services/speech_service.dart';
 import '../data/services/map_style_preference_service.dart';
 import '../data/services/secure_token_storage_service.dart';
 import '../data/services/tile_cache.dart';
@@ -100,6 +101,7 @@ List<SingleChildWidget> get providerDev {
       dispose: (context, repository) => repository.close(),
     ),
     Provider<LocationService>(create: (context) => LocationServiceGeolocator()),
+    Provider<SpeechService>(create: (context) => SpeechServiceChannel()),
     ChangeNotifierProvider<HomeViewModel>(
       create: (context) => HomeViewModel(
         authRepository: context.read(),

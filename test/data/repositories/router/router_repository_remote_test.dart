@@ -3,6 +3,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:mocktail/mocktail.dart';
 import 'package:swayriderapp/data/repositories/router/router_repository_remote.dart';
 import 'package:swayriderapp/data/services/api/unauthorized_exception.dart';
+import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/utils/result.dart';
 
 import '../../../helpers/mocks.dart';
@@ -26,14 +27,13 @@ void main() {
         () => mockApiClient.calculateRoute(
           points: any(named: 'points'),
           isRoundTrip: any(named: 'isRoundTrip'),
+          language: any(named: 'language'),
         ),
       ).thenAnswer((_) async => const Result.error(UnauthorizedException()));
-      when(
-        () => mockAuthRepository.withAuthRetry<List<LatLng>>(any()),
-      ).thenAnswer(
+      when(() => mockAuthRepository.withAuthRetry<RoutePlan>(any())).thenAnswer(
         (invocation) =>
             (invocation.positionalArguments.single
-                as Future<Result<List<LatLng>>> Function())(),
+                as Future<Result<RoutePlan>> Function())(),
       );
 
       final repository = RouterRepositoryRemote(
@@ -45,13 +45,10 @@ void main() {
         points: const [LatLng(51.2194, 4.4025), LatLng(51.22, 4.41)],
       );
 
-      expect(result, isA<Error<List<LatLng>>>());
-      expect(
-        (result as Error<List<LatLng>>).error,
-        isA<UnauthorizedException>(),
-      );
+      expect(result, isA<Error<RoutePlan>>());
+      expect((result as Error<RoutePlan>).error, isA<UnauthorizedException>());
       verify(
-        () => mockAuthRepository.withAuthRetry<List<LatLng>>(any()),
+        () => mockAuthRepository.withAuthRetry<RoutePlan>(any()),
       ).called(1);
     },
   );
@@ -69,14 +66,13 @@ void main() {
         () => mockApiClient.calculateRoute(
           points: any(named: 'points'),
           isRoundTrip: any(named: 'isRoundTrip'),
+          language: any(named: 'language'),
         ),
-      ).thenAnswer((_) async => const Result.ok([]));
-      when(
-        () => mockAuthRepository.withAuthRetry<List<LatLng>>(any()),
-      ).thenAnswer(
+      ).thenAnswer((_) async => Result.ok(RoutePlan.pathOnly(const [])));
+      when(() => mockAuthRepository.withAuthRetry<RoutePlan>(any())).thenAnswer(
         (invocation) =>
             (invocation.positionalArguments.single
-                as Future<Result<List<LatLng>>> Function())(),
+                as Future<Result<RoutePlan>> Function())(),
       );
 
       final repository = RouterRepositoryRemote(
@@ -88,7 +84,11 @@ void main() {
       await repository.calculateRoute(points: points, isRoundTrip: true);
 
       verify(
-        () => mockApiClient.calculateRoute(points: points, isRoundTrip: true),
+        () => mockApiClient.calculateRoute(
+          points: points,
+          isRoundTrip: true,
+          language: 'en-US',
+        ),
       ).called(1);
     },
   );

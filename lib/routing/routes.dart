@@ -18,6 +18,9 @@ abstract final class Routes {
   static const changePassword = '/change-password';
   static const connectionIssue = '/connection-issue';
 
+  /// Turn-by-turn navigation. Needs a `RoutePlan` passed as `extra`.
+  static const navigation = '/navigation';
+
   /// Routes accessible while the user is not authenticated.
   static const publicRoutes = {
     login,

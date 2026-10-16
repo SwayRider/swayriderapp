@@ -161,6 +161,15 @@ class AppLocalization {
   String get routeStart => _get('routeStart');
   String get routeEnd => _get('routeEnd');
   String get completeRoute => _get('completeRoute');
+  String get startNavigation => _get('startNavigation');
+  String get endNavigation => _get('endNavigation');
+  String get navigationWaitingForGps => _get('navigationWaitingForGps');
+  String get navigationLocationError => _get('navigationLocationError');
+  String get navigationOffRoute => _get('navigationOffRoute');
+  String get navigationArrived => _get('navigationArrived');
+  String get navigationDone => _get('navigationDone');
+  String navigationRemaining(String distance) =>
+      _get('navigationRemaining').replaceAll('{distance}', distance);
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

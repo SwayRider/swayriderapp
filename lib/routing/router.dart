@@ -12,6 +12,7 @@ import '../ui/invitation_only/widgets/invitation_only_screen.dart';
 import '../ui/home/widgets/home_screen.dart';
 import '../ui/login/view_models/login_viewmodel.dart';
 import '../ui/login/widgets/login_screen.dart';
+import '../ui/navigation/widgets/navigation_screen.dart';
 import '../ui/mfa_reset_confirmation/widgets/mfa_reset_confirmation_screen.dart';
 import '../ui/mfa_reset_request/view_models/mfa_reset_request_viewmodel.dart';
 import '../ui/mfa_reset_request/widgets/mfa_reset_request_screen.dart';
@@ -33,6 +34,10 @@ import '../ui/verify_email/widgets/verify_email_screen.dart';
 import 'routes.dart';
 import '../data/repositories/auth/auth_repository.dart';
 import '../data/services/api/connection_exception.dart';
+import '../data/services/location_service.dart';
+import '../data/services/speech_service.dart';
+import '../domain/models/route/route_plan.dart';
+import '../ui/home/view_models/map_style_view_model.dart';
 
 /// Top go_router entry point.
 ///
@@ -182,6 +187,21 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
           viewModel: context.read(),
           styleViewModel: context.read(),
           followController: context.read(),
+        );
+      },
+    ),
+    GoRoute(
+      path: Routes.navigation,
+      // Without a route to follow (e.g. a restored deep link) there is
+      // nothing to navigate.
+      redirect: (context, state) =>
+          state.extra is RoutePlan ? null : Routes.home,
+      builder: (context, state) {
+        return NavigationScreen(
+          plan: state.extra! as RoutePlan,
+          locationService: context.read<LocationService>(),
+          speechService: context.read<SpeechService>(),
+          styleViewModel: context.read<MapStyleViewModel>(),
         );
       },
     ),

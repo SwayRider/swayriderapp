@@ -16,6 +16,7 @@ For setup, running the app, configuration, and contributing, see
 - [Navigation Flow](#navigation-flow)
 - [Map Tiles](#map-tiles)
 - [Map Controls](#map-controls)
+- [Turn-by-Turn Navigation](#turn-by-turn-navigation)
 - [Project Structure](#project-structure)
 
 ---
@@ -216,6 +217,42 @@ user's zoom and tilt, about 10 times a second at most):
   commanded one for a second also ends it.
 - Magnetic north is used on Android (the difference to true north is a few
   degrees in Belgium); iOS delivers true north; the GPS course is true north.
+
+---
+
+## Turn-by-Turn Navigation
+
+The **Start** button on the home screen (shown once a route with maneuvers
+exists) pushes `/navigation` with the `RoutePlan` as `extra`.
+
+- **Route data:** `RouterApiClient` keeps the full Valhalla result as a
+  `RoutePlan` (merged path of all legs plus `RouteManeuver`s, with each leg's
+  `begin_shape_index` shifted so it indexes the merged path). It requests
+  `unit: km` and the app language (`routeLanguageFor`: `nl-NL`, otherwise
+  `en-US`), so `instruction` and the `verbal_*` strings come back already
+  localized.
+- **Progress:** `RouteProgress` (`domain/navigation/`) snaps each GPS fix to the
+  route with a forward-only window (800 m), so an out-and-back road is never
+  matched to the return pass early. The first fix searches the whole route, and
+  a fix far ahead (after a GPS gap) is accepted if it is within 40 m of the
+  line. Fixes more than 150 m off the line never advance progress. There is no
+  re-routing yet: off route, the dot follows the raw GPS and the header says so.
+- **Prompts:** `Announcer` speaks each maneuver at most three times: an advance
+  alert ("In 500 meters, ...", ~30 s of travel, 300 m to 1.5 km), the
+  pre-transition instruction (~8 s, 40 to 250 m) and the post-transition
+  instruction. Alerts are skipped when the previous stretch is too short, and
+  after a GPS jump only the most relevant phrase is spoken.
+- **Speech:** `SpeechService` is the app's own platform channel
+  (`AVSpeechSynthesizer` on iOS, `TextToSpeech` on Android) rather than
+  `flutter_tts`, which would force CocoaPods on this Swift Package Manager
+  project (same reason as the compass). Other audio is ducked while speaking.
+- **Screen:** `NavigationScreen` shows the map with tilt 60 and the camera
+  centred ahead of a dot snapped to the route, so the dot sits in the lower
+  part of the screen (`maplibre_gl` has no camera padding). A 100 ms timer
+  glides the dot and camera between fixes. Pan, rotate and tilt gestures are
+  off; pinch-zoom works. `wakelock_plus` keeps the display on.
+- **Not done yet:** re-routing, guidance while the app is in the background or
+  the screen is locked, lane guidance.
 
 ---
 

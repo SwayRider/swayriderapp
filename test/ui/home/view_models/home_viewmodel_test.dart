@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:mocktail/mocktail.dart';
 import 'package:swayriderapp/data/services/api/model/search/search_result_item.dart';
+import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/domain/models/route/route_point.dart';
 import 'package:swayriderapp/ui/home/view_models/home_viewmodel.dart';
 import 'package:swayriderapp/utils/result.dart';
@@ -34,8 +35,9 @@ void main() {
       () => mockRouterRepository.calculateRoute(
         points: any(named: 'points'),
         isRoundTrip: any(named: 'isRoundTrip'),
+        language: any(named: 'language'),
       ),
-    ).thenAnswer((_) async => const Result.ok([]));
+    ).thenAnswer((_) async => Result.ok(RoutePlan.pathOnly(const [])));
     viewModel = HomeViewModel(
       authRepository: mockAuthRepository,
       locationService: mockLocationService,
@@ -348,6 +350,7 @@ void main() {
         () => mockRouterRepository.calculateRoute(
           points: any(named: 'points'),
           isRoundTrip: any(named: 'isRoundTrip'),
+          language: any(named: 'language'),
         ),
       );
       expect(viewModel.routePath, isNull);
@@ -362,6 +365,7 @@ void main() {
         () => mockRouterRepository.calculateRoute(
           points: [pointA.point, pointB.point],
           isRoundTrip: false,
+          language: any(named: 'language'),
         ),
       ).called(1);
     });
@@ -372,8 +376,9 @@ void main() {
         () => mockRouterRepository.calculateRoute(
           points: any(named: 'points'),
           isRoundTrip: any(named: 'isRoundTrip'),
+          language: any(named: 'language'),
         ),
-      ).thenAnswer((_) async => Result.ok(path));
+      ).thenAnswer((_) async => Result.ok(RoutePlan.pathOnly(path)));
 
       viewModel.setAsStartPoint(pointA);
       viewModel.setAsDestination(pointB);
@@ -390,8 +395,9 @@ void main() {
           () => mockRouterRepository.calculateRoute(
             points: any(named: 'points'),
             isRoundTrip: any(named: 'isRoundTrip'),
+            language: any(named: 'language'),
           ),
-        ).thenAnswer((_) async => Result.ok(path));
+        ).thenAnswer((_) async => Result.ok(RoutePlan.pathOnly(path)));
         viewModel.setAsStartPoint(pointA);
         viewModel.setAsDestination(pointB);
         await Future<void>.delayed(Duration.zero);
@@ -401,6 +407,7 @@ void main() {
           () => mockRouterRepository.calculateRoute(
             points: any(named: 'points'),
             isRoundTrip: any(named: 'isRoundTrip'),
+            language: any(named: 'language'),
           ),
         ).thenAnswer((_) async => Result.error(Exception('no route')));
         viewModel.setRoundTrip(true);
@@ -424,24 +431,26 @@ void main() {
           () => mockRouterRepository.calculateRoute(
             points: [pointA.point, pointB.point],
             isRoundTrip: true,
+            language: any(named: 'language'),
           ),
         ).called(1);
       },
     );
 
     test('discards a stale response superseded by a newer call', () async {
-      final staleCompleter = Completer<Result<List<LatLng>>>();
+      final staleCompleter = Completer<Result<RoutePlan>>();
       final freshPath = [pointA.point, pointB.point];
       var callCount = 0;
       when(
         () => mockRouterRepository.calculateRoute(
           points: any(named: 'points'),
           isRoundTrip: any(named: 'isRoundTrip'),
+          language: any(named: 'language'),
         ),
       ).thenAnswer((_) {
         callCount++;
         if (callCount == 1) return staleCompleter.future;
-        return Future.value(Result.ok(freshPath));
+        return Future.value(Result.ok(RoutePlan.pathOnly(freshPath)));
       });
 
       viewModel.setAsStartPoint(pointA);
@@ -450,7 +459,7 @@ void main() {
       viewModel.setRoundTrip(true);
       await Future<void>.delayed(Duration.zero);
 
-      staleCompleter.complete(const Result.ok([]));
+      staleCompleter.complete(Result.ok(RoutePlan.pathOnly(const [])));
       await Future<void>.delayed(Duration.zero);
 
       expect(viewModel.routePath, freshPath);
