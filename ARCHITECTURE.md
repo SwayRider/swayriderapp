@@ -152,13 +152,18 @@ or exit within a couple of seconds, so it is event driven and fast:
   evaluated on every reading and on a 0.5 s timer (the Android sensor only
   reports on change, so the last reading simply holds). On a log scale a drop
   from daylight (10 000 lx) to dark crosses a threshold in well under a second.
-- **Hysteresis:** dark below 150 lx, light again above 500 lx. Daylight is over
-  1 000 lx; lit tunnels, garages and living rooms are roughly 50-300 lx.
+- **Hysteresis:** dark below 150 lx, light again above 1 000 lx. Daylight is
+  over 1 000 lx; lit tunnels, garages and living rooms are roughly 50-300 lx.
+  The wide gap keeps a bright petrol station canopy or street lamp at night
+  (a few hundred lx) from flipping the map to light.
 - **Debounce:** the other side must hold for 0.5 s, so a hand over the sensor
   or a passing shadow does not flip the map. After a switch it stays put for
   **5 s**, because a switch reloads the map style.
-- In practice: about 1.3 s from the tunnel mouth to dark, about 1.4 s from the
-  exit back to light (plus the native style reload; both styles are cached).
+- Measured in the resolver tests: about 1.4 s from daylight to dark at a very
+  dark entrance (5 lx), about 2.6 s into a dimly lit tunnel (80 lx); back to
+  light about 1.3-1.7 s into full daylight (10 000 lx), about 2 s into overcast
+  (3 000 lx) and up to 3 s at 1 500 lx. Plus the native style reload (both
+  styles are cached).
 - All values are parameters of `AutoVariantResolver` and are starting points to
   tune on real devices.
 - **Android** streams real lux from `Sensor.TYPE_LIGHT`. **iOS** has no light

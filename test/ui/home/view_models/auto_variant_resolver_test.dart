@@ -134,6 +134,35 @@ void main() {
       expect(resolver.variant, MapVariant.dark);
     });
 
+    test('a bright petrol station canopy at night (700 lx) stays dark', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      runFor(const Duration(seconds: 5));
+      expect(resolver.variant, MapVariant.dark);
+      runFor(const Duration(seconds: 6));
+
+      resolver.addReading(700);
+      expect(runFor(const Duration(seconds: 15)), isNull);
+      expect(resolver.variant, MapVariant.dark);
+    });
+
+    test('overcast daylight (3000 lx) is enough to go light again', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      runFor(const Duration(seconds: 5));
+      runFor(const Duration(seconds: 6));
+
+      resolver.addReading(3000);
+      expect(runFor(const Duration(seconds: 5)), isNotNull);
+      expect(resolver.variant, MapVariant.light);
+    });
+
+    test('the thresholds are 150 lx (dark) and 1000 lx (light)', () {
+      final defaults = AutoVariantResolver();
+      expect(defaults.darkBelowLux, 150);
+      expect(defaults.lightAboveLux, 1000);
+    });
+
     test('the debounce restarts when the level comes back', () {
       settleAt(10000);
       resolver.addReading(5);

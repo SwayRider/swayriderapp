@@ -28,7 +28,7 @@ class AutoVariantResolver {
   AutoVariantResolver({
     MapVariant initial = MapVariant.light,
     this.darkBelowLux = 150,
-    this.lightAboveLux = 500,
+    this.lightAboveLux = 1000,
     this.smoothing = const Duration(seconds: 1),
     this.confirm = const Duration(milliseconds: 500),
     this.minDwell = const Duration(seconds: 5),
