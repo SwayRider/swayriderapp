@@ -157,6 +157,7 @@ class AppLocalization {
   String get compassPointNorth => _get('compassPointNorth');
   String get compassFollowHeading => _get('compassFollowHeading');
   String get compassFollowingHeading => _get('compassFollowingHeading');
+  String get compassNeedsCalibration => _get('compassNeedsCalibration');
   String get routeStart => _get('routeStart');
   String get routeEnd => _get('routeEnd');
   String get completeRoute => _get('completeRoute');

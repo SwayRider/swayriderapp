@@ -171,6 +171,9 @@ class AppLocalizationNl extends AppLocalization {
     'compassFollowingHeading':
         'Kompasrichting wordt gevolgd. Tik om de kaart '
         'naar het noorden te richten.',
+    'compassNeedsCalibration':
+        'Het kompas is onnauwkeurig. Beweeg je telefoon in een 8 om het te '
+        'kalibreren.',
     'routeStart': 'Startpunt route',
     'routeEnd': 'Eindpunt route',
     'completeRoute': 'Volledige route',

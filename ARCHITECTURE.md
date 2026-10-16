@@ -184,10 +184,38 @@ or exit within a couple of seconds, so it is event driven and fast:
 **Compass button (top-right).** The needle is rotated by `-bearing` of the
 map camera (`trackCameraPosition`), so it always points north, also when the user
 rotates the map. `CompassState` holds the rules: from *free* or *following* a tap
-points the map north (compass tracking is stopped first, because camera moves end
-it on Android); from *north up* a tap starts MapLibre's `trackingCompass`, which
-follows the device heading and the user's position. A manual rotation ends it.
-Plain `tracking` (seen on iOS after a manual rotation) is normalised to `none`.
+points the map north; from *north up* a tap starts following the heading; a
+manual rotation or a drag ends it.
+
+*Following the heading* is driven by the app, not by MapLibre's `trackingCompass`:
+that mode cannot be smoothed and on many phones the map spins, even when the
+phone lies still. Native tracking stays off; `FollowHeadingController` moves the
+camera itself (`animateCamera` to the user's position and a bearing, keeping the
+user's zoom and tilt, about 10 times a second at most):
+- **Compass source:** `CompassService`, a small platform channel of the app
+  itself (no package: the common one forces CocoaPods on this Swift Package
+  Manager project). Android: the rotation vector sensor in
+  `CompassStreamHandler.kt` (the top of the screen when held flat, the back of
+  the phone when upright, whichever points more horizontally; screen rotation
+  accounted for), with the sensor's own accuracy estimate. iOS: Core Location's
+  heading in `AppDelegate.swift` (true north, real accuracy, the system's
+  calibration prompt).
+- **`HeadingFilter`** turns the raw heading into a calm bearing: averaging on the
+  circle (359° and 1° give 0°), time smoothing (0.6 s, twice as slow when the
+  accuracy is only medium), a 4° dead band so a phone lying still shows a still
+  map, a turning speed limit of 120°/s, and readings that are 45° off or worse
+  (an "unreliable" sensor) are ignored. When that lasts 3 s the app suggests
+  moving the phone in a figure 8.
+- **GPS course while moving:** above 3 m/s (about 11 km/h) the direction of
+  travel drives the bearing instead of the magnetometer (which a bike frame and
+  mounts disturb), until the speed falls below 1.5 m/s.
+- **Taking over:** `FollowGestureDetector` watches the raw pointers on top of the
+  map (it is a native view): dragging or turning with two fingers ends following,
+  pinch-zooming does not, and no camera moves happen while fingers are on the
+  map. As a safety net, a camera bearing that stays more than 25° from the
+  commanded one for a second also ends it.
+- Magnetic north is used on Android (the difference to true north is a few
+  degrees in Belgium); iOS delivers true north; the GPS course is true north.
 
 ---
 

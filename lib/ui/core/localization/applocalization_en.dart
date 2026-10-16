@@ -167,6 +167,9 @@ class AppLocalizationEn extends AppLocalization {
     'compassFollowingHeading':
         'Following the compass heading. Tap to point '
         'the map north.',
+    'compassNeedsCalibration':
+        'The compass is inaccurate. Move your phone in a figure 8 to '
+        'calibrate it.',
     'routeStart': 'Route start',
     'routeEnd': 'Route end',
     'completeRoute': 'Complete route',

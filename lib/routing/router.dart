@@ -181,6 +181,7 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
         return HomeScreen(
           viewModel: context.read(),
           styleViewModel: context.read(),
+          followController: context.read(),
         );
       },
     ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
@@ -13,6 +15,8 @@ import '../../core/ui/circle_icon_button.dart';
 import '../../core/ui/profile_menu_button.dart';
 import '../../core/ui/vehicle_type_pill.dart';
 import '../view_models/compass_state.dart';
+import '../view_models/follow_gesture_detector.dart';
+import '../view_models/follow_heading_controller.dart';
 import '../view_models/home_viewmodel.dart';
 import '../view_models/map_style_view_model.dart';
 import 'compass_button.dart';
@@ -67,10 +71,12 @@ class HomeScreen extends StatefulWidget {
     super.key,
     required this.viewModel,
     required this.styleViewModel,
+    required this.followController,
   });
 
   final HomeViewModel viewModel;
   final MapStyleViewModel styleViewModel;
+  final FollowHeadingController followController;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -87,12 +93,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void>? _lineSyncFuture;
   List<LatLng>? _syncedRoutePath;
 
-  // The map's bearing and tracking mode, for the compass button.
+  // The map's bearing, for the compass button.
   final _bearing = ValueNotifier<double>(0);
-  final _tracking = ValueNotifier<MyLocationTrackingMode>(
-    MyLocationTrackingMode.none,
-  );
   int _seenStyleSwitchFailures = 0;
+
+  // Watches the fingers on the map to notice the user taking over while the
+  // map follows the heading.
+  final _gestures = FollowGestureDetector();
+  bool _calibrationHintShown = false;
 
   @override
   void initState() {
@@ -103,15 +111,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _searchController.addListener(_onSearchTextChanged);
     widget.viewModel.addListener(_onViewModelChanged);
     widget.styleViewModel.addListener(_onStyleViewModelChanged);
+    widget.followController.bind(_applyFollowCamera);
+    widget.followController.addListener(_onFollowChanged);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.styleViewModel.removeListener(_onStyleViewModelChanged);
+    widget.followController.removeListener(_onFollowChanged);
+    widget.followController.bind(null);
+    widget.followController.stop();
     _mapController?.removeListener(_onCameraChanged);
     _bearing.dispose();
-    _tracking.dispose();
     widget.viewModel.removeListener(_onViewModelChanged);
     _searchController.removeListener(_onSearchTextChanged);
     _searchController.dispose();
@@ -159,18 +171,62 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _onCameraChanged() {
-    _bearing.value = _mapController?.cameraPosition?.bearing ?? 0;
+    final bearing = _mapController?.cameraPosition?.bearing ?? 0;
+    _bearing.value = bearing;
+    widget.followController.onCameraBearing(bearing);
   }
 
-  void _onCameraTrackingChanged(MyLocationTrackingMode mode) {
-    // Only "none" and "trackingCompass" are used. Plain "tracking" can show up
-    // on iOS when a manual rotation ends compass tracking: stop following then.
-    if (mode == MyLocationTrackingMode.tracking) {
-      _mapController?.updateMyLocationTrackingMode(MyLocationTrackingMode.none);
-      _tracking.value = MyLocationTrackingMode.none;
-      return;
+  void _onUserLocation(UserLocation location) {
+    widget.followController.onUserLocation(
+      position: location.position,
+      course: location.bearing,
+      speed: location.speed,
+    );
+  }
+
+  // While following, the app moves the camera itself: MapLibre's own compass
+  // tracking cannot be smoothed. The zoom and tilt are the user's, so they are
+  // read from the camera as it is.
+  void _applyFollowCamera(LatLng? position, double? bearing) {
+    final controller = _mapController;
+    final camera = controller?.cameraPosition;
+    if (controller == null || camera == null) return;
+    unawaited(
+      controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: position ?? camera.target,
+            bearing: bearing ?? camera.bearing,
+            zoom: camera.zoom,
+            tilt: camera.tilt,
+          ),
+        ),
+        duration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
+  void _onFollowChanged() {
+    final follow = widget.followController;
+    if (!follow.following) {
+      _calibrationHintShown = false;
+    } else if (follow.compassUnreliable && !_calibrationHintShown) {
+      _calibrationHintShown = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalization.of(context).compassNeedsCalibration),
+        ),
+      );
     }
-    _tracking.value = mode;
+    if (mounted) setState(() {});
+  }
+
+  void _onPointer(PointerEvent event, FollowBreak? Function() update) {
+    final broke = update();
+    widget.followController.setTouching(_gestures.isTouching);
+    if (broke != null && widget.followController.following) {
+      widget.followController.stop();
+    }
   }
 
   Future<void> _onCompassPressed() async {
@@ -178,20 +234,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (controller == null) return;
     final mode = CompassState.modeFor(
       bearing: _bearing.value,
-      following: _tracking.value == MyLocationTrackingMode.trackingCompass,
+      following: widget.followController.following,
     );
     switch (CompassState.actionFor(mode)) {
       case CompassAction.pointNorth:
-        // Camera moves end compass tracking on Android, so stop it first.
-        await controller.updateMyLocationTrackingMode(
-          MyLocationTrackingMode.none,
-        );
-        _tracking.value = MyLocationTrackingMode.none;
+        widget.followController.stop();
         await controller.animateCamera(CameraUpdate.bearingTo(0));
       case CompassAction.followHeading:
-        await controller.updateMyLocationTrackingMode(
-          MyLocationTrackingMode.trackingCompass,
-        );
+        widget.followController.start();
     }
   }
 
@@ -585,29 +635,48 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   }
                   return Stack(
                     children: [
-                      MapLibreMap(
-                        styleString: mapStyle,
-                        initialCameraPosition: CameraPosition(
-                          target: location,
-                          zoom: 15,
+                      Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (e) => _onPointer(
+                          e,
+                          () =>
+                              _gestures.pointerDown(e.pointer, e.localPosition),
                         ),
-                        myLocationEnabled: true,
-                        myLocationRenderMode: MyLocationRenderMode.normal,
-                        // The compass mockup doesn't include one, and the
-                        // default icon renders as a clipped half-circle on
-                        // high-density displays (upstream maplibre rendering
-                        // issue), so disable it.
-                        compassEnabled: false,
-                        // Our own compass button needs the live bearing.
-                        trackCameraPosition: true,
-                        onMapCreated: (controller) {
-                          _mapController = controller;
-                          controller.addListener(_onCameraChanged);
-                        },
-                        onStyleLoadedCallback: _onStyleLoaded,
-                        onCameraTrackingChanged: _onCameraTrackingChanged,
-                        onCameraTrackingDismissed: () =>
-                            _tracking.value = MyLocationTrackingMode.none,
+                        onPointerMove: (e) => _onPointer(
+                          e,
+                          () =>
+                              _gestures.pointerMove(e.pointer, e.localPosition),
+                        ),
+                        onPointerUp: (e) => _onPointer(e, () {
+                          _gestures.pointerUp(e.pointer);
+                          return null;
+                        }),
+                        onPointerCancel: (e) => _onPointer(e, () {
+                          _gestures.pointerUp(e.pointer);
+                          return null;
+                        }),
+                        child: MapLibreMap(
+                          styleString: mapStyle,
+                          initialCameraPosition: CameraPosition(
+                            target: location,
+                            zoom: 15,
+                          ),
+                          myLocationEnabled: true,
+                          myLocationRenderMode: MyLocationRenderMode.normal,
+                          // The compass mockup doesn't include one, and the
+                          // default icon renders as a clipped half-circle on
+                          // high-density displays (upstream maplibre rendering
+                          // issue), so disable it.
+                          compassEnabled: false,
+                          // Our own compass button needs the live bearing.
+                          trackCameraPosition: true,
+                          onMapCreated: (controller) {
+                            _mapController = controller;
+                            controller.addListener(_onCameraChanged);
+                          },
+                          onStyleLoadedCallback: _onStyleLoaded,
+                          onUserLocationUpdated: _onUserLocation,
+                        ),
                       ),
                       Positioned(
                         left: dimens.paddingScreenHorizontal,
@@ -625,14 +694,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         right: dimens.paddingScreenHorizontal,
                         top: dimens.paddingScreenVertical,
                         child: ListenableBuilder(
-                          listenable: Listenable.merge([_bearing, _tracking]),
+                          listenable: _bearing,
                           builder: (context, _) => CompassButton(
                             bearing: _bearing.value,
                             mode: CompassState.modeFor(
                               bearing: _bearing.value,
-                              following:
-                                  _tracking.value ==
-                                  MyLocationTrackingMode.trackingCompass,
+                              following: widget.followController.following,
                             ),
                             onPressed: _onCompassPressed,
                           ),

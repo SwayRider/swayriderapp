@@ -15,10 +15,12 @@ import '../data/services/api/router_api_client.dart';
 import '../data/services/api/search_api_client.dart';
 import '../data/services/ambient_light_service.dart';
 import '../data/services/api/tiles_api_client.dart';
+import '../data/services/compass_service.dart';
 import '../data/services/location_service.dart';
 import '../data/services/map_style_preference_service.dart';
 import '../data/services/secure_token_storage_service.dart';
 import '../data/services/tile_cache.dart';
+import '../ui/home/view_models/follow_heading_controller.dart';
 import '../ui/home/view_models/home_viewmodel.dart';
 import '../ui/home/view_models/map_style_view_model.dart';
 import 'app_config.dart';
@@ -105,6 +107,11 @@ List<SingleChildWidget> get providerDev {
         searchRepository: context.read(),
         routerRepository: context.read(),
       ),
+    ),
+    Provider<CompassService>(create: (context) => CompassServiceChannel()),
+    ChangeNotifierProvider<FollowHeadingController>(
+      create: (context) =>
+          FollowHeadingController(compassService: context.read()),
     ),
     Provider(create: (context) => MapStylePreferenceService()),
     Provider<AmbientLightService>(
