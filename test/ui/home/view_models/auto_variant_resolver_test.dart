@@ -6,18 +6,33 @@ void main() {
   late DateTime now;
   late AutoVariantResolver resolver;
 
+  const ms = Duration(milliseconds: 1);
+
   void advance(Duration d) => now = now.add(d);
 
-  /// Feeds [lux] and evaluates, like the view model's timer does.
-  bool tick(double lux, {Duration after = const Duration(seconds: 5)}) {
+  /// Lets [span] pass, evaluating every 100 ms like the view model's timer, and
+  /// returns how long it took until the variant changed (null if it did not).
+  Duration? runFor(
+    Duration span, {
+    Duration step = const Duration(milliseconds: 100),
+  }) {
+    var elapsed = Duration.zero;
+    while (elapsed < span) {
+      advance(step);
+      elapsed += step;
+      if (resolver.evaluate()) return elapsed;
+    }
+    return null;
+  }
+
+  /// Daylight for a while, so the smoothed level has settled on it.
+  void settleAt(double lux, {Duration span = const Duration(seconds: 6)}) {
     resolver.addReading(lux);
-    final changed = resolver.evaluate();
-    advance(after);
-    return changed;
+    runFor(span);
   }
 
   setUp(() {
-    now = DateTime(2026, 10, 16, 20);
+    now = DateTime(2026, 10, 16, 14);
     resolver = AutoVariantResolver(clock: () => now);
   });
 
@@ -28,92 +43,156 @@ void main() {
     expect(resolver.evaluate(), isFalse);
   });
 
-  test('goes dark after two consecutive dark evaluations', () {
-    expect(tick(3), isFalse); // first sighting
-    expect(resolver.variant, MapVariant.light);
-    expect(tick(3), isTrue); // confirmed
-    expect(resolver.variant, MapVariant.dark);
+  test('the first reading is taken as it is, no ramp from nothing', () {
+    resolver.addReading(80);
+    expect(resolver.currentLux, closeTo(80, 0.001));
   });
 
-  test('a single dark reading among bright ones changes nothing', () {
-    for (var i = 0; i < 6; i++) {
-      tick(200);
-    }
-    resolver.addReading(2); // a hand over the sensor
+  test('a dark first reading switches after the debounce, not before', () {
+    resolver.addReading(20);
+    expect(resolver.evaluate(), isFalse, reason: 'debounce not over yet');
+    advance(const Duration(milliseconds: 499));
     expect(resolver.evaluate(), isFalse);
-    expect(resolver.variant, MapVariant.light);
-  });
-
-  test('uses the median of the window, not the last value', () {
-    resolver.addReading(500);
-    resolver.addReading(400);
-    resolver.addReading(1); // outlier
-    expect(resolver.currentLux, 400);
-  });
-
-  test('an even number of readings averages the middle two', () {
-    resolver.addReading(10);
-    resolver.addReading(30);
-    expect(resolver.currentLux, 20);
-  });
-
-  test('hysteresis: between the thresholds the variant stays', () {
-    tick(3);
-    tick(3);
-    expect(resolver.variant, MapVariant.dark);
-    advance(const Duration(minutes: 5));
-    // 20 lx is above the dark threshold (10) but below the light one (40).
-    for (var i = 0; i < 6; i++) {
-      expect(tick(20), isFalse);
-    }
-    expect(resolver.variant, MapVariant.dark);
-  });
-
-  test(
-    'comes back to light above the upper threshold, after the dwell time',
-    () {
-      tick(3);
-      tick(3);
-      expect(resolver.variant, MapVariant.dark);
-
-      // Bright again right away: confirmed, but still inside the dwell time.
-      for (var i = 0; i < 4; i++) {
-        expect(tick(500), isFalse, reason: 'inside the 60 s dwell time');
-      }
-      expect(resolver.variant, MapVariant.dark);
-
-      advance(const Duration(seconds: 60));
-      expect(tick(500), isTrue);
-      expect(resolver.variant, MapVariant.light);
-    },
-  );
-
-  test('the confirmation count restarts when the reading comes back', () {
-    expect(tick(3), isFalse);
-    // Back in the middle band before the second confirmation.
-    advance(const Duration(seconds: 15)); // old readings leave the window
-    expect(tick(25), isFalse);
-    expect(tick(3), isFalse, reason: 'counting from one again');
-    advance(const Duration(seconds: 15));
-    expect(tick(3), isFalse);
-    expect(tick(3), isTrue);
-  });
-
-  test('a steady room: the last reading still counts after the window', () {
-    // The Android sensor reports on change, so a dark room can go quiet.
-    resolver.addReading(2);
-    advance(const Duration(minutes: 2));
-    expect(resolver.currentLux, 2);
-    expect(resolver.evaluate(), isFalse); // first confirmation
+    advance(ms);
     expect(resolver.evaluate(), isTrue);
     expect(resolver.variant, MapVariant.dark);
   });
 
-  test('old readings leave the window', () {
-    resolver.addReading(1000);
-    advance(const Duration(seconds: 11));
-    resolver.addReading(100);
-    expect(resolver.currentLux, 100);
+  group('tunnel', () {
+    test(
+      'entering from daylight goes dark within about a second and a half',
+      () {
+        settleAt(10000);
+        expect(resolver.variant, MapVariant.light);
+
+        resolver.addReading(5); // the tunnel mouth
+        final took = runFor(const Duration(seconds: 5));
+
+        expect(took, isNotNull);
+        expect(took!, lessThan(const Duration(milliseconds: 1600)));
+        expect(resolver.variant, MapVariant.dark);
+      },
+    );
+
+    test('leaving it goes light again within two seconds', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      runFor(const Duration(seconds: 5)); // dark inside
+      expect(resolver.variant, MapVariant.dark);
+      runFor(const Duration(seconds: 6)); // a few seconds inside
+
+      resolver.addReading(10000); // out again
+      final took = runFor(const Duration(seconds: 5));
+
+      expect(took, isNotNull);
+      expect(took!, lessThan(const Duration(seconds: 2)));
+      expect(resolver.variant, MapVariant.light);
+    });
+
+    test('a lit tunnel of 80 lx counts as dark', () {
+      settleAt(10000);
+      resolver.addReading(80);
+      expect(runFor(const Duration(seconds: 5)), isNotNull);
+      expect(resolver.variant, MapVariant.dark);
+    });
+
+    test('a short tunnel of six seconds is followed on both ends', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      expect(runFor(const Duration(seconds: 6)), isNotNull); // dark
+      resolver.addReading(10000);
+      expect(runFor(const Duration(seconds: 6)), isNotNull); // light again
+      expect(resolver.variant, MapVariant.light);
+    });
+  });
+
+  group('not too jumpy', () {
+    test('a shadow of 300 ms does not switch the map', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      expect(runFor(const Duration(milliseconds: 300)), isNull);
+      resolver.addReading(10000);
+      expect(runFor(const Duration(seconds: 5)), isNull);
+      expect(resolver.variant, MapVariant.light);
+    });
+
+    test('hysteresis: 300 lx is neither dark enough nor bright enough', () {
+      settleAt(10000);
+      resolver.addReading(300);
+      expect(
+        runFor(const Duration(seconds: 10)),
+        isNull,
+        reason: 'light stays',
+      );
+
+      resolver.addReading(5);
+      runFor(const Duration(seconds: 5));
+      expect(resolver.variant, MapVariant.dark);
+      runFor(const Duration(seconds: 6));
+      resolver.addReading(300);
+      expect(runFor(const Duration(seconds: 10)), isNull, reason: 'dark stays');
+      expect(resolver.variant, MapVariant.dark);
+    });
+
+    test('the debounce restarts when the level comes back', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      runFor(
+        const Duration(milliseconds: 900),
+      ); // crossed, but not yet 500 ms ...
+      resolver.addReading(10000); // ... recovers
+      runFor(const Duration(seconds: 4));
+      expect(resolver.variant, MapVariant.light);
+    });
+
+    test('after a switch it stays put for the calm period', () {
+      settleAt(10000);
+      resolver.addReading(5);
+      runFor(const Duration(seconds: 5));
+      expect(resolver.variant, MapVariant.dark);
+
+      // Bright again almost at once: held back by the 5 s calm period.
+      resolver.addReading(10000);
+      final took = runFor(const Duration(seconds: 10));
+      expect(took, isNotNull);
+      expect(took!, greaterThanOrEqualTo(const Duration(milliseconds: 3000)));
+      expect(resolver.variant, MapVariant.light);
+    });
+  });
+
+  test(
+    'a steady dark room needs no new events (the sensor reports on change)',
+    () {
+      resolver.addReading(2);
+      advance(const Duration(minutes: 2));
+      expect(resolver.currentLux, closeTo(2, 0.01));
+      expect(resolver.evaluate(), isFalse); // starts the debounce
+      advance(const Duration(milliseconds: 500));
+      expect(resolver.evaluate(), isTrue);
+      expect(resolver.variant, MapVariant.dark);
+    },
+  );
+
+  test('the smoothed level approaches the reading over about a second', () {
+    resolver.addReading(10000);
+    resolver.addReading(0);
+    advance(const Duration(seconds: 1));
+    // log10 level 4 -> 0 with time constant 1 s: after 1 s about 1.47 -> ~28 lx
+    expect(resolver.currentLux, inInclusiveRange(20, 40));
+    advance(const Duration(seconds: 5));
+    expect(resolver.currentLux, lessThan(1));
+  });
+
+  test('a burst of events (dragging the emulator slider) is not a problem', () {
+    settleAt(10000);
+    for (var lux = 10000.0; lux > 5; lux *= 0.9) {
+      resolver.addReading(lux);
+      advance(const Duration(milliseconds: 11));
+      resolver.evaluate();
+    }
+    resolver.addReading(0);
+    expect(runFor(const Duration(seconds: 3)), isNotNull);
+    expect(resolver.variant, MapVariant.dark);
   });
 
   test('ignores invalid readings', () {
@@ -123,25 +202,30 @@ void main() {
     expect(resolver.hasReadings, isFalse);
   });
 
-  test('reset starts over from the given variant without a dwell time', () {
-    tick(3);
-    tick(3);
+  test('reset starts over from the given variant', () {
+    resolver.addReading(5);
+    runFor(const Duration(seconds: 2));
     expect(resolver.variant, MapVariant.dark);
     resolver.reset(MapVariant.light);
     expect(resolver.variant, MapVariant.light);
     expect(resolver.hasReadings, isFalse);
-    tick(3);
-    expect(tick(3), isTrue, reason: 'no dwell time after a reset');
+    resolver.addReading(5);
+    expect(
+      runFor(const Duration(seconds: 2)),
+      isNotNull,
+      reason: 'no calm period',
+    );
   });
 
-  test('custom thresholds and confirmations', () {
+  test('custom thresholds and timings', () {
     resolver = AutoVariantResolver(
-      darkBelowLux: 50,
-      lightAboveLux: 100,
-      confirmations: 1,
+      darkBelowLux: 1000,
+      lightAboveLux: 2000,
+      confirm: Duration.zero,
       clock: () => now,
     );
-    expect(tick(40), isTrue);
+    resolver.addReading(900);
+    expect(resolver.evaluate(), isTrue);
     expect(resolver.variant, MapVariant.dark);
   });
 }

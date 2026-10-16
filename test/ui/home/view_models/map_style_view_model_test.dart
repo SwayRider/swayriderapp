@@ -257,7 +257,7 @@ void main() {
   });
 
   group('auto with the light sensor (Android)', () {
-    test('goes dark in a dark room after about two evaluations', () {
+    test('goes dark in a dark room within a second', () {
       fakeAsync((async) {
         final vm = create(async: async);
         vm.load.execute();
@@ -266,15 +266,40 @@ void main() {
         expect(light.listening, isTrue);
 
         light.emit(3);
-        async.elapse(const Duration(seconds: 5));
-        expect(vm.variant, MapVariant.light, reason: 'needs two evaluations');
-        light.emit(3);
-        async.elapse(const Duration(seconds: 5));
+        async.elapse(const Duration(milliseconds: 400));
+        expect(vm.variant, MapVariant.light, reason: 'still debouncing');
+        async.elapse(const Duration(milliseconds: 300));
         async.flushMicrotasks();
 
         expect(vm.variant, MapVariant.dark);
         expect(vm.mapStyle, _dark);
         expect(vm.autoUsesSensor, isTrue);
+        vm.dispose();
+      });
+    });
+
+    test('follows a tunnel: dark at the entrance, light at the exit', () {
+      fakeAsync((async) {
+        final vm = create(async: async);
+        vm.load.execute();
+        async.flushMicrotasks();
+
+        light.emit(10000); // daylight
+        async.elapse(const Duration(seconds: 5));
+        expect(vm.variant, MapVariant.light);
+
+        light.emit(5); // the tunnel mouth
+        async.elapse(const Duration(milliseconds: 1700));
+        async.flushMicrotasks();
+        expect(vm.variant, MapVariant.dark);
+        expect(vm.mapStyle, _dark);
+
+        async.elapse(const Duration(seconds: 6)); // inside
+        light.emit(10000); // out again
+        async.elapse(const Duration(milliseconds: 2200));
+        async.flushMicrotasks();
+        expect(vm.variant, MapVariant.light);
+        expect(vm.mapStyle, _light);
         vm.dispose();
       });
     });
@@ -285,15 +310,33 @@ void main() {
         vm.load.execute();
         async.flushMicrotasks();
 
-        for (var i = 0; i < 6; i++) {
-          light.emit(300);
-          async.elapse(const Duration(seconds: 1));
-        }
-        light.emit(1); // a hand over the sensor
+        light.emit(10000);
+        async.elapse(const Duration(seconds: 5));
+        light.emit(5); // a hand over the sensor ...
+        async.elapse(const Duration(milliseconds: 250));
+        light.emit(10000); // ... and gone
         async.elapse(const Duration(seconds: 5));
         async.flushMicrotasks();
 
         expect(vm.variant, MapVariant.light);
+        vm.dispose();
+      });
+    });
+
+    test('a burst of sensor events is handled', () {
+      fakeAsync((async) {
+        final vm = create(async: async);
+        vm.load.execute();
+        async.flushMicrotasks();
+
+        for (var lux = 10000.0; lux > 1; lux *= 0.9) {
+          light.emit(lux);
+          async.elapse(const Duration(milliseconds: 11));
+        }
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+
+        expect(vm.variant, MapVariant.dark);
         vm.dispose();
       });
     });

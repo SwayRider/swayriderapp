@@ -146,26 +146,35 @@ the map reloads the style natively. A style load wipes every annotation, so
 markers, route line and search marker (this also runs for the first load).
 
 *Auto* follows ambient light through `AmbientLightService` (the `ambient_light`
-package), decided by `AutoVariantResolver`:
-- It looks at the **median** of the last 10 s of readings every 5 s, never at a
-  single event; the Android sensor only reports on change, so the last reading
-  stays valid.
-- **Hysteresis:** dark below 10 lx, light again above 40 lx; the other side
-  must hold for two evaluations in a row, and a switch is followed by at least
-  60 s of calm. A style switch is a network fetch plus a native reload, so it is
-  deliberately conservative.
+package), decided by `AutoVariantResolver`. It has to follow a tunnel entrance
+or exit within a couple of seconds, so it is event driven and fast:
+- The level is smoothed as `log10(lux + 1)` with a **time constant of 1 s**,
+  evaluated on every reading and on a 0.5 s timer (the Android sensor only
+  reports on change, so the last reading simply holds). On a log scale a drop
+  from daylight (10 000 lx) to dark crosses a threshold in well under a second.
+- **Hysteresis:** dark below 150 lx, light again above 500 lx. Daylight is over
+  1 000 lx; lit tunnels, garages and living rooms are roughly 50-300 lx.
+- **Debounce:** the other side must hold for 0.5 s, so a hand over the sensor
+  or a passing shadow does not flip the map. After a switch it stays put for
+  **5 s**, because a switch reloads the map style.
+- In practice: about 1.3 s from the tunnel mouth to dark, about 1.4 s from the
+  exit back to light (plus the native style reload; both styles are cached).
+- All values are parameters of `AutoVariantResolver` and are starting points to
+  tune on real devices.
 - **Android** streams real lux from `Sensor.TYPE_LIGHT`. **iOS** has no light
   sensor API: the plugin reads the camera frame's EXIF brightness (APEX, a log
-  scale). `AmbientLightServicePlugin` takes a short burst every 15 s (ignoring
-  the first frames while the exposure settles, then the median of five), stops
-  the camera between bursts, and converts with `lux ≈ 2^(Bv+5)`. **That
-  conversion is provisional** and not calibrated against a light meter
-  (`apexToLuxExponentOffset`).
+  scale). `AmbientLightServicePlugin` takes a short burst (about half a second,
+  ignoring the first frames while the exposure settles, then the median of
+  three) **every 3 s** and stops the camera in between, so iOS reacts within
+  about 3-4 s. The conversion `lux ≈ 2^(Bv+5)` is **provisional** and not
+  calibrated against a light meter (`apexToLuxExponentOffset`).
 - On iOS the camera needs consent: the sensor only starts after the user has
   picked Auto in the picker (`NSCameraUsageDescription`), never at first launch.
 - The sensor runs only for Auto, while the app is in the foreground.
 - Without usable readings (no sensor, error, no consent) Auto follows the system
   appearance (`didChangePlatformBrightness`).
+- Debug runs print the decisions (`MapStyleViewModel`: sensor started, first
+  reading, each switch with the smoothed lux).
 
 **Compass button (top-right).** The needle is rotated by `-bearing` of the
 map camera (`trackCameraPosition`), so it always points north, also when the user

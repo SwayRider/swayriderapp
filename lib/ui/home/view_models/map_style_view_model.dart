@@ -27,7 +27,7 @@ class MapStyleViewModel extends ChangeNotifier {
     required this._ambientLight,
     required this._styleId,
     required this._platformBrightness,
-    this.evaluateEvery = const Duration(seconds: 5),
+    this.evaluateEvery = const Duration(milliseconds: 500),
     AutoVariantResolver Function(MapVariant initial)? resolverFactory,
   }) : _resolverFactory =
            resolverFactory ??
@@ -43,7 +43,8 @@ class MapStyleViewModel extends ChangeNotifier {
   final AutoVariantResolver Function(MapVariant initial) _resolverFactory;
   final _log = Logger('MapStyleViewModel');
 
-  /// How often the sensor readings are looked at.
+  /// How often the light level is looked at besides on every reading (the
+  /// sensor only reports on change, and the debounce needs time to pass).
   final Duration evaluateEvery;
 
   /// Loads the saved choice and the first style. The map waits for it.
@@ -167,8 +168,19 @@ class MapStyleViewModel extends ChangeNotifier {
     if (shouldRun && _sensorSub == null) {
       final resolver = _resolverFactory(_variant);
       _resolver = resolver;
+      _log.info('Ambient light: started, showing ${_variant.name}');
+      var first = true;
       _sensorSub = _ambientLight.lux.listen(
-        resolver.addReading,
+        (lux) {
+          if (first) {
+            first = false;
+            _log.info(
+              'Ambient light: first reading ${lux.toStringAsFixed(1)} lx',
+            );
+          }
+          resolver.addReading(lux);
+          _onTick();
+        },
         onError: (Object e) =>
             _log.info('Ambient light unavailable, following the system: $e'),
       );
@@ -185,6 +197,10 @@ class MapStyleViewModel extends ChangeNotifier {
     final resolver = _resolver;
     if (_disposed || resolver == null || _mode != MapStyleMode.auto) return;
     if (resolver.evaluate()) {
+      _log.info(
+        'Ambient light: ${resolver.currentLux?.toStringAsFixed(1)} lx (smoothed) '
+        '-> ${resolver.variant.name}',
+      );
       unawaited(_applyVariant(resolver.variant));
     }
   }

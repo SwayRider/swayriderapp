@@ -26,17 +26,17 @@ abstract class AmbientLightService {
 /// - **iOS:** there is no light sensor API. The plugin starts a camera
 ///   session and returns the frame's EXIF *brightness value* (APEX, a log2
 ///   scale, despite the plugin's "lux" docs). The camera must stay on for a
-///   moment to settle its exposure, so this takes a short burst every
-///   [iosInterval], ignores the first frames, takes the median of the rest and
-///   stops the camera again. [luxFromApexBrightness] converts it.
+///   moment to settle its exposure, so this takes a short burst (about half a
+///   second) every [iosInterval] — often enough to follow a tunnel — ignores
+///   the first frames, takes the median of the rest and stops the camera again. [luxFromApexBrightness] converts it.
 class AmbientLightServicePlugin implements AmbientLightService {
   AmbientLightServicePlugin({
     Stream<double> Function()? openSensor,
     bool? isIos,
-    this.iosInterval = const Duration(seconds: 15),
-    this.iosSettleFrames = 10,
-    this.iosSampleFrames = 5,
-    this.iosSampleTimeout = const Duration(seconds: 6),
+    this.iosInterval = const Duration(seconds: 3),
+    this.iosSettleFrames = 6,
+    this.iosSampleFrames = 3,
+    this.iosSampleTimeout = const Duration(seconds: 3),
   }) : _openSensor = openSensor ?? (() => AmbientLight().ambientLightStream),
        _isIos = isIos ?? Platform.isIOS;
 
