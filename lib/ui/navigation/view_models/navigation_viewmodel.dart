@@ -67,10 +67,24 @@ class NavigationViewModel extends ChangeNotifier {
   LocationFix? _fix;
   ProgressSnapshot? _snapshot;
   bool _arrived = false;
+  double? _displaySpeedMps;
+
+  /// Weight of the newest fix in the displayed speed.
+  static const _displaySpeedSmoothing = 0.3;
+  final _cameraZoom = CameraZoom();
+  double _targetZoom = CameraZoom.slowZoom;
   Object? _locationError;
 
   /// The latest raw GPS fix, or `null` before the first one.
   LocationFix? get fix => _fix;
+
+  /// Ground speed for display in km/h: a running average over the last few
+  /// fixes (raw GPS speed jitters by several km/h), rounded. Below 2 km/h
+  /// counts as standing still, as GPS speed creeps around zero.
+  int get speedKmh {
+    final kmh = (_displaySpeedMps ?? 0) * 3.6;
+    return kmh < 2 ? 0 : kmh.round();
+  }
 
   /// Where the dot should be drawn, or `null` before the first fix.
   LatLng? get dotPosition {
@@ -114,12 +128,9 @@ class NavigationViewModel extends ChangeNotifier {
     );
   }
 
-  /// The zoom the camera should head for: wide while cruising, in close to
-  /// the upcoming maneuver (see [CameraZoom]).
-  double get targetZoom => CameraZoom.target(
-    speedMps: _fix?.speedMps ?? 0,
-    distanceToManeuverMeters: _arrived ? null : distanceToUpcomingMeters,
-  );
+  /// The zoom the camera should head for: one of a few fixed levels by
+  /// speed, and in close to the upcoming maneuver (see [CameraZoom]).
+  double get targetZoom => _targetZoom;
 
   int? get _upcomingIndex {
     final snapshot = _snapshot;
@@ -149,8 +160,17 @@ class NavigationViewModel extends ChangeNotifier {
     if (_arrived) return;
     _locationError = null;
     _fix = fix;
+    final shown = _displaySpeedMps;
+    _displaySpeedMps = shown == null
+        ? fix.speedMps
+        : shown + (fix.speedMps - shown) * _displaySpeedSmoothing;
     final snapshot = _progress.update(fix.position);
     _snapshot = snapshot;
+
+    _targetZoom = _cameraZoom.update(
+      speedMps: fix.speedMps,
+      distanceToManeuverMeters: distanceToUpcomingMeters,
+    );
 
     final utterance = _announcer.update(
       alongMeters: snapshot.alongMeters,

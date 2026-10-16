@@ -1,55 +1,83 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:swayriderapp/domain/navigation/camera_zoom.dart';
 
-void main() {
-  group('cruiseZoom', () {
-    test('is 16.5 in town and 14.5 at motorway speed', () {
-      expect(CameraZoom.cruiseZoom(0), 16.5);
-      expect(CameraZoom.cruiseZoom(8), 16.5);
-      expect(CameraZoom.cruiseZoom(30), 14.5);
-      expect(CameraZoom.cruiseZoom(50), 14.5);
-    });
+double kmh(double v) => v / 3.6;
 
-    test('falls linearly in between', () {
-      expect(CameraZoom.cruiseZoom(19), closeTo(15.5, 1e-9));
-    });
+void main() {
+  late CameraZoom zoom;
+
+  setUp(() => zoom = CameraZoom());
+
+  /// Feeds [fixes] of the same speed and returns the last zoom.
+  double settle(double speedKmh, {double? distance, int fixes = 20}) {
+    var result = 0.0;
+    for (var i = 0; i < fixes; i++) {
+      result = zoom.update(
+        speedMps: kmh(speedKmh),
+        distanceToManeuverMeters: distance,
+      );
+    }
+    return result;
+  }
+
+  test('picks a zoom level per speed band', () {
+    expect(settle(20), CameraZoom.slowZoom);
+    expect(
+      CameraZoom().update(speedMps: kmh(75), distanceToManeuverMeters: null),
+      CameraZoom.mediumZoom,
+    );
+    expect(
+      CameraZoom().update(speedMps: kmh(120), distanceToManeuverMeters: null),
+      CameraZoom.fastZoom,
+    );
   });
 
-  group('target', () {
-    double target(double speed, double? distance) =>
-        CameraZoom.target(speedMps: speed, distanceToManeuverMeters: distance);
+  test('zooms in on a maneuver within 300 m, out of it beyond', () {
+    expect(settle(75, distance: 301), CameraZoom.mediumZoom);
+    expect(settle(75, distance: 300), CameraZoom.turnZoom);
+    expect(settle(75, distance: 40), CameraZoom.turnZoom);
+    expect(settle(75, distance: 900), CameraZoom.mediumZoom);
+  });
 
-    test('is the cruise zoom without a maneuver or far from it', () {
-      expect(target(19, null), closeTo(15.5, 1e-9));
-      expect(target(19, 400), closeTo(15.5, 1e-9));
-      expect(target(19, 5000), closeTo(15.5, 1e-9));
-    });
+  test('speed noise around a cruising speed never changes the zoom', () {
+    final levels = <double>{};
+    // 75 km/h +- 12 km/h of GPS speed noise, 200 fixes.
+    for (var i = 0; i < 200; i++) {
+      final noise = (i.isEven ? 1 : -1) * (i % 5) * 3.0;
+      levels.add(
+        zoom.update(speedMps: kmh(75 + noise), distanceToManeuverMeters: null),
+      );
+    }
+    expect(levels, {CameraZoom.mediumZoom});
+  });
 
-    test('reaches the turn zoom 100 m before the maneuver and stays there', () {
-      expect(target(19, 100), CameraZoom.turnZoom);
-      expect(target(19, 0), CameraZoom.turnZoom);
-      expect(target(30, 50), CameraZoom.turnZoom);
-    });
+  test('hysteresis: hovering around a band edge does not flip the zoom', () {
+    settle(60); // medium band
+    // 49 and 51 km/h straddle the 50 km/h edge between slow and medium.
+    final levels = <double>{};
+    for (var i = 0; i < 40; i++) {
+      levels.add(
+        zoom.update(
+          speedMps: kmh(i.isEven ? 49 : 41),
+          distanceToManeuverMeters: null,
+        ),
+      );
+    }
+    expect(levels, {CameraZoom.mediumZoom});
+  });
 
-    test('zooms in monotonically while approaching', () {
-      var previous = target(19, 400);
-      for (var d = 380.0; d >= 100; d -= 20) {
-        final zoom = target(19, d);
-        expect(zoom, greaterThanOrEqualTo(previous));
-        previous = zoom;
-      }
-      expect(target(19, 250), inExclusiveRange(15.5, CameraZoom.turnZoom));
-    });
+  test('steps back in only once clearly below the lower edge', () {
+    settle(75);
+    expect(settle(45), CameraZoom.mediumZoom);
+    expect(settle(30), CameraZoom.slowZoom);
+  });
 
-    test('never goes below the cruise zoom', () {
-      for (var speed = 0.0; speed <= 40; speed += 5) {
-        for (var d = 0.0; d <= 600; d += 50) {
-          expect(
-            target(speed, d),
-            greaterThanOrEqualTo(CameraZoom.cruiseZoom(speed)),
-          );
-        }
-      }
-    });
+  test('a single outlier fix is averaged out', () {
+    settle(30);
+    // One spurious 80 km/h fix after a long run at 30 km/h.
+    expect(
+      zoom.update(speedMps: kmh(80), distanceToManeuverMeters: null),
+      CameraZoom.slowZoom,
+    );
   });
 }

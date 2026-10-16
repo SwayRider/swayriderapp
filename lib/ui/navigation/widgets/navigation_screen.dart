@@ -18,6 +18,7 @@ import '../../core/themes/colors.dart';
 import '../../home/view_models/map_style_view_model.dart';
 import '../view_models/navigation_viewmodel.dart';
 import 'navigation_header.dart';
+import 'speed_indicator.dart';
 
 /// Fullscreen 3D map with turn-by-turn guidance along [plan].
 ///
@@ -67,7 +68,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   LatLng? _position;
   double _bearing = 0;
-  double _zoom = CameraZoom.target(speedMps: 0, distanceToManeuverMeters: null);
+  double _zoom = CameraZoom.slowZoom;
   double? _appliedZoom;
   bool _bearingInitialised = false;
   LatLng? _appliedCenter;
@@ -323,6 +324,14 @@ class _NavigationScreenState extends State<NavigationScreen> {
                     ),
                   ),
                 ),
+              ),
+            ),
+          if (_viewModel.fix != null)
+            Positioned(
+              left: 16,
+              bottom: 12,
+              child: SafeArea(
+                child: SpeedIndicator(speedKmh: _viewModel.speedKmh),
               ),
             ),
         ],

@@ -249,10 +249,12 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
 - **Screen:** `NavigationScreen` shows the map with tilt 60 and the camera
   centred ahead of a dot snapped to the route, so the dot sits in the lower
   part of the screen (`maplibre_gl` has no camera padding). A 100 ms timer
-  glides the dot and camera between fixes. The camera zooms by itself (`CameraZoom`): wide while cruising (zoom
-  16.5 in town down to 14.5 at motorway speed), easing in to 17.5 over the last
-  400 m before a maneuver and back out afterwards. Pan, rotate, tilt and
-  pinch gestures are off. `wakelock_plus` keeps the display on.
+  glides the dot and camera between fixes. The camera zooms by itself in
+  fixed steps (`CameraZoom`): zoom 16.5 below ~45 km/h, 15.5 on country roads,
+  14.5 above ~90 km/h, and 17.5 within 300 m of a maneuver. Speed is averaged
+  and each band edge has a 10 km/h margin, so the zoom doesn't flip while the
+  speed wobbles; the screen eases between levels. Pan, rotate, tilt and pinch
+  gestures are off. `wakelock_plus` keeps the display on.
 - **Not done yet:** re-routing, guidance while the app is in the background or
   the screen is locked, lane guidance.
 

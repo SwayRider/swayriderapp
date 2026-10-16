@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/domain/models/route/route_maneuver.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
+import 'package:swayriderapp/domain/navigation/camera_zoom.dart';
 import 'package:swayriderapp/ui/navigation/view_models/navigation_viewmodel.dart';
 
 import '../../../helpers/fakes.dart';
@@ -119,32 +120,28 @@ void main() {
   });
 
   test(
-    'target zoom is wide while cruising and closes in on the turn',
+    'target zoom is a fixed level that steps in only near the turn',
     () async {
-      final cruise = viewModel.targetZoom;
-      expect(cruise, 16.5); // no fix yet: cruise zoom at standstill
+      expect(viewModel.targetZoom, CameraZoom.slowZoom); // before the first fix
 
-      location.emit(at(5), speedMps: 10); // 1500 m before the turn at 2000 m
+      location.emit(at(5), speedMps: 20); // 72 km/h, 1500 m before the turn
       await pump();
-      final far = viewModel.targetZoom;
-      expect(far, lessThan(16.5));
-      expect(far, greaterThan(14.5));
+      expect(viewModel.targetZoom, CameraZoom.mediumZoom);
 
-      location.emit(at(18), speedMps: 10); // 200 m before
+      location.emit(at(15), speedMps: 20); // 500 m before: still wide
       await pump();
-      final near = viewModel.targetZoom;
-      expect(near, greaterThan(far));
+      expect(viewModel.targetZoom, CameraZoom.mediumZoom);
 
-      location.emit(at(19.5), speedMps: 10); // 50 m before
+      location.emit(at(18), speedMps: 20); // 200 m before: zoom in
       await pump();
-      expect(viewModel.targetZoom, 17.5);
+      expect(viewModel.targetZoom, CameraZoom.turnZoom);
 
       location.emit(
         at(22),
-        speedMps: 10,
+        speedMps: 20,
       ); // turn passed, destination 800 m away
       await pump();
-      expect(viewModel.targetZoom, closeTo(far, 0.3));
+      expect(viewModel.targetZoom, CameraZoom.mediumZoom);
     },
   );
 
@@ -154,6 +151,41 @@ void main() {
 
     expect(viewModel.dotPosition?.longitude, closeTo(4.0, 1e-9));
     expect(viewModel.offRoute, isFalse);
+  });
+
+  test('speedKmh is the rounded ground speed from the first fix on', () async {
+    expect(viewModel.speedKmh, 0); // before the first fix
+
+    location.emit(at(1), speedMps: 20.4); // 73.4 km/h
+    await pump();
+    expect(viewModel.speedKmh, 73);
+  });
+
+  test('speedKmh smooths noisy fixes instead of following each one', () async {
+    var previous = 0;
+    var biggestStep = 0;
+    for (var i = 0; i < 30; i++) {
+      // 72 km/h with +-10 km/h GPS speed noise.
+      location.emit(at(1 + i * 0.1), speedMps: 20 + (i.isEven ? 2.8 : -2.8));
+      await pump();
+      if (i > 0) {
+        final step = (viewModel.speedKmh - previous).abs();
+        if (step > biggestStep) biggestStep = step;
+      }
+      previous = viewModel.speedKmh;
+    }
+    expect(viewModel.speedKmh, inInclusiveRange(68, 76));
+    expect(biggestStep, lessThan(8)); // raw steps are 20 km/h
+  });
+
+  test('speedKmh settles to 0 when stopping, ignoring GPS creep', () async {
+    location.emit(at(1), speedMps: 20);
+    await pump();
+    for (var i = 0; i < 25; i++) {
+      location.emit(at(1), speedMps: 0.3);
+      await pump();
+    }
+    expect(viewModel.speedKmh, 0);
   });
 
   test('a fix far from the route draws the raw position', () async {
