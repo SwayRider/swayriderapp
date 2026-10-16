@@ -70,7 +70,7 @@ build-time configuration, supplied via `--dart-define` and defined in
 | `TILES_API_HOST` | `api.swayrider-dev.hevanto-it.com` | Tiles API host |
 | `TILES_API_PORT` | `443` | Tiles API port |
 | `TILES_API_PATH_PREFIX` | `/v1/tiles` | Base path of the tiles API |
-| `TILES_STYLE` | `swayrider/light` | Map style as `<style id>/<variant>` (`light` or `dark`). The style id is set in the data-manager (Settings → Map style) and listed by `GET /v1/tiles/styles`. Do not use the bare `light`/`dark`: while the legacy tileset is deployed they return the legacy style |
+| `TILES_STYLE_ID` | `swayrider` | Id of the map style (the data-manager's Settings → Map style), listed by `GET /v1/tiles/styles`. The app loads `<id>/light` or `<id>/dark` depending on the user's day/night/auto choice. Do not use the bare `light`/`dark`: while the legacy tileset is deployed they return the legacy style |
 
 Example — pointing the app at a locally running AuthService:
 

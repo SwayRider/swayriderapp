@@ -15,6 +15,7 @@ For setup, running the app, configuration, and contributing, see
 - [Layers](#layers)
 - [Navigation Flow](#navigation-flow)
 - [Map Tiles](#map-tiles)
+- [Map Controls](#map-controls)
 - [Project Structure](#project-structure)
 
 ---
@@ -106,7 +107,7 @@ sprites itself and cannot attach an `Authorization` header, but the tiles API
 `TilesRepositoryRemote` bridges that:
 
 1. `getMapStyle` fetches `GET {prefix}/styles/<style id>/<variant>`
-   (`AppConfig.tilesStyle`) with the token.
+   (`AppConfig.tilesStyleId` and the light or dark variant) with the token.
 2. It rewrites every string in the style that contains `/v1/tiles/` (tile
    template, glyphs, sprite) to point at a loopback HTTP server on `127.0.0.1`,
    and returns that JSON as `MapLibreMap.styleString`.
@@ -126,6 +127,53 @@ Notes:
   its key, because planet releases replace tiles under the same URL.
 - Tiles are rate limited per user by the gateway (a map view is dozens of
   requests); a `429` shows as holes in the map until the next move.
+
+---
+
+## Map Controls
+
+Two floating controls sit on the map in `HomeScreen`.
+
+**Map style button (top-left): day / night / auto.** `MapStyleViewModel` owns
+the user's choice (`MapStyleMode`, remembered with `shared_preferences` through
+`MapStylePreferenceService`, default Auto), the variant on screen
+(`MapVariant.light`/`dark`) and the style JSON for it. Both variants are
+fetched through the same `TilesRepository` and cached (the JSON only holds
+loopback URLs); the other variant is prefetched. A switch keeps the old style on
+screen until the new JSON is in hand, then `MapLibreMap.styleString` changes and
+the map reloads the style natively. A style load wipes every annotation, so
+`HomeScreen._onStyleLoaded` drops its stale handles and re-adds the route
+markers, route line and search marker (this also runs for the first load).
+
+*Auto* follows ambient light through `AmbientLightService` (the `ambient_light`
+package), decided by `AutoVariantResolver`:
+- It looks at the **median** of the last 10 s of readings every 5 s, never at a
+  single event; the Android sensor only reports on change, so the last reading
+  stays valid.
+- **Hysteresis:** dark below 10 lx, light again above 40 lx; the other side
+  must hold for two evaluations in a row, and a switch is followed by at least
+  60 s of calm. A style switch is a network fetch plus a native reload, so it is
+  deliberately conservative.
+- **Android** streams real lux from `Sensor.TYPE_LIGHT`. **iOS** has no light
+  sensor API: the plugin reads the camera frame's EXIF brightness (APEX, a log
+  scale). `AmbientLightServicePlugin` takes a short burst every 15 s (ignoring
+  the first frames while the exposure settles, then the median of five), stops
+  the camera between bursts, and converts with `lux ≈ 2^(Bv+5)`. **That
+  conversion is provisional** and not calibrated against a light meter
+  (`apexToLuxExponentOffset`).
+- On iOS the camera needs consent: the sensor only starts after the user has
+  picked Auto in the picker (`NSCameraUsageDescription`), never at first launch.
+- The sensor runs only for Auto, while the app is in the foreground.
+- Without usable readings (no sensor, error, no consent) Auto follows the system
+  appearance (`didChangePlatformBrightness`).
+
+**Compass button (top-right).** The needle is rotated by `-bearing` of the
+map camera (`trackCameraPosition`), so it always points north, also when the user
+rotates the map. `CompassState` holds the rules: from *free* or *following* a tap
+points the map north (compass tracking is stopped first, because camera moves end
+it on Android); from *north up* a tap starts MapLibre's `trackingCompass`, which
+follows the device heading and the user's position. A manual rotation ends it.
+Plain `tracking` (seen on iOS after a manual rotation) is normalised to `none`.
 
 ---
 
