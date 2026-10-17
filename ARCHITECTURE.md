@@ -271,7 +271,8 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   from the direction the route's roundabouts are taken in (`isClockwise` in
   `geo.dart`; default right), and the roundabout layout is generic: at least
   four spokes, our exit in full colour. Ferries and unknown types keep a Material
-  icon. `maneuver_icons_golden_test.dart` renders a review sheet of all icons.
+  icon. The geometry is unit-tested (`maneuver_glyph_test.dart`); there is no
+  golden image because pixel output differs between macOS and the CI runner.
 - **Direction card:** the top card has a small row with the ETA and the
   distance still to go next to the close button, above the maneuver icon,
   distance and instruction. The ETA is now plus the router's remaining travel
