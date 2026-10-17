@@ -1,0 +1,236 @@
+{
+ "description": "Maneuvers of the route Oosthamsesteenweg 8 (Olmen) to Sint-Maartensdal (Leuven), nl-NL, motorcycle, as returned by POST /api/v1/route. distance = metres from the route start to the maneuver.",
+ "language": "nl-NL",
+ "total": 65709.1,
+ "maneuvers": [
+  {
+   "type": 2,
+   "distance": 0,
+   "instruction": "Rijd richting het zuiden op Oosthamsesteenweg.",
+   "alert": null,
+   "pre": "Richting het zuiden rijden op Oosthamsesteenweg.",
+   "post": "2.5 kilometer doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 10,
+   "distance": 2724.4,
+   "instruction": "Sla rechtsaf naar Onze-Lieve-Vrouwstraat.",
+   "alert": "Rechts afslaan naar Onze-Lieve-Vrouwstraat.",
+   "pre": "Rechts afslaan naar Onze-Lieve-Vrouwstraat.",
+   "post": "800 meter doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 10,
+   "distance": 3490.4,
+   "instruction": "Sla rechtsaf naar De Statie/N141. Ga verder op N141.",
+   "alert": "Rechts afslaan naar De Statie.",
+   "pre": "Rechts afslaan naar De Statie, N141.",
+   "post": "4 kilometer doorgaan op N141.",
+   "lanes": []
+  },
+  {
+   "type": 26,
+   "distance": 7455.0,
+   "instruction": "Ga de rotonde op en neem de 3e afslag naar Staatsbaan/N141.",
+   "alert": "Rotonde opgaan en de 3e afslag nemen naar Staatsbaan.",
+   "pre": "Rotonde opgaan en de 3e afslag nemen naar Staatsbaan, N141.",
+   "post": null,
+   "lanes": []
+  },
+  {
+   "type": 27,
+   "distance": 7547.7,
+   "instruction": "Verlaat de rotonde naar Staatsbaan/N141.",
+   "alert": null,
+   "pre": "Rotonde verlaten naar Staatsbaan, N141.",
+   "post": "300 meter doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 26,
+   "distance": 7865.5,
+   "instruction": "Ga de rotonde op en neem de 2e afslag.",
+   "alert": "Rotonde opgaan en de 2e afslag nemen.",
+   "pre": "Rotonde opgaan en de 2e afslag nemen.",
+   "post": null,
+   "lanes": []
+  },
+  {
+   "type": 27,
+   "distance": 7917.9,
+   "instruction": "Verlaat de rotonde naar E313/E 313/Koning Boudewijnsnelweg.",
+   "alert": null,
+   "pre": "Rotonde verlaten naar E313, E 313.",
+   "post": "12 kilometer doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 20,
+   "distance": 19659.5,
+   "instruction": "Neem afslag Knooppunt Lummen naar E314 richting Brussel/Leuven.",
+   "alert": "Afslag E314 nemen.",
+   "pre": "Afslag Knooppunt Lummen nemen naar E314 richting Brussel, Leuven.",
+   "post": null,
+   "lanes": [
+    {
+     "directions": 2
+    },
+    {
+     "directions": 2
+    },
+    {
+     "directions": 32,
+     "active": 32
+    },
+    {
+     "directions": 32,
+     "active": 32
+    }
+   ]
+  },
+  {
+   "type": 23,
+   "distance": 20081.2,
+   "instruction": "Houd rechts aan om E314 op te gaan richting Brussel/Leuven.",
+   "alert": "Rechts aanhouden om E314 op te gaan.",
+   "pre": "Rechts aanhouden om E314 op te gaan richting Brussel, Leuven.",
+   "post": "42 kilometer doorgaan.",
+   "lanes": [
+    {
+     "directions": 1024
+    },
+    {
+     "directions": 2
+    },
+    {
+     "directions": 32,
+     "active": 32
+    }
+   ]
+  },
+  {
+   "type": 20,
+   "distance": 62202.2,
+   "instruction": "Neem afslag 18 naar N26 richting Herent/Leuven.",
+   "alert": "Afslag 18 nemen.",
+   "pre": "Afslag 18 nemen naar N26 richting Herent, Leuven.",
+   "post": null,
+   "lanes": [
+    {
+     "directions": 2
+    },
+    {
+     "directions": 2
+    },
+    {
+     "directions": 32,
+     "active": 32
+    }
+   ]
+  },
+  {
+   "type": 15,
+   "distance": 62662.7,
+   "instruction": "Sla linksaf richting Leuven-Centrum.",
+   "alert": "Links afslaan richting Leuven-Centrum.",
+   "pre": "Links afslaan richting Leuven-Centrum.",
+   "post": "700 meter doorgaan op N26.",
+   "lanes": [
+    {
+     "directions": 8,
+     "active": 8
+    },
+    {
+     "directions": 8,
+     "active": 8
+    },
+    {
+     "directions": 64
+    }
+   ]
+  },
+  {
+   "type": 19,
+   "distance": 63399.0,
+   "instruction": "Sla linksaf om de op-/afrit Lüdenscheidsingel te nemen.",
+   "alert": "Links afslaan om de op-/afrit Lüdenscheidsingel te nemen.",
+   "pre": "Links afslaan om de op-/afrit Lüdenscheidsingel te nemen.",
+   "post": "1.5 kilometer doorgaan.",
+   "lanes": [
+    {
+     "directions": 8,
+     "active": 8
+    },
+    {
+     "directions": 2
+    }
+   ]
+  },
+  {
+   "type": 26,
+   "distance": 64654.9,
+   "instruction": "Ga Joanna-Maria Artoisplein op en neem de 1e afslag richting N3/Tienen.",
+   "alert": "Joanna-Maria Artoisplein opgaan en de 1e afslag nemen richting N3.",
+   "pre": "Joanna-Maria Artoisplein opgaan en de 1e afslag nemen richting N3, Tienen.",
+   "post": null,
+   "lanes": []
+  },
+  {
+   "type": 27,
+   "distance": 64712.1,
+   "instruction": "Verlaat de rotonde richting N3/Tienen.",
+   "alert": null,
+   "pre": "Rotonde verlaten richting N3, Tienen.",
+   "post": "300 meter doorgaan.",
+   "lanes": [
+    {
+     "directions": 16
+    },
+    {
+     "directions": 16
+    },
+    {
+     "directions": 2
+    }
+   ]
+  },
+  {
+   "type": 10,
+   "distance": 64971.3,
+   "instruction": "Sla rechtsaf naar Jean-Baptiste Van Monsstraat.",
+   "alert": "Rechts afslaan naar Jean-Baptiste Van Monsstraat.",
+   "pre": "Rechts afslaan naar Jean-Baptiste Van Monsstraat.",
+   "post": "400 meter doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 10,
+   "distance": 65353.2,
+   "instruction": "Sla rechtsaf naar Jan-Pieter Minckelersstraat.",
+   "alert": "Rechts afslaan naar Jan-Pieter Minckelersstraat.",
+   "pre": "Rechts afslaan naar Jan-Pieter Minckelersstraat.",
+   "post": "200 meter doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 15,
+   "distance": 65583.8,
+   "instruction": "Sla linksaf naar Rijdende-Artillerielaan.",
+   "alert": "Links afslaan naar Rijdende-Artillerielaan.",
+   "pre": "Links afslaan naar Rijdende-Artillerielaan.",
+   "post": "100 meter doorgaan.",
+   "lanes": []
+  },
+  {
+   "type": 6,
+   "distance": 65709.1,
+   "instruction": "Je bestemming bevindt zich links.",
+   "alert": "Je bestemming bevindt zich links.",
+   "pre": "Je bestemming bevindt zich links.",
+   "post": null,
+   "lanes": []
+  }
+ ]
+}

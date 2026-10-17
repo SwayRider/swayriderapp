@@ -1,13 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:maplibre_gl/maplibre_gl.dart';
 
 import '../../../data/services/api/model/search/search_result_item.dart';
+import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/models/route/route_point.dart';
+import '../../../routing/routes.dart';
 import '../../../utils/result.dart';
 import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
+import '../../core/themes/route_map_colors.dart';
 import '../../core/themes/dimens.dart';
 import '../../core/ui/app_text_field.dart';
 import '../../core/ui/branded_app_bar.dart';
@@ -90,6 +94,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final List<Circle> _routeMarkers = [];
   Future<void>? _markerSyncFuture;
   Line? _routeLine;
+  Line? _routeCasing;
   Future<void>? _lineSyncFuture;
   List<LatLng>? _syncedRoutePath;
 
@@ -160,6 +165,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _onStyleLoaded() async {
     _routeMarkers.clear();
     _routeLine = null;
+    _routeCasing = null;
     _searchMarker = null;
     await _syncRouteMarkers();
     await _syncRouteLine();
@@ -227,6 +233,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (broke != null && widget.followController.following) {
       widget.followController.stop();
     }
+  }
+
+  void _startNavigation(RoutePlan plan) {
+    // The home camera must not keep following while the navigation screen
+    // drives its own.
+    widget.followController.stop();
+    unawaited(context.push(Routes.navigation, extra: plan));
   }
 
   Future<void> _onCompassPressed() async {
@@ -358,13 +371,30 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       await controller.removeLine(existing);
       _routeLine = null;
     }
+    final existingCasing = _routeCasing;
+    if (existingCasing != null) {
+      await controller.removeLine(existingCasing);
+      _routeCasing = null;
+    }
     final path = widget.viewModel.routePath;
     if (path == null || path.length < 2) return;
+    // Same look as during navigation: petrol on a white edge on the light
+    // map, orange on a dark edge on the dark map.
+    final colors = RouteMapColors.of(widget.styleViewModel.variant);
+    _routeCasing = await controller.addLine(
+      LineOptions(
+        geometry: path,
+        lineColor: colors.casing,
+        lineWidth: 7,
+        lineJoin: 'round',
+      ),
+    );
     _routeLine = await controller.addLine(
       LineOptions(
         geometry: path,
-        lineColor: '#FF7A00', // AppColors.apexOrange
+        lineColor: colors.line,
         lineWidth: 4,
+        lineJoin: 'round',
       ),
     );
   }
@@ -732,6 +762,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                             label: localization.standardMotorcycle,
                             onTap: () {},
                           ),
+                        ),
+                      ),
+                      Positioned(
+                        right: dimens.paddingScreenHorizontal,
+                        bottom: dimens.paddingScreenVertical + 48 + 12,
+                        child: ListenableBuilder(
+                          listenable: widget.viewModel,
+                          builder: (context, _) {
+                            final plan = widget.viewModel.routePlan;
+                            if (plan == null || !plan.canNavigate) {
+                              return const SizedBox.shrink();
+                            }
+                            return FloatingActionButton.extended(
+                              heroTag: 'start-navigation',
+                              backgroundColor: AppColors.apexOrange,
+                              foregroundColor: AppColors.black1,
+                              onPressed: () => _startNavigation(plan),
+                              icon: const Icon(Icons.navigation),
+                              label: Text(localization.startNavigation),
+                            );
+                          },
                         ),
                       ),
                       Positioned(

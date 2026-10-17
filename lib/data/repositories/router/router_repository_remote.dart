@@ -1,5 +1,6 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
+import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/result.dart';
 import '../../services/api/router_api_client.dart';
 import '../auth/auth_repository.dart';
@@ -18,13 +19,15 @@ class RouterRepositoryRemote implements RouterRepository {
   final AuthRepository _authRepository;
 
   @override
-  Future<Result<List<LatLng>>> calculateRoute({
+  Future<Result<RoutePlan>> calculateRoute({
     required List<LatLng> points,
     bool isRoundTrip = false,
+    String language = 'en-US',
   }) => _authRepository.withAuthRetry(
     () => _routerApiClient.calculateRoute(
       points: points,
       isRoundTrip: isRoundTrip,
+      language: language,
     ),
   );
 }

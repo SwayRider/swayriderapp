@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreLocation
 import Flutter
 import UIKit
@@ -5,6 +6,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private let compassHandler = CompassStreamHandler()
+  private let speechHandler = SpeechHandler()
 
   override func application(
     _ application: UIApplication,
@@ -21,6 +23,13 @@ import UIKit
         name: CompassStreamHandler.channelName,
         binaryMessenger: registrar.messenger()
       ).setStreamHandler(compassHandler)
+    }
+
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpeechChannel") {
+      let channel = FlutterMethodChannel(
+        name: SpeechHandler.channelName,
+        binaryMessenger: registrar.messenger())
+      channel.setMethodCallHandler(speechHandler.handle)
     }
   }
 }
@@ -97,5 +106,88 @@ final class CompassStreamHandler: NSObject, FlutterStreamHandler, CLLocationMana
 
   func locationManagerShouldDisplayHeadingCalibration(_ manager: CLLocationManager) -> Bool {
     return true
+  }
+}
+
+/// Speaks navigation prompts with `AVSpeechSynthesizer`.
+///
+/// Channel methods: `speak {text, language}` (queued behind whatever is being
+/// spoken; the call returns once the phrase has been spoken) and `stop`
+/// (silences everything and completes all waiting calls). The audio session
+/// ducks other audio (music) while prompts play and hands it back afterwards.
+final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
+  static let channelName = "com.hevanto_it.swayriderapp/speech"
+
+  private let synthesizer = AVSpeechSynthesizer()
+
+  /// Calls waiting for their utterance to finish.
+  private var waiting: [ObjectIdentifier: FlutterResult] = [:]
+
+  override init() {
+    super.init()
+    synthesizer.delegate = self
+  }
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    switch call.method {
+    case "speak":
+      guard let args = call.arguments as? [String: Any],
+        let text = args["text"] as? String, !text.isEmpty
+      else {
+        result(nil)
+        return
+      }
+      speak(text, language: args["language"] as? String ?? "en-US", result: result)
+    case "stop":
+      synthesizer.stopSpeaking(at: .immediate)
+      completeAll()
+      deactivateSession()
+      result(nil)
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  private func speak(_ text: String, language: String, result: @escaping FlutterResult) {
+    let session = AVAudioSession.sharedInstance()
+    try? session.setCategory(
+      .playback, mode: .voicePrompt,
+      options: [.duckOthers, .interruptSpokenAudioAndMixWithOthers])
+    try? session.setActive(true)
+
+    let utterance = AVSpeechUtterance(string: text)
+    utterance.voice = AVSpeechSynthesisVoice(language: language)
+    waiting[ObjectIdentifier(utterance)] = result
+    synthesizer.speak(utterance)
+  }
+
+  private func complete(_ utterance: AVSpeechUtterance) {
+    waiting.removeValue(forKey: ObjectIdentifier(utterance))?(nil)
+    if waiting.isEmpty {
+      deactivateSession()
+    }
+  }
+
+  private func completeAll() {
+    let open = Array(waiting.values)
+    waiting.removeAll()
+    open.forEach { $0(nil) }
+  }
+
+  private func deactivateSession() {
+    try? AVAudioSession.sharedInstance().setActive(
+      false, options: .notifyOthersOnDeactivation)
+  }
+
+  func speechSynthesizer(
+    _ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance
+  ) {
+    complete(utterance)
+  }
+
+  func speechSynthesizer(
+    _ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance
+  ) {
+    complete(utterance)
   }
 }

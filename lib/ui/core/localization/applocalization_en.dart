@@ -173,6 +173,18 @@ class AppLocalizationEn extends AppLocalization {
     'routeStart': 'Route start',
     'routeEnd': 'Route end',
     'completeRoute': 'Complete route',
+    'startNavigation': 'Start',
+    'endNavigation': 'End navigation',
+    'navigationWaitingForGps': 'Waiting for GPS\u2026',
+    'navigationLocationError':
+        'Location unavailable. Check that location is on and allowed.',
+    'navigationOffRoute': 'Off route',
+    'navigationArrived': 'You have arrived',
+    'navigationDone': 'Done',
+    'navigationEta': 'ETA',
+    'navigationStopTitle': 'Stop navigation?',
+    'navigationStopYes': 'Yes',
+    'navigationStopNo': 'No',
   };
 
   @override

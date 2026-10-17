@@ -292,6 +292,104 @@ void main() {
       expect(backend.requests, isEmpty);
     });
 
+    group('expired access token', () {
+      late MockAuthRepository auth;
+      late TilesRepositoryRemote expiring;
+      late String base;
+      late String token;
+      late int refreshes;
+
+      setUp(() async {
+        token = 'stale-token';
+        refreshes = 0;
+        auth = MockAuthRepository();
+        when(() => auth.authHeaderProvider).thenReturn(() => 'Bearer $token');
+        when(() => auth.refresh()).thenAnswer((_) async {
+          refreshes++;
+          await Future<void>.delayed(const Duration(milliseconds: 50));
+          token = 'fresh-token';
+          return const Result.ok(null);
+        });
+        when(() => auth.withAuthRetry<Map<String, dynamic>>(any())).thenAnswer(
+          (i) =>
+              (i.positionalArguments.single
+                  as Future<Result<Map<String, dynamic>>> Function())(),
+        );
+        expiring = TilesRepositoryRemote(
+          tilesApiClient: _styleClient(),
+          authRepository: auth,
+          tilesBaseUrl: Uri(
+            scheme: 'http',
+            host: '127.0.0.1',
+            port: backend.port,
+          ),
+        );
+        addTearDown(expiring.close);
+        final style = await expiring.getMapStyle(name: 'x');
+        final sprite =
+            (jsonDecode((style as Ok<String>).value) as Map)['sprite']
+                as String;
+        base = sprite.substring(0, sprite.indexOf('/v1/tiles/'));
+      });
+
+      Future<({int status, String body})> get(String path) async {
+        final client = HttpClient();
+        try {
+          final res = await (await client.getUrl(
+            Uri.parse('$base$path'),
+          )).close();
+          final body = await utf8.decodeStream(res);
+          return (status: res.statusCode, body: body);
+        } finally {
+          client.close(force: true);
+        }
+      }
+
+      test('refreshes the token on a 401 and retries the tile', () async {
+        final res = await get('/v1/tiles/planet/5/0/0');
+
+        expect(res.status, 200);
+        expect(res.body, 'fresh-tile');
+        expect(refreshes, 1);
+        expect(backend.requests.map((r) => r.auth), [
+          'Bearer stale-token',
+          'Bearer fresh-token',
+        ]);
+      });
+
+      test('concurrent 401s share a single refresh', () async {
+        final results = await Future.wait([
+          for (var i = 0; i < 12; i++) get('/v1/tiles/planet/5/0/0'),
+        ]);
+
+        expect(results.map((r) => r.status), everyElement(200));
+        expect(refreshes, 1);
+      });
+
+      test('a tile that is refused with a fresh token is not retried '
+          'forever', () async {
+        final first = await get('/v1/tiles/planet/6/0/0');
+        expect(first.status, 401);
+        expect(refreshes, 1);
+
+        // Token is fresh now; a second 401 within the cooldown must not
+        // trigger another refresh (it would only burn the refresh token).
+        final second = await get('/v1/tiles/planet/6/0/0');
+        expect(second.status, 401);
+        expect(refreshes, 1);
+      });
+
+      test('a failed refresh passes the 401 on', () async {
+        when(
+          () => auth.refresh(),
+        ).thenAnswer((_) async => Result.error(Exception('invalid')));
+
+        final res = await get('/v1/tiles/planet/5/0/0');
+
+        expect(res.status, 401);
+      });
+    });
+
     test('refuses methods other than GET and HEAD', () async {
       expect(
         (await request('/v1/tiles/planet/1/0/0', method: 'POST')).status,
@@ -361,6 +459,16 @@ class _FakeBackend {
           res.statusCode = HttpStatus.notModified;
         case '/v1/tiles/planet/4/0/0':
           res.statusCode = HttpStatus.notFound;
+        case '/v1/tiles/planet/5/0/0':
+          // only a refreshed token is accepted
+          if (request.headers.value(HttpHeaders.authorizationHeader) ==
+              'Bearer fresh-token') {
+            res.add(utf8.encode('fresh-tile'));
+          } else {
+            res.statusCode = HttpStatus.unauthorized;
+          }
+        case '/v1/tiles/planet/6/0/0':
+          res.statusCode = HttpStatus.unauthorized; // whatever the token
         case '/v1/tiles/fonts/Noto%20Sans%20Regular/0-255.pbf':
           res.add(utf8.encode('glyph-bytes'));
         case '/v1/tiles/sprites/light@2x.json':

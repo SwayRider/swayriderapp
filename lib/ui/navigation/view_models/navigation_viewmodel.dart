@@ -1,0 +1,252 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
+import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
+
+import '../../../data/services/location_service.dart';
+import '../../../data/services/speech_service.dart';
+import '../../../domain/models/location/location_fix.dart';
+import '../../../domain/models/route/route_maneuver.dart';
+import '../../../domain/models/route/route_plan.dart';
+import '../../../domain/models/route/route_lane.dart';
+import '../../../domain/navigation/announcer.dart';
+import '../../../domain/navigation/prompt_queue.dart';
+import '../../../domain/navigation/camera_zoom.dart';
+import '../../../domain/navigation/route_progress.dart';
+import '../../../domain/navigation/route_time.dart';
+
+/// Turn-by-turn state for one navigation session along a fixed [RoutePlan].
+///
+/// Feeds GPS fixes through [RouteProgress] (snapping them to the route) and
+/// [Announcer] (deciding what to say), and exposes what the screen shows:
+/// the upcoming maneuver, the distance to it, and where the dot and camera
+/// should be. There is no re-routing: leaving the route just stops progress
+/// until the rider is back on it.
+class NavigationViewModel extends ChangeNotifier {
+  NavigationViewModel({
+    required this.plan,
+    required this._locationService,
+    required this._speechService,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now,
+       _progress = RouteProgress(plan.path),
+       _maneuvers = plan.maneuvers {
+    final progress = _progress;
+    _maneuverDistances = [
+      for (final m in _maneuvers)
+        progress.cumulative[m.beginShapeIndex.clamp(
+          0,
+          progress.path.length - 1,
+        )],
+    ];
+    _announcer = Announcer(
+      maneuvers: _maneuvers,
+      maneuverDistances: _maneuverDistances,
+      language: plan.language,
+    );
+    _prompts = PromptQueue(speech: _speechService, language: plan.language);
+  }
+
+  final RoutePlan plan;
+  final LocationService _locationService;
+  final SpeechService _speechService;
+  final DateTime Function() _clock;
+  final _log = Logger('NavigationViewModel');
+
+  final RouteProgress _progress;
+  final List<RouteManeuver> _maneuvers;
+  late final List<double> _maneuverDistances;
+  late final Announcer _announcer;
+  late final PromptQueue _prompts;
+
+  StreamSubscription<LocationFix>? _subscription;
+
+  /// Within this distance of the route line the dot is drawn snapped to the
+  /// line; further away it follows the raw GPS position instead.
+  static const snapToRouteMeters = 50.0;
+
+  /// The rider counts as arrived this close to the end of the route.
+  static const arrivalMeters = 25.0;
+
+  /// The lane strip appears this far before a maneuver (1 km before a
+  /// motorway exit, which is taken at speed).
+  static const laneGuidanceMeters = 400.0;
+  static const laneGuidanceHighwayMeters = 1000.0;
+
+  /// A maneuver counts as reached this close to its position.
+  static const _reachedMeters = 5.0;
+
+  LocationFix? _fix;
+  ProgressSnapshot? _snapshot;
+  bool _arrived = false;
+  double? _displaySpeedMps;
+
+  /// Weight of the newest fix in the displayed speed.
+  static const _displaySpeedSmoothing = 0.3;
+  final _cameraZoom = CameraZoom();
+  double _targetZoom = CameraZoom.slowZoom;
+  Object? _locationError;
+
+  /// The latest raw GPS fix, or `null` before the first one.
+  LocationFix? get fix => _fix;
+
+  /// Ground speed for display in km/h: a running average over the last few
+  /// fixes (raw GPS speed jitters by several km/h), rounded. Below 2 km/h
+  /// counts as standing still, as GPS speed creeps around zero.
+  int get speedKmh {
+    final kmh = (_displaySpeedMps ?? 0) * 3.6;
+    return kmh < 2 ? 0 : kmh.round();
+  }
+
+  /// Where the dot should be drawn, or `null` before the first fix.
+  LatLng? get dotPosition {
+    final snapshot = _snapshot;
+    final fix = _fix;
+    if (snapshot == null || fix == null) return null;
+    return snapshot.offRouteMeters <= snapToRouteMeters
+        ? snapshot.snapped
+        : fix.position;
+  }
+
+  /// Direction of the route ahead, for rotating the camera; `null` before
+  /// the first fix.
+  double? get routeBearing => _snapshot?.bearing;
+
+  bool get offRoute => (_snapshot?.offRouteMeters ?? 0) > snapToRouteMeters;
+
+  double get remainingMeters =>
+      _snapshot?.remainingMeters ?? plan.distanceMeters;
+
+  /// Travel time still to go, from the router's estimate for the stretches
+  /// ahead.
+  Duration get remainingTime {
+    if (_arrived) return Duration.zero;
+    final seconds = remainingSeconds(
+      maneuvers: _maneuvers,
+      maneuverDistances: _maneuverDistances,
+      alongMeters: _snapshot?.alongMeters ?? 0,
+      totalSeconds: plan.durationSeconds,
+      totalMeters: _progress.totalMeters,
+    );
+    return Duration(milliseconds: (seconds * 1000).round());
+  }
+
+  /// When the rider is expected to arrive, if they keep to the router's
+  /// pace.
+  DateTime get eta => _clock().add(remainingTime);
+
+  bool get arrived => _arrived;
+
+  /// Set when the position stream failed (permission revoked, GPS off).
+  Object? get locationError => _locationError;
+
+  /// The next maneuver the rider has to perform, or `null` before the first
+  /// fix.
+  RouteManeuver? get upcoming {
+    final index = _upcomingIndex;
+    return index == null ? null : _maneuvers[index];
+  }
+
+  /// Side of the road driven on along the route.
+  bool get drivesOnRight => plan.drivesOnRight;
+
+  /// Lanes to show for [upcoming]: only when the road data says which lanes
+  /// to use, and only once the maneuver is near enough (earlier for
+  /// motorway exits, which are taken at speed).
+  List<RouteLane> get laneGuidance {
+    final maneuver = upcoming;
+    final distance = distanceToUpcomingMeters;
+    if (maneuver == null || distance == null) return const [];
+    if (!maneuver.lanes.any((lane) => lane.isActive)) return const [];
+    final limit = maneuver.isHighwayType
+        ? laneGuidanceHighwayMeters
+        : laneGuidanceMeters;
+    return distance <= limit ? maneuver.lanes : const [];
+  }
+
+  /// Distance to [upcoming] along the route, in meters.
+  double? get distanceToUpcomingMeters {
+    final index = _upcomingIndex;
+    final snapshot = _snapshot;
+    if (index == null || snapshot == null) return null;
+    return (_maneuverDistances[index] - snapshot.alongMeters).clamp(
+      0.0,
+      double.infinity,
+    );
+  }
+
+  /// The zoom the camera should head for: one of a few fixed levels by
+  /// speed, and in close to the upcoming maneuver (see [CameraZoom]).
+  double get targetZoom => _targetZoom;
+
+  int? get _upcomingIndex {
+    final snapshot = _snapshot;
+    if (snapshot == null || _maneuvers.isEmpty) return null;
+    for (var i = 0; i < _maneuvers.length; i++) {
+      if (_maneuvers[i].isStart) continue;
+      if (_maneuverDistances[i] - snapshot.alongMeters > _reachedMeters) {
+        return i;
+      }
+    }
+    return _maneuvers.length - 1;
+  }
+
+  /// Starts listening to GPS fixes.
+  void start() {
+    _subscription ??= _locationService.positions().listen(
+      _onFix,
+      onError: (Object error) {
+        _log.warning('Location stream failed: $error');
+        _locationError = error;
+        notifyListeners();
+      },
+    );
+  }
+
+  void _onFix(LocationFix fix) {
+    if (_arrived) return;
+    _locationError = null;
+    _fix = fix;
+    final shown = _displaySpeedMps;
+    _displaySpeedMps = shown == null
+        ? fix.speedMps
+        : shown + (fix.speedMps - shown) * _displaySpeedSmoothing;
+    final snapshot = _progress.update(fix.position);
+    _snapshot = snapshot;
+
+    _targetZoom = _cameraZoom.update(
+      speedMps: fix.speedMps,
+      distanceToManeuverMeters: distanceToUpcomingMeters,
+    );
+
+    _prompts.update(snapshot.alongMeters);
+    _prompts.add(
+      _announcer.update(
+        alongMeters: snapshot.alongMeters,
+        speedMps: fix.speedMps,
+      ),
+    );
+
+    if (snapshot.remainingMeters <= arrivalMeters) {
+      _arrived = true;
+      unawaited(_subscription?.cancel());
+      _subscription = null;
+    }
+    notifyListeners();
+  }
+
+  /// Stops guidance: no more fixes, and any phrase being spoken is cut off.
+  Future<void> stop() async {
+    final subscription = _subscription;
+    _subscription = null;
+    await subscription?.cancel();
+    await _prompts.stop();
+  }
+
+  @override
+  void dispose() {
+    unawaited(stop());
+    super.dispose();
+  }
+}

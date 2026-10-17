@@ -16,6 +16,7 @@ For setup, running the app, configuration, and contributing, see
 - [Navigation Flow](#navigation-flow)
 - [Map Tiles](#map-tiles)
 - [Map Controls](#map-controls)
+- [Turn-by-Turn Navigation](#turn-by-turn-navigation)
 - [Project Structure](#project-structure)
 
 ---
@@ -216,6 +217,82 @@ user's zoom and tilt, about 10 times a second at most):
   commanded one for a second also ends it.
 - Magnetic north is used on Android (the difference to true north is a few
   degrees in Belgium); iOS delivers true north; the GPS course is true north.
+
+---
+
+## Turn-by-Turn Navigation
+
+The **Start** button on the home screen (shown once a route with maneuvers
+exists) pushes `/navigation` with the `RoutePlan` as `extra`.
+
+- **Route data:** `RouterApiClient` keeps the full Valhalla result as a
+  `RoutePlan` (merged path of all legs plus `RouteManeuver`s, with each leg's
+  `begin_shape_index` shifted so it indexes the merged path). It requests
+  `unit: km` and the app language (`routeLanguageFor`: `nl-NL`, otherwise
+  `en-US`), so `instruction` and the `verbal_*` strings come back already
+  localized.
+- **Progress:** `RouteProgress` (`domain/navigation/`) snaps each GPS fix to the
+  route with a forward-only window (800 m), so an out-and-back road is never
+  matched to the return pass early. The first fix searches the whole route, and
+  a fix far ahead (after a GPS gap) is accepted if it is within 40 m of the
+  line. Fixes more than 150 m off the line never advance progress. There is no
+  re-routing yet: off route, the dot follows the raw GPS and the header says so.
+- **Prompts:** `Announcer` speaks each maneuver in up to four stages, each at
+  most once: a *far* warning for motorway exits, ramps, stays and merges
+  (Valhalla types 17-25, `RouteManeuver.isHighwayType`) from 80 km/h up, ~60 s
+  of travel and 1 to 2 km, with the descriptive text ("Over 2 kilometer, neem
+  afslag Knooppunt Lummen naar E314 richting Brussel"); an *alert* ("In 500
+  meters, ...", 30 s of travel, 300 m to 1.5 km; ~25 s and 500 m to 1 km for
+  motorway maneuvers); the *pre*-transition instruction (~8 s, 120 to 250 m,
+  at least 150 m when the maneuver has lane data); and the *post*-transition
+  instruction. Distances use the *cruise* speed (current speed or a slowly
+  decaying peak), so braking for an exit or a light does not pull prompts
+  closer. A maneuver within 500 m of the one being announced is chained onto
+  its prompt ("... Daarna: links afslaan"), a pre prompt names the lanes to use
+  when only some are valid (`laneHint`), and leaving a roundabout is silent
+  because the entry prompt names the exit. A later maneuver's early stages
+  wait until the earlier one has had its pre prompt. After a GPS jump the
+  outdated start phrase is dropped.
+- **Speech:** `SpeechService` is the app's own platform channel
+  (`AVSpeechSynthesizer` on iOS, `TextToSpeech` on Android) rather than
+  `flutter_tts`, which would force CocoaPods on this Swift Package Manager
+  project (same reason as the compass). Other audio is ducked while speaking.
+  `speak` completes when the phrase has been spoken; `PromptQueue` feeds it one
+  prompt at a time so nothing is cut off, and drops queued prompts whose
+  maneuver the rider has already passed.
+- **Maneuver icons:** drawn by the app (`maneuver_glyph.dart` builds a list of
+  parts in a 64 x 64 box, `ManeuverIcon` paints them): the route bold in the
+  app orange with an arrowhead, the other roads light grey without one. Exits,
+  ramps and stays show the continuing road without an arrow, only the exit has
+  one. Roundabouts follow the side of the road that is driven on, circulating
+  counter-clockwise (first exit right) where people drive on the right, and
+  show the exit that is taken. The router gives neither the driving side nor
+  the number of exits of a roundabout, so `RoutePlan.drivesOnRight` is inferred
+  from the direction the route's roundabouts are taken in (`isClockwise` in
+  `geo.dart`; default right), and the roundabout layout is generic: at least
+  four spokes, our exit in full colour. Ferries and unknown types keep a Material
+  icon. The geometry is unit-tested (`maneuver_glyph_test.dart`); there is no
+  golden image because pixel output differs between macOS and the CI runner.
+- **Direction card:** the top card has a small row with the ETA and the
+  distance still to go next to the close button, above the maneuver icon,
+  distance and instruction. The ETA is now plus the router's remaining travel
+  time (`remainingSeconds`, from each maneuver's `time`), shown in the phone's
+  12/24-hour setting; it does not adapt to the rider's own pace.
+- **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
+  `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
+  per lane under the header, the lanes to use highlighted, within 400 m of a
+  maneuver (1 km for motorway ones) and only when the data marks lanes.
+- **Screen:** `NavigationScreen` shows the map with tilt 60 and the camera
+  centred ahead of a dot snapped to the route, so the dot sits in the lower
+  part of the screen (`maplibre_gl` has no camera padding). A 100 ms timer
+  glides the dot and camera between fixes. The camera zooms by itself in
+  fixed steps (`CameraZoom`): zoom 16.5 below ~45 km/h, 15.5 on country roads,
+  14.5 above ~90 km/h, and 17.5 within 300 m of a maneuver. Speed is averaged
+  and each band edge has a 10 km/h margin, so the zoom doesn't flip while the
+  speed wobbles; the screen eases between levels. Pan, rotate, tilt and pinch
+  gestures are off. `wakelock_plus` keeps the display on.
+- **Not done yet:** re-routing, guidance while the app is in the background or
+  the screen is locked.
 
 ---
 
