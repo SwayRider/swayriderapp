@@ -10,12 +10,17 @@ import '../../../helpers/fakes.dart';
 
 /// 3 km straight north (one point per ~100 m): depart at 0, turn left at
 /// 2000 m, arrive at the end.
-RoutePlan buildPlan({List<RouteLane> lanes = const [], int turnType = 15}) {
+RoutePlan buildPlan({
+  List<RouteLane> lanes = const [],
+  int turnType = 15,
+  double durationSeconds = 0,
+}) {
   final path = [for (var i = 0; i <= 30; i++) LatLng(51.0 + i * 0.0009, 4.0)];
   return RoutePlan(
     path: path,
     language: 'nl-NL',
     distanceMeters: 3000,
+    durationSeconds: durationSeconds,
     maneuvers: [
       const RouteManeuver(
         type: 2,
@@ -273,6 +278,44 @@ void main() {
       location.emit(at(19));
       await pump();
       expect(viewModel.laneGuidance, isEmpty);
+    });
+  });
+
+  group('ETA', () {
+    final now = DateTime(2026, 10, 17, 14, 0);
+
+    NavigationViewModel startAt(RoutePlan plan) {
+      viewModel.dispose();
+      return viewModel = NavigationViewModel(
+        plan: plan,
+        locationService: location,
+        speechService: speech,
+        clock: () => now,
+      )..start();
+    }
+
+    test('before the first fix it is the whole route', () {
+      startAt(buildPlan(durationSeconds: 300));
+      expect(viewModel.remainingTime, const Duration(seconds: 300));
+      expect(viewModel.eta, now.add(const Duration(minutes: 5)));
+    });
+
+    test('counts down as the rider progresses', () async {
+      startAt(buildPlan(durationSeconds: 300));
+      location.emit(at(15)); // half way
+      await pump();
+
+      expect(viewModel.remainingTime.inSeconds, closeTo(150, 5));
+      expect(viewModel.eta.difference(now).inSeconds, closeTo(150, 5));
+    });
+
+    test('is the current time once arrived', () async {
+      startAt(buildPlan(durationSeconds: 300));
+      location.emit(at(30));
+      await pump();
+
+      expect(viewModel.arrived, isTrue);
+      expect(viewModel.eta, now);
     });
   });
 }

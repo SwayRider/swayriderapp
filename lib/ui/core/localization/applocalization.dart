@@ -168,8 +168,7 @@ class AppLocalization {
   String get navigationOffRoute => _get('navigationOffRoute');
   String get navigationArrived => _get('navigationArrived');
   String get navigationDone => _get('navigationDone');
-  String navigationRemaining(String distance) =>
-      _get('navigationRemaining').replaceAll('{distance}', distance);
+  String get navigationEta => _get('navigationEta');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {

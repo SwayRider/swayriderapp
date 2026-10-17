@@ -12,8 +12,6 @@ import '../../../data/services/speech_service.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/geo.dart';
-import '../../../utils/distance_format.dart';
-import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
 import '../../home/view_models/map_style_view_model.dart';
 import '../view_models/navigation_viewmodel.dart';
@@ -245,8 +243,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final languageCode = Localizations.localeOf(context).languageCode;
-    final l10n = AppLocalization.of(context);
     return Scaffold(
       backgroundColor: AppColors.black1,
       body: Stack(
@@ -294,6 +290,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 NavigationHeader(
                   maneuver: _viewModel.upcoming,
                   drivesOnRight: _viewModel.drivesOnRight,
+                  eta: _viewModel.eta,
+                  remainingMeters: _viewModel.remainingMeters,
                   distanceMeters: _viewModel.distanceToUpcomingMeters,
                   arrived: _viewModel.arrived,
                   offRoute: _viewModel.offRoute,
@@ -308,36 +306,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ],
             ),
           ),
-          if (!_viewModel.arrived && _viewModel.fix != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: SafeArea(
-                child: Center(
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.black1,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      l10n.navigationRemaining(
-                        formatDistance(
-                          _viewModel.remainingMeters,
-                          languageCode: languageCode,
-                        ),
-                      ),
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-            ),
           if (_viewModel.fix != null)
             Positioned(
               left: 16,

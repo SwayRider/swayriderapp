@@ -23,6 +23,9 @@ void main() {
     bool locationError = false,
     VoidCallback? onEnd,
     bool drivesOnRight = true,
+    DateTime? eta,
+    double? remaining,
+    bool use24Hour = true,
     Locale locale = const Locale('en'),
   }) => tester.pumpWidget(
     MaterialApp(
@@ -32,6 +35,10 @@ void main() {
         ...GlobalMaterialLocalizations.delegates,
         AppLocalizationDelegate(),
       ],
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: use24Hour),
+        child: child!,
+      ),
       home: Scaffold(
         body: NavigationHeader(
           maneuver: maneuver,
@@ -41,6 +48,8 @@ void main() {
           hasLocationError: locationError,
           onEnd: onEnd ?? () {},
           drivesOnRight: drivesOnRight,
+          eta: eta,
+          remainingMeters: remaining,
         ),
       ),
     ),
@@ -120,5 +129,50 @@ void main() {
     await pump(tester, arrived: true);
     expect(find.byIcon(Icons.flag), findsOneWidget);
     expect(find.byType(ManeuverIcon), findsNothing);
+  });
+
+  group('trip row', () {
+    final eta = DateTime(2026, 10, 17, 14, 35);
+
+    testWidgets('shows the ETA and the distance left', (tester) async {
+      await pump(tester, eta: eta, remaining: 47300);
+
+      expect(find.textContaining('ETA 14:35'), findsOneWidget);
+      expect(find.textContaining('47 km'), findsOneWidget);
+    });
+
+    testWidgets('is localized in Dutch', (tester) async {
+      await pump(tester, eta: eta, remaining: 1250, locale: const Locale('nl'));
+
+      expect(find.textContaining('Aankomst 14:35'), findsOneWidget);
+      expect(find.textContaining('1,3 km'), findsOneWidget);
+    });
+
+    testWidgets('follows the phone\'s 12-hour setting', (tester) async {
+      await pump(tester, eta: eta, remaining: 5000, use24Hour: false);
+
+      expect(find.textContaining('2:35'), findsOneWidget);
+      expect(find.textContaining('PM'), findsOneWidget);
+    });
+
+    testWidgets('is hidden without data and once arrived', (tester) async {
+      await pump(tester);
+      expect(find.textContaining('ETA'), findsNothing);
+
+      await pump(tester, arrived: true, eta: eta, remaining: 0);
+      expect(find.textContaining('ETA'), findsNothing);
+      expect(find.text('Done'), findsOneWidget);
+    });
+
+    testWidgets('the close button sits in the same row', (tester) async {
+      var ended = 0;
+      await pump(tester, eta: eta, remaining: 5000, onEnd: () => ended++);
+
+      await tester.tap(find.byIcon(Icons.close));
+      expect(ended, 1);
+      final trip = tester.getTopLeft(find.textContaining('ETA'));
+      final close = tester.getTopLeft(find.byIcon(Icons.close));
+      expect((trip.dy - close.dy).abs(), lessThan(30));
+    });
   });
 }

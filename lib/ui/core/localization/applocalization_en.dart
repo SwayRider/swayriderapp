@@ -181,7 +181,7 @@ class AppLocalizationEn extends AppLocalization {
     'navigationOffRoute': 'Off route',
     'navigationArrived': 'You have arrived',
     'navigationDone': 'Done',
-    'navigationRemaining': '{distance} to go',
+    'navigationEta': 'ETA',
   };
 
   @override

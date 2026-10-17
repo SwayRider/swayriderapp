@@ -272,6 +272,11 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   `geo.dart`; default right), and the roundabout layout is generic: at least
   four spokes, our exit in full colour. Ferries and unknown types keep a Material
   icon. `maneuver_icons_golden_test.dart` renders a review sheet of all icons.
+- **Direction card:** the top card has a small row with the ETA and the
+  distance still to go next to the close button, above the maneuver icon,
+  distance and instruction. The ETA is now plus the router's remaining travel
+  time (`remainingSeconds`, from each maneuver's `time`), shown in the phone's
+  12/24-hour setting; it does not adapt to the rider's own pace.
 - **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
   `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
   per lane under the header, the lanes to use highlighted, within 400 m of a

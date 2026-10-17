@@ -14,6 +14,7 @@ import '../../../domain/navigation/announcer.dart';
 import '../../../domain/navigation/prompt_queue.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/route_progress.dart';
+import '../../../domain/navigation/route_time.dart';
 
 /// Turn-by-turn state for one navigation session along a fixed [RoutePlan].
 ///
@@ -27,7 +28,9 @@ class NavigationViewModel extends ChangeNotifier {
     required this.plan,
     required this._locationService,
     required this._speechService,
-  }) : _progress = RouteProgress(plan.path),
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now,
+       _progress = RouteProgress(plan.path),
        _maneuvers = plan.maneuvers {
     final progress = _progress;
     _maneuverDistances = [
@@ -48,6 +51,7 @@ class NavigationViewModel extends ChangeNotifier {
   final RoutePlan plan;
   final LocationService _locationService;
   final SpeechService _speechService;
+  final DateTime Function() _clock;
   final _log = Logger('NavigationViewModel');
 
   final RouteProgress _progress;
@@ -113,6 +117,24 @@ class NavigationViewModel extends ChangeNotifier {
 
   double get remainingMeters =>
       _snapshot?.remainingMeters ?? plan.distanceMeters;
+
+  /// Travel time still to go, from the router's estimate for the stretches
+  /// ahead.
+  Duration get remainingTime {
+    if (_arrived) return Duration.zero;
+    final seconds = remainingSeconds(
+      maneuvers: _maneuvers,
+      maneuverDistances: _maneuverDistances,
+      alongMeters: _snapshot?.alongMeters ?? 0,
+      totalSeconds: plan.durationSeconds,
+      totalMeters: _progress.totalMeters,
+    );
+    return Duration(milliseconds: (seconds * 1000).round());
+  }
+
+  /// When the rider is expected to arrive, if they keep to the router's
+  /// pace.
+  DateTime get eta => _clock().add(remainingTime);
 
   bool get arrived => _arrived;
 

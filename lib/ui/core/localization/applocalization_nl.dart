@@ -186,7 +186,7 @@ class AppLocalizationNl extends AppLocalization {
     'navigationOffRoute': 'Van de route',
     'navigationArrived': 'U bent aangekomen',
     'navigationDone': 'Klaar',
-    'navigationRemaining': 'Nog {distance}',
+    'navigationEta': 'Aankomst',
   };
 
   @override
