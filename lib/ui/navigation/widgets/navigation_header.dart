@@ -38,7 +38,12 @@ class NavigationHeader extends StatelessWidget {
   final DateTime? eta;
   final double? remainingMeters;
 
-  static const _iconSize = 56.0;
+  // Sized to be read at a glance on a vibrating motorcycle.
+  static const _iconSize = 80.0;
+  static const _tripFontSize = 22.0;
+  static const _distanceFontSize = 44.0;
+  static const _instructionFontSize = 24.0;
+  static const _statusFontSize = 18.0;
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +88,8 @@ class NavigationHeader extends StatelessWidget {
     final showTrip = !arrived && etaTime != null && remaining != null;
     final tripStyle = theme.textTheme.titleSmall?.copyWith(
       color: Colors.white,
-      fontWeight: FontWeight.w600,
+      fontSize: _tripFontSize,
+      fontWeight: FontWeight.w700,
     );
 
     return Material(
@@ -98,7 +104,7 @@ class NavigationHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
-                height: 40,
+                height: 52,
                 child: Row(
                   children: [
                     if (showTrip)
@@ -123,7 +129,11 @@ class NavigationHeader extends StatelessWidget {
                       IconButton(
                         tooltip: l10n.endNavigation,
                         onPressed: onEnd,
-                        icon: const Icon(Icons.close, color: Colors.white),
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                   ],
                 ),
@@ -143,16 +153,20 @@ class NavigationHeader extends StatelessWidget {
                             title,
                             style: theme.textTheme.headlineMedium?.copyWith(
                               color: Colors.white,
+                              fontSize: _distanceFontSize,
                               fontWeight: FontWeight.bold,
+                              height: 1.1,
                             ),
                           ),
                           if (subtitle != null && subtitle.isNotEmpty)
                             Text(
                               subtitle,
-                              maxLines: 2,
+                              maxLines: 3,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.titleMedium?.copyWith(
-                                color: Colors.white70,
+                                color: Colors.white,
+                                fontSize: _instructionFontSize,
+                                height: 1.15,
                               ),
                             ),
                           if (status != null)
@@ -162,6 +176,8 @@ class NavigationHeader extends StatelessWidget {
                                 status,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: AppColors.red,
+                                  fontSize: _statusFontSize,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),

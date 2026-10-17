@@ -8,7 +8,7 @@ class SpeedIndicator extends StatelessWidget {
 
   final int speedKmh;
 
-  static const size = 72.0;
+  static const size = 96.0;
 
   @override
   Widget build(BuildContext context) {
@@ -31,6 +31,7 @@ class SpeedIndicator extends StatelessWidget {
               '$speedKmh',
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: Colors.white,
+                fontSize: 38,
                 fontWeight: FontWeight.bold,
                 height: 1,
               ),
@@ -39,6 +40,7 @@ class SpeedIndicator extends StatelessWidget {
               'km/h',
               style: theme.textTheme.labelSmall?.copyWith(
                 color: Colors.white70,
+                fontSize: 15,
                 height: 1.2,
               ),
             ),

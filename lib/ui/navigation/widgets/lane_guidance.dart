@@ -58,13 +58,13 @@ class _LaneCell extends StatelessWidget {
     final active = lane.isActive;
     final icon = Icon(
       laneIcon(lane.primaryDirection),
-      size: 30,
+      size: 38,
       color: active ? Colors.white : Colors.white38,
     );
     return Container(
       key: ValueKey(active ? 'lane-active' : 'lane-inactive'),
-      width: 38,
-      height: 44,
+      width: 48,
+      height: 56,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: active ? AppColors.apexOrange : Colors.transparent,
