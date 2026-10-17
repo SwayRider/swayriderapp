@@ -14,6 +14,7 @@ class RoutePlan {
     this.distanceMeters = 0,
     this.durationSeconds = 0,
     this.language = 'en-US',
+    this.drivesOnRight = true,
   });
 
   /// Path-only plan, e.g. for callers that have no maneuver data.
@@ -21,7 +22,8 @@ class RoutePlan {
     : maneuvers = const [],
       distanceMeters = 0,
       durationSeconds = 0,
-      language = 'en-US';
+      language = 'en-US',
+      drivesOnRight = true;
 
   final List<LatLng> path;
   final List<RouteManeuver> maneuvers;
@@ -30,6 +32,11 @@ class RoutePlan {
 
   /// Valhalla language the verbal instructions are written in.
   final String language;
+
+  /// Which side of the road is driven on along the route. The router does
+  /// not say, so it is inferred from the direction roundabouts are taken in
+  /// (see `RouterApiClient`); `true` when the route has none.
+  final bool drivesOnRight;
 
   bool get canNavigate => path.length >= 2 && maneuvers.isNotEmpty;
 }

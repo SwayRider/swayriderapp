@@ -6,6 +6,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
+import '../../../domain/navigation/geo.dart' show isClockwise;
 import '../../../utils/polyline_codec.dart';
 import '../../../utils/result.dart';
 import 'auth_header_provider.dart';
@@ -219,15 +220,51 @@ class RouterApiClient {
         maneuvers.add(_maneuver(m as Map<String, dynamic>).shifted(offset));
       }
     }
+    _nameRoundaboutExits(maneuvers);
     final summary = trip['summary'] as Map<String, dynamic>?;
     return RoutePlan(
       path: path,
       maneuvers: maneuvers,
+      drivesOnRight: _drivesOnRight(path, maneuvers),
       // Requested in kilometers.
       distanceMeters: ((summary?['length'] as num?) ?? 0) * 1000.0,
       durationSeconds: ((summary?['time'] as num?) ?? 0).toDouble(),
       language: _nonEmpty(trip['language']) ?? requestedLanguage,
     );
+  }
+
+  /// Leaving a roundabout has no exit count of its own; it belongs to the
+  /// entry just before it.
+  void _nameRoundaboutExits(List<RouteManeuver> maneuvers) {
+    for (var i = 1; i < maneuvers.length; i++) {
+      final entry = maneuvers[i - 1];
+      if (maneuvers[i].type == 27 &&
+          maneuvers[i].roundaboutExitCount == null &&
+          entry.type == 26 &&
+          entry.roundaboutExitCount != null) {
+        maneuvers[i] = maneuvers[i].withRoundaboutExit(
+          entry.roundaboutExitCount!,
+        );
+      }
+    }
+  }
+
+  /// Traffic goes round a roundabout counter-clockwise where people drive on
+  /// the right and clockwise where they drive on the left, and the response
+  /// has no driving-side field. The majority over the route's roundabouts
+  /// decides, so one odd shape cannot flip it; the default is the right.
+  bool _drivesOnRight(List<LatLng> path, List<RouteManeuver> maneuvers) {
+    var counterClockwise = 0;
+    var clockwise = 0;
+    for (final m in maneuvers) {
+      if (m.type != 26) continue;
+      final begin = m.beginShapeIndex.clamp(0, path.length - 1);
+      final end = m.endShapeIndex.clamp(begin, path.length - 1);
+      final turning = isClockwise(path.sublist(begin, end + 1));
+      if (turning == null) continue;
+      turning ? clockwise++ : counterClockwise++;
+    }
+    return counterClockwise >= clockwise;
   }
 
   RouteManeuver _maneuver(Map<String, dynamic> m) => RouteManeuver(

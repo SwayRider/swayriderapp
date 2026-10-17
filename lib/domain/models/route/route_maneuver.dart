@@ -63,6 +63,22 @@ class RouteManeuver {
 
   /// Valhalla `ManeuverType` values that represent the start / end of the
   /// route rather than a turn.
+  /// A copy that names the roundabout exit it belongs to.
+  RouteManeuver withRoundaboutExit(int exit) => RouteManeuver(
+    type: type,
+    instruction: instruction,
+    beginShapeIndex: beginShapeIndex,
+    endShapeIndex: endShapeIndex,
+    verbalAlert: verbalAlert,
+    verbalPre: verbalPre,
+    verbalPost: verbalPost,
+    streetNames: streetNames,
+    lengthMeters: lengthMeters,
+    timeSeconds: timeSeconds,
+    roundaboutExitCount: exit,
+    lanes: lanes,
+  );
+
   /// Ramps, exits, stay left / right and merges (types 17..25): decisions
   /// that are taken at motorway speed and need an early warning.
   bool get isHighwayType => type >= 17 && type <= 25;

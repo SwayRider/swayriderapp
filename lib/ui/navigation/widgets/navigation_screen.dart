@@ -293,6 +293,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               children: [
                 NavigationHeader(
                   maneuver: _viewModel.upcoming,
+                  drivesOnRight: _viewModel.drivesOnRight,
                   distanceMeters: _viewModel.distanceToUpcomingMeters,
                   arrived: _viewModel.arrived,
                   offRoute: _viewModel.offRoute,

@@ -260,6 +260,18 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   `speak` completes when the phrase has been spoken; `PromptQueue` feeds it one
   prompt at a time so nothing is cut off, and drops queued prompts whose
   maneuver the rider has already passed.
+- **Maneuver icons:** drawn by the app (`maneuver_glyph.dart` builds a list of
+  parts in a 64 x 64 box, `ManeuverIcon` paints them): the route bold in the
+  app orange with an arrowhead, the other roads light grey without one. Exits,
+  ramps and stays show the continuing road without an arrow, only the exit has
+  one. Roundabouts follow the side of the road that is driven on, circulating
+  counter-clockwise (first exit right) where people drive on the right, and
+  show the exit that is taken. The router gives neither the driving side nor
+  the number of exits of a roundabout, so `RoutePlan.drivesOnRight` is inferred
+  from the direction the route's roundabouts are taken in (`isClockwise` in
+  `geo.dart`; default right), and the roundabout layout is generic: at least
+  four spokes, our exit in full colour. Ferries and unknown types keep a Material
+  icon. `maneuver_icons_golden_test.dart` renders a review sheet of all icons.
 - **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
   `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
   per lane under the header, the lanes to use highlighted, within 400 m of a

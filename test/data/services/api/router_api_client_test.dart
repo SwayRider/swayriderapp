@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
@@ -42,6 +43,7 @@ Map<String, dynamic> _maneuver(
   int end, {
   String? pre,
   double length = 0.5,
+  int? exitCount,
 }) => {
   'type': type,
   'instruction': 'instr $type',
@@ -51,6 +53,7 @@ Map<String, dynamic> _maneuver(
   'time': 30.0,
   'street_names': ['Main Street'],
   'verbal_pre_transition_instruction': ?pre,
+  'roundabout_exit_count': ?exitCount,
 };
 
 FakeHttpClient _sseClient(Map<String, dynamic> trip) {
@@ -141,6 +144,53 @@ void main() {
       expect(lanes[1].valid, 2);
       expect(maneuvers.last.lanes, isEmpty);
       expect(maneuvers.first.shifted(3).lanes, lanes);
+    });
+
+    group('roundabouts', () {
+      List<LatLng> circle(double from, double to) => [
+        for (var i = 0; i <= 6; i++)
+          LatLng(
+            51 + 0.0005 * math.sin(from + (to - from) * i / 6),
+            4 + 0.0008 * math.cos(from + (to - from) * i / 6),
+          ),
+      ];
+
+      Future<RoutePlan> planWith(List<LatLng> shape, int type) async {
+        final client = _sseClient({
+          'legs': [
+            {
+              'shape': _encode(shape),
+              'maneuvers': [
+                _maneuver(type, 0, shape.length - 1, exitCount: 2),
+                _maneuver(27, shape.length - 1, shape.length - 1),
+              ],
+            },
+          ],
+        });
+        final api = RouterApiClient(clientFactory: () => client);
+        final result = await api.calculateRoute(
+          points: [shape.first, shape.last],
+        );
+        return (result as Ok<RoutePlan>).value;
+      }
+
+      test('counter-clockwise means driving on the right', () async {
+        expect((await planWith(circle(0, math.pi), 26)).drivesOnRight, isTrue);
+      });
+
+      test('clockwise means driving on the left', () async {
+        expect((await planWith(circle(math.pi, 0), 26)).drivesOnRight, isFalse);
+      });
+
+      test('no roundabout defaults to the right', () async {
+        expect((await planWith(circle(0, math.pi), 10)).drivesOnRight, isTrue);
+      });
+
+      test('leaving a roundabout takes the exit of the entry', () async {
+        final plan = await planWith(circle(0, math.pi), 26);
+        expect(plan.maneuvers[0].roundaboutExitCount, 2);
+        expect(plan.maneuvers[1].roundaboutExitCount, 2);
+      });
     });
 
     test('empty verbal strings become null', () async {

@@ -22,6 +22,7 @@ void main() {
     bool offRoute = false,
     bool locationError = false,
     VoidCallback? onEnd,
+    bool drivesOnRight = true,
     Locale locale = const Locale('en'),
   }) => tester.pumpWidget(
     MaterialApp(
@@ -39,6 +40,7 @@ void main() {
           offRoute: offRoute,
           hasLocationError: locationError,
           onEnd: onEnd ?? () {},
+          drivesOnRight: drivesOnRight,
         ),
       ),
     ),
@@ -47,7 +49,8 @@ void main() {
   testWidgets('shows icon, distance and instruction', (tester) async {
     await pump(tester);
 
-    expect(find.byIcon(Icons.turn_left), findsOneWidget);
+    final icon = tester.widget<ManeuverIcon>(find.byType(ManeuverIcon));
+    expect(icon.type, 15);
     expect(find.text('350 m'), findsOneWidget);
     expect(find.text('Turn left onto Main Street.'), findsOneWidget);
   });
@@ -94,12 +97,28 @@ void main() {
     expect(find.text('Klaar'), findsOneWidget);
   });
 
-  test('maneuverIcon maps turns, roundabouts and arrival', () {
-    expect(maneuverIcon(10), Icons.turn_right);
-    expect(maneuverIcon(15), Icons.turn_left);
-    expect(maneuverIcon(13), Icons.u_turn_left);
-    expect(maneuverIcon(26), Icons.roundabout_right);
-    expect(maneuverIcon(4), Icons.flag);
-    expect(maneuverIcon(999), Icons.navigation);
+  testWidgets('a roundabout icon gets the exit and the driving side', (
+    tester,
+  ) async {
+    const roundabout = RouteManeuver(
+      type: 26,
+      instruction: 'Enter the roundabout.',
+      beginShapeIndex: 0,
+      endShapeIndex: 0,
+      roundaboutExitCount: 3,
+    );
+    await pump(tester, maneuver: roundabout, drivesOnRight: false);
+
+    final icon = tester.widget<ManeuverIcon>(find.byType(ManeuverIcon));
+    expect(icon.exitNumber, 3);
+    expect(icon.drivesOnRight, isFalse);
+  });
+
+  testWidgets('arrival and waiting states keep their plain icons', (
+    tester,
+  ) async {
+    await pump(tester, arrived: true);
+    expect(find.byIcon(Icons.flag), findsOneWidget);
+    expect(find.byType(ManeuverIcon), findsNothing);
   });
 }

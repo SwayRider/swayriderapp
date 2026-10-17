@@ -17,6 +17,7 @@ class NavigationHeader extends StatelessWidget {
     required this.offRoute,
     required this.hasLocationError,
     required this.onEnd,
+    this.drivesOnRight = true,
   });
 
   /// The upcoming maneuver, or `null` while waiting for the first GPS fix.
@@ -27,23 +28,41 @@ class NavigationHeader extends StatelessWidget {
   final bool hasLocationError;
   final VoidCallback onEnd;
 
+  /// Side of the road driven on; roundabout icons circle accordingly.
+  final bool drivesOnRight;
+
+  static const _iconSize = 56.0;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalization.of(context);
     final theme = Theme.of(context);
     final languageCode = Localizations.localeOf(context).languageCode;
 
-    final IconData icon;
+    final Widget icon;
     final String title;
     String? subtitle;
     if (arrived) {
-      icon = Icons.flag;
+      icon = const Icon(
+        Icons.flag,
+        size: _iconSize,
+        color: AppColors.apexOrange,
+      );
       title = l10n.navigationArrived;
     } else if (maneuver == null) {
-      icon = Icons.gps_not_fixed;
+      icon = const Icon(
+        Icons.gps_not_fixed,
+        size: _iconSize,
+        color: AppColors.apexOrange,
+      );
       title = l10n.navigationWaitingForGps;
     } else {
-      icon = maneuverIcon(maneuver!.type);
+      icon = ManeuverIcon(
+        type: maneuver!.type,
+        exitNumber: maneuver!.roundaboutExitCount,
+        drivesOnRight: drivesOnRight,
+        size: _iconSize,
+      );
       title = formatDistance(distanceMeters ?? 0, languageCode: languageCode);
       subtitle = maneuver!.instruction;
     }
@@ -62,7 +81,7 @@ class NavigationHeader extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
           child: Row(
             children: [
-              Icon(icon, size: 56, color: AppColors.apexOrange),
+              icon,
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

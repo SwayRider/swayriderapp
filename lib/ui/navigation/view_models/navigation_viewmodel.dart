@@ -126,6 +126,9 @@ class NavigationViewModel extends ChangeNotifier {
     return index == null ? null : _maneuvers[index];
   }
 
+  /// Side of the road driven on along the route.
+  bool get drivesOnRight => plan.drivesOnRight;
+
   /// Lanes to show for [upcoming]: only when the road data says which lanes
   /// to use, and only once the maneuver is near enough (earlier for
   /// motorway exits, which are taken at speed).

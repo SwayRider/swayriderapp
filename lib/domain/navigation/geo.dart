@@ -60,3 +60,23 @@ LatLng destinationPoint(LatLng from, double bearing, double meters) {
 /// Signed shortest rotation from [from] to [to] in degrees, in -180..180.
 double shortestAngleDelta(double from, double to) =>
     ((to - from + 540) % 360) - 180;
+
+/// Whether [points] curve clockwise (`true`) or counter-clockwise (`false`):
+/// the sum of the signed heading changes along the path. `null` when the
+/// path is too short or bends less than [minDegrees] net, so it says nothing.
+///
+/// Used on the shape of a roundabout: traffic circulates counter-clockwise
+/// where people drive on the right and clockwise where they drive on the
+/// left.
+bool? isClockwise(List<LatLng> points, {double minDegrees = 10}) {
+  if (points.length < 3) return null;
+  var total = 0.0;
+  for (var i = 1; i < points.length - 1; i++) {
+    total += shortestAngleDelta(
+      bearingDegrees(points[i - 1], points[i]),
+      bearingDegrees(points[i], points[i + 1]),
+    );
+  }
+  if (total.abs() < minDegrees) return null;
+  return total > 0;
+}
