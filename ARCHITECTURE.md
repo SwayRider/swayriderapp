@@ -237,15 +237,33 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   a fix far ahead (after a GPS gap) is accepted if it is within 40 m of the
   line. Fixes more than 150 m off the line never advance progress. There is no
   re-routing yet: off route, the dot follows the raw GPS and the header says so.
-- **Prompts:** `Announcer` speaks each maneuver at most three times: an advance
-  alert ("In 500 meters, ...", ~30 s of travel, 300 m to 1.5 km), the
-  pre-transition instruction (~8 s, 40 to 250 m) and the post-transition
-  instruction. Alerts are skipped when the previous stretch is too short, and
-  after a GPS jump only the most relevant phrase is spoken.
+- **Prompts:** `Announcer` speaks each maneuver in up to four stages, each at
+  most once: a *far* warning for motorway exits, ramps, stays and merges
+  (Valhalla types 17-25, `RouteManeuver.isHighwayType`) from 80 km/h up, ~60 s
+  of travel and 1 to 2 km, with the descriptive text ("Over 2 kilometer, neem
+  afslag Knooppunt Lummen naar E314 richting Brussel"); an *alert* ("In 500
+  meters, ...", 30 s of travel, 300 m to 1.5 km; ~25 s and 500 m to 1 km for
+  motorway maneuvers); the *pre*-transition instruction (~8 s, 120 to 250 m,
+  at least 150 m when the maneuver has lane data); and the *post*-transition
+  instruction. Distances use the *cruise* speed (current speed or a slowly
+  decaying peak), so braking for an exit or a light does not pull prompts
+  closer. A maneuver within 500 m of the one being announced is chained onto
+  its prompt ("... Daarna: links afslaan"), a pre prompt names the lanes to use
+  when only some are valid (`laneHint`), and leaving a roundabout is silent
+  because the entry prompt names the exit. A later maneuver's early stages
+  wait until the earlier one has had its pre prompt. After a GPS jump the
+  outdated start phrase is dropped.
 - **Speech:** `SpeechService` is the app's own platform channel
   (`AVSpeechSynthesizer` on iOS, `TextToSpeech` on Android) rather than
   `flutter_tts`, which would force CocoaPods on this Swift Package Manager
   project (same reason as the compass). Other audio is ducked while speaking.
+  `speak` completes when the phrase has been spoken; `PromptQueue` feeds it one
+  prompt at a time so nothing is cut off, and drops queued prompts whose
+  maneuver the rider has already passed.
+- **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
+  `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
+  per lane under the header, the lanes to use highlighted, within 400 m of a
+  maneuver (1 km for motorway ones) and only when the data marks lanes.
 - **Screen:** `NavigationScreen` shows the map with tilt 60 and the camera
   centred ahead of a dot snapped to the route, so the dot sits in the lower
   part of the screen (`maplibre_gl` has no camera padding). A 100 ms timer
@@ -256,7 +274,7 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   speed wobbles; the screen eases between levels. Pan, rotate, tilt and pinch
   gestures are off. `wakelock_plus` keeps the display on.
 - **Not done yet:** re-routing, guidance while the app is in the background or
-  the screen is locked, lane guidance.
+  the screen is locked.
 
 ---
 

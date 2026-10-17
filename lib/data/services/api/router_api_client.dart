@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
+import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/polyline_codec.dart';
@@ -244,6 +245,14 @@ class RouterApiClient {
     lengthMeters: ((m['length'] as num?) ?? 0) * 1000.0,
     timeSeconds: ((m['time'] as num?) ?? 0).toDouble(),
     roundaboutExitCount: (m['roundabout_exit_count'] as num?)?.toInt(),
+    lanes: [
+      for (final l in m['lanes'] as List<dynamic>? ?? const [])
+        RouteLane(
+          directions: ((l as Map)['directions'] as num?)?.toInt() ?? 0,
+          valid: (l['valid'] as num?)?.toInt(),
+          active: (l['active'] as num?)?.toInt(),
+        ),
+    ],
   );
 
   String? _nonEmpty(Object? value) =>

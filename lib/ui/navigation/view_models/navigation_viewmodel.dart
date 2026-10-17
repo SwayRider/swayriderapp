@@ -9,7 +9,9 @@ import '../../../data/services/speech_service.dart';
 import '../../../domain/models/location/location_fix.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
+import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/navigation/announcer.dart';
+import '../../../domain/navigation/prompt_queue.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/route_progress.dart';
 
@@ -40,6 +42,7 @@ class NavigationViewModel extends ChangeNotifier {
       maneuverDistances: _maneuverDistances,
       language: plan.language,
     );
+    _prompts = PromptQueue(speech: _speechService, language: plan.language);
   }
 
   final RoutePlan plan;
@@ -51,6 +54,7 @@ class NavigationViewModel extends ChangeNotifier {
   final List<RouteManeuver> _maneuvers;
   late final List<double> _maneuverDistances;
   late final Announcer _announcer;
+  late final PromptQueue _prompts;
 
   StreamSubscription<LocationFix>? _subscription;
 
@@ -60,6 +64,11 @@ class NavigationViewModel extends ChangeNotifier {
 
   /// The rider counts as arrived this close to the end of the route.
   static const arrivalMeters = 25.0;
+
+  /// The lane strip appears this far before a maneuver (1 km before a
+  /// motorway exit, which is taken at speed).
+  static const laneGuidanceMeters = 400.0;
+  static const laneGuidanceHighwayMeters = 1000.0;
 
   /// A maneuver counts as reached this close to its position.
   static const _reachedMeters = 5.0;
@@ -117,6 +126,20 @@ class NavigationViewModel extends ChangeNotifier {
     return index == null ? null : _maneuvers[index];
   }
 
+  /// Lanes to show for [upcoming]: only when the road data says which lanes
+  /// to use, and only once the maneuver is near enough (earlier for
+  /// motorway exits, which are taken at speed).
+  List<RouteLane> get laneGuidance {
+    final maneuver = upcoming;
+    final distance = distanceToUpcomingMeters;
+    if (maneuver == null || distance == null) return const [];
+    if (!maneuver.lanes.any((lane) => lane.isActive)) return const [];
+    final limit = maneuver.isHighwayType
+        ? laneGuidanceHighwayMeters
+        : laneGuidanceMeters;
+    return distance <= limit ? maneuver.lanes : const [];
+  }
+
   /// Distance to [upcoming] along the route, in meters.
   double? get distanceToUpcomingMeters {
     final index = _upcomingIndex;
@@ -172,13 +195,13 @@ class NavigationViewModel extends ChangeNotifier {
       distanceToManeuverMeters: distanceToUpcomingMeters,
     );
 
-    final utterance = _announcer.update(
-      alongMeters: snapshot.alongMeters,
-      speedMps: fix.speedMps,
+    _prompts.update(snapshot.alongMeters);
+    _prompts.add(
+      _announcer.update(
+        alongMeters: snapshot.alongMeters,
+        speedMps: fix.speedMps,
+      ),
     );
-    if (utterance != null) {
-      unawaited(_speechService.speak(utterance.text, language: plan.language));
-    }
 
     if (snapshot.remainingMeters <= arrivalMeters) {
       _arrived = true;
@@ -193,7 +216,7 @@ class NavigationViewModel extends ChangeNotifier {
     final subscription = _subscription;
     _subscription = null;
     await subscription?.cancel();
-    await _speechService.stop();
+    await _prompts.stop();
   }
 
   @override

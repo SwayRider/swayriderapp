@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
+import 'package:swayriderapp/domain/models/route/route_lane.dart';
 import 'package:swayriderapp/domain/models/route/route_maneuver.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/domain/navigation/camera_zoom.dart';
@@ -9,14 +10,14 @@ import '../../../helpers/fakes.dart';
 
 /// 3 km straight north (one point per ~100 m): depart at 0, turn left at
 /// 2000 m, arrive at the end.
-RoutePlan buildPlan() {
+RoutePlan buildPlan({List<RouteLane> lanes = const [], int turnType = 15}) {
   final path = [for (var i = 0; i <= 30; i++) LatLng(51.0 + i * 0.0009, 4.0)];
   return RoutePlan(
     path: path,
     language: 'nl-NL',
     distanceMeters: 3000,
-    maneuvers: const [
-      RouteManeuver(
+    maneuvers: [
+      const RouteManeuver(
         type: 2,
         instruction: 'Rij naar het noorden.',
         beginShapeIndex: 0,
@@ -24,15 +25,16 @@ RoutePlan buildPlan() {
         verbalPre: 'Rij naar het noorden.',
       ),
       RouteManeuver(
-        type: 15,
+        type: turnType,
         instruction: 'Sla linksaf.',
+        lanes: lanes,
         beginShapeIndex: 20,
         endShapeIndex: 30,
         verbalAlert: 'Sla linksaf.',
         verbalPre: 'Sla linksaf naar Zijstraat.',
         streetNames: ['Zijstraat'],
       ),
-      RouteManeuver(
+      const RouteManeuver(
         type: 4,
         instruction: 'U bent aangekomen.',
         beginShapeIndex: 30,
@@ -93,17 +95,17 @@ void main() {
 
   test('speaks the alert, then the pre-transition prompt once', () async {
     location.emit(at(0));
-    // 10 m/s => alert within 300 m, pre within 80 m of the turn at 2000 m.
+    // 10 m/s => alert within 300 m, pre within 120 m of the turn at 2000 m.
     location.emit(at(18));
     await pump();
-    expect(speech.spoken.last, 'Over 200 meter, sla linksaf.');
+    expect(speech.spoken.last, 'Over 200 meter, Sla linksaf.');
 
-    location.emit(at(19));
+    location.emit(at(18.5));
     await pump();
     expect(speech.spoken, hasLength(2));
 
-    location.emit(at(19.5));
-    location.emit(at(19.6));
+    location.emit(at(19));
+    location.emit(at(19.2));
     await pump();
     expect(speech.spoken.last, 'Sla linksaf naar Zijstraat.');
     expect(speech.spoken, hasLength(3));
@@ -224,5 +226,53 @@ void main() {
 
     expect(location.listening, isFalse);
     expect(speech.stops, 1);
+  });
+
+  group('lane guidance', () {
+    const lanes = [
+      RouteLane(directions: RouteLane.left, active: RouteLane.left),
+      RouteLane(directions: RouteLane.right),
+    ];
+
+    NavigationViewModel startWith(RoutePlan plan) {
+      viewModel.dispose();
+      return viewModel = NavigationViewModel(
+        plan: plan,
+        locationService: location,
+        speechService: speech,
+      )..start();
+    }
+
+    test('shows the lanes within 400 m of a turn, not before', () async {
+      startWith(buildPlan(lanes: lanes));
+      location.emit(at(10));
+      await pump();
+      expect(viewModel.laneGuidance, isEmpty);
+
+      location.emit(at(17));
+      await pump();
+      expect(viewModel.laneGuidance, lanes);
+    });
+
+    test('a motorway exit shows its lanes from 1 km', () async {
+      startWith(buildPlan(lanes: lanes, turnType: 20));
+      location.emit(at(11));
+      await pump();
+      expect(viewModel.laneGuidance, lanes);
+    });
+
+    test('stays empty when no lane is marked for the route', () async {
+      startWith(
+        buildPlan(
+          lanes: const [
+            RouteLane(directions: RouteLane.left),
+            RouteLane(directions: RouteLane.right),
+          ],
+        ),
+      );
+      location.emit(at(19));
+      await pump();
+      expect(viewModel.laneGuidance, isEmpty);
+    });
   });
 }

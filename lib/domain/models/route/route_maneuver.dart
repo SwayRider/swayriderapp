@@ -1,3 +1,5 @@
+import 'route_lane.dart';
+
 /// One turn-by-turn step of a [RoutePlan], as produced by Valhalla.
 class RouteManeuver {
   const RouteManeuver({
@@ -12,6 +14,7 @@ class RouteManeuver {
     this.lengthMeters = 0,
     this.timeSeconds = 0,
     this.roundaboutExitCount,
+    this.lanes = const [],
   });
 
   /// Valhalla / `router.proto` `ManeuverType` value.
@@ -40,6 +43,9 @@ class RouteManeuver {
 
   final int? roundaboutExitCount;
 
+  /// Lane layout at the maneuver; empty when the road data has none.
+  final List<RouteLane> lanes;
+
   RouteManeuver shifted(int offset) => RouteManeuver(
     type: type,
     instruction: instruction,
@@ -52,10 +58,15 @@ class RouteManeuver {
     lengthMeters: lengthMeters,
     timeSeconds: timeSeconds,
     roundaboutExitCount: roundaboutExitCount,
+    lanes: lanes,
   );
 
   /// Valhalla `ManeuverType` values that represent the start / end of the
   /// route rather than a turn.
+  /// Ramps, exits, stay left / right and merges (types 17..25): decisions
+  /// that are taken at motorway speed and need an early warning.
+  bool get isHighwayType => type >= 17 && type <= 25;
+
   bool get isStart => type >= 1 && type <= 3;
   bool get isArrival => type >= 4 && type <= 6;
 }

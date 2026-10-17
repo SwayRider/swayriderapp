@@ -111,13 +111,17 @@ final class CompassStreamHandler: NSObject, FlutterStreamHandler, CLLocationMana
 
 /// Speaks navigation prompts with `AVSpeechSynthesizer`.
 ///
-/// Channel methods: `speak {text, language}` (cuts off whatever is being
-/// spoken) and `stop`. The audio session ducks other audio (music) while a
-/// prompt plays and hands it back afterwards.
+/// Channel methods: `speak {text, language}` (queued behind whatever is being
+/// spoken; the call returns once the phrase has been spoken) and `stop`
+/// (silences everything and completes all waiting calls). The audio session
+/// ducks other audio (music) while prompts play and hands it back afterwards.
 final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
   static let channelName = "com.hevanto_it.swayriderapp/speech"
 
   private let synthesizer = AVSpeechSynthesizer()
+
+  /// Calls waiting for their utterance to finish.
+  private var waiting: [ObjectIdentifier: FlutterResult] = [:]
 
   override init() {
     super.init()
@@ -133,10 +137,10 @@ final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
         result(nil)
         return
       }
-      speak(text, language: args["language"] as? String ?? "en-US")
-      result(nil)
+      speak(text, language: args["language"] as? String ?? "en-US", result: result)
     case "stop":
       synthesizer.stopSpeaking(at: .immediate)
+      completeAll()
       deactivateSession()
       result(nil)
     default:
@@ -144,10 +148,7 @@ final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
     }
   }
 
-  private func speak(_ text: String, language: String) {
-    if synthesizer.isSpeaking {
-      synthesizer.stopSpeaking(at: .immediate)
-    }
+  private func speak(_ text: String, language: String, result: @escaping FlutterResult) {
     let session = AVAudioSession.sharedInstance()
     try? session.setCategory(
       .playback, mode: .voicePrompt,
@@ -156,7 +157,21 @@ final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
 
     let utterance = AVSpeechUtterance(string: text)
     utterance.voice = AVSpeechSynthesisVoice(language: language)
+    waiting[ObjectIdentifier(utterance)] = result
     synthesizer.speak(utterance)
+  }
+
+  private func complete(_ utterance: AVSpeechUtterance) {
+    waiting.removeValue(forKey: ObjectIdentifier(utterance))?(nil)
+    if waiting.isEmpty {
+      deactivateSession()
+    }
+  }
+
+  private func completeAll() {
+    let open = Array(waiting.values)
+    waiting.removeAll()
+    open.forEach { $0(nil) }
   }
 
   private func deactivateSession() {
@@ -167,16 +182,12 @@ final class SpeechHandler: NSObject, AVSpeechSynthesizerDelegate {
   func speechSynthesizer(
     _ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance
   ) {
-    deactivateSession()
+    complete(utterance)
   }
 
   func speechSynthesizer(
     _ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance
   ) {
-    // A new utterance usually follows straight away and reactivates the
-    // session; only release it when nothing else is queued.
-    if !synthesizer.isSpeaking {
-      deactivateSession()
-    }
+    complete(utterance)
   }
 }

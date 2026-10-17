@@ -110,6 +110,39 @@ void main() {
       expect(plan.canNavigate, isTrue);
     });
 
+    test('parses lanes, and leaves them empty when absent', () async {
+      final client = _sseClient({
+        'legs': [
+          {
+            'shape': _encode([a, b, c]),
+            'maneuvers': [
+              {
+                ..._maneuver(10, 0, 1),
+                'lanes': [
+                  {'directions': 8, 'active': 8},
+                  {'directions': 2, 'valid': 2},
+                  {'directions': 64},
+                ],
+              },
+              _maneuver(15, 1, 2),
+            ],
+          },
+        ],
+      });
+      final api = RouterApiClient(clientFactory: () => client);
+
+      final result = await api.calculateRoute(points: const [a, c]);
+
+      final maneuvers = (result as Ok<RoutePlan>).value.maneuvers;
+      final lanes = maneuvers.first.lanes;
+      expect(lanes.map((l) => l.directions), [8, 2, 64]);
+      expect(lanes.map((l) => l.isActive), [true, true, false]);
+      expect(lanes.first.active, 8);
+      expect(lanes[1].valid, 2);
+      expect(maneuvers.last.lanes, isEmpty);
+      expect(maneuvers.first.shifted(3).lanes, lanes);
+    });
+
     test('empty verbal strings become null', () async {
       final client = _sseClient({
         'legs': [

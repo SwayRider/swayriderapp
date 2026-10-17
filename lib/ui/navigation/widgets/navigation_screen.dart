@@ -17,6 +17,7 @@ import '../../core/localization/applocalization.dart';
 import '../../core/themes/colors.dart';
 import '../../home/view_models/map_style_view_model.dart';
 import '../view_models/navigation_viewmodel.dart';
+import 'lane_guidance.dart';
 import 'navigation_header.dart';
 import 'speed_indicator.dart';
 
@@ -287,13 +288,23 @@ class _NavigationScreenState extends State<NavigationScreen> {
             left: 0,
             right: 0,
             top: 0,
-            child: NavigationHeader(
-              maneuver: _viewModel.upcoming,
-              distanceMeters: _viewModel.distanceToUpcomingMeters,
-              arrived: _viewModel.arrived,
-              offRoute: _viewModel.offRoute,
-              hasLocationError: _viewModel.locationError != null,
-              onEnd: _end,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                NavigationHeader(
+                  maneuver: _viewModel.upcoming,
+                  distanceMeters: _viewModel.distanceToUpcomingMeters,
+                  arrived: _viewModel.arrived,
+                  offRoute: _viewModel.offRoute,
+                  hasLocationError: _viewModel.locationError != null,
+                  onEnd: _end,
+                ),
+                if (!_viewModel.arrived && _viewModel.laneGuidance.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: LaneGuidance(lanes: _viewModel.laneGuidance),
+                  ),
+              ],
             ),
           ),
           if (!_viewModel.arrived && _viewModel.fix != null)
