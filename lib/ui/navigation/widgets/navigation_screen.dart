@@ -13,10 +13,12 @@ import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/geo.dart';
 import '../../core/themes/colors.dart';
+import '../../core/themes/route_map_colors.dart';
 import '../../home/view_models/map_style_view_model.dart';
 import '../view_models/navigation_viewmodel.dart';
 import 'lane_guidance.dart';
 import 'navigation_header.dart';
+import 'stop_navigation_dialog.dart';
 import 'speed_indicator.dart';
 
 /// Fullscreen 3D map with turn-by-turn guidance along [plan].
@@ -116,11 +118,22 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _appliedCenter = null;
     final controller = _map;
     if (controller == null) return;
+    // Petrol on a white edge on the light map, orange on a dark edge on the
+    // dark one: it stands out from the roads either way.
+    final colors = RouteMapColors.of(widget.styleViewModel.variant);
+    await controller.addLine(
+      LineOptions(
+        geometry: widget.plan.path,
+        lineColor: colors.casing,
+        lineWidth: 16,
+        lineJoin: 'round',
+      ),
+    );
     _routeLine = await controller.addLine(
       LineOptions(
         geometry: widget.plan.path,
-        lineColor: '#FF7A00', // AppColors.apexOrange
-        lineWidth: 6,
+        lineColor: colors.line,
+        lineWidth: 12,
         lineJoin: 'round',
       ),
     );
@@ -228,10 +241,17 @@ class _NavigationScreenState extends State<NavigationScreen> {
   CircleOptions _dotOptions(LatLng at) => CircleOptions(
     geometry: at,
     circleRadius: 10,
-    circleColor: '#2A7085', // AppColors.lightPetrolBlue
+    circleColor: RouteMapColors.of(widget.styleViewModel.variant).dot,
     circleStrokeColor: '#FFFFFF',
     circleStrokeWidth: 3,
   );
+
+  /// The close button: ask first while guiding, "Done" after arriving ends
+  /// right away.
+  Future<void> _confirmEnd() async {
+    if (!_viewModel.arrived && !await confirmStopNavigation(context)) return;
+    if (mounted) _end();
+  }
 
   void _end() {
     if (context.canPop()) {
@@ -296,7 +316,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   arrived: _viewModel.arrived,
                   offRoute: _viewModel.offRoute,
                   hasLocationError: _viewModel.locationError != null,
-                  onEnd: _end,
+                  onEnd: _confirmEnd,
                 ),
                 if (!_viewModel.arrived && _viewModel.laneGuidance.isNotEmpty)
                   Padding(
