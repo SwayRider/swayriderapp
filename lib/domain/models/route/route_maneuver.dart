@@ -63,6 +63,22 @@ class RouteManeuver {
 
   /// Valhalla `ManeuverType` values that represent the start / end of the
   /// route rather than a turn.
+  /// A copy without the phrase spoken after the maneuver ("continue for 5
+  /// kilometers"), for a maneuver whose stretch has been cut short.
+  RouteManeuver withoutPost() => RouteManeuver(
+    type: type,
+    instruction: instruction,
+    beginShapeIndex: beginShapeIndex,
+    endShapeIndex: endShapeIndex,
+    verbalAlert: verbalAlert,
+    verbalPre: verbalPre,
+    streetNames: streetNames,
+    lengthMeters: lengthMeters,
+    timeSeconds: timeSeconds,
+    roundaboutExitCount: roundaboutExitCount,
+    lanes: lanes,
+  );
+
   /// A copy that names the roundabout exit it belongs to.
   RouteManeuver withRoundaboutExit(int exit) => RouteManeuver(
     type: type,

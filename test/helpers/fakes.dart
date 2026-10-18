@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:swayriderapp/data/repositories/router/router_repository.dart';
 import 'package:swayriderapp/data/services/ambient_light_service.dart';
+import 'package:swayriderapp/domain/models/route/rejoin.dart';
+import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/data/services/compass_service.dart';
 import 'package:swayriderapp/data/services/location_service.dart';
@@ -104,4 +107,30 @@ class FakeSpeechService implements SpeechService {
 
   @override
   Future<void> stop() async => stops++;
+}
+
+/// A [RouterRepository] whose way-back answers are controlled by the test:
+/// [rejoin] records the request and waits for [answer].
+class FakeRouterRepository implements RouterRepository {
+  final requests = <RejoinRequest>[];
+  final _pending = <Completer<Result<RejoinResult>>>[];
+
+  /// Answers the oldest request that has not been answered yet.
+  void answer(Result<RejoinResult> result) =>
+      _pending.removeAt(0).complete(result);
+
+  @override
+  Future<Result<RejoinResult>> rejoin(RejoinRequest request) {
+    requests.add(request);
+    final completer = Completer<Result<RejoinResult>>();
+    _pending.add(completer);
+    return completer.future;
+  }
+
+  @override
+  Future<Result<RoutePlan>> calculateRoute({
+    required List<LatLng> points,
+    bool isRoundTrip = false,
+    String language = 'en-US',
+  }) async => Result.error(Exception('not used'));
 }

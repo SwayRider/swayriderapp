@@ -187,6 +187,7 @@ class AppLocalizationNl extends AppLocalization {
     'navigationArrived': 'U bent aangekomen',
     'navigationDone': 'Klaar',
     'navigationEta': 'Aankomst',
+    'navigationRecalculating': 'Route herberekenen\u2026',
     'navigationStopTitle': 'Navigatie stoppen?',
     'navigationStopYes': 'Ja',
     'navigationStopNo': 'Nee',

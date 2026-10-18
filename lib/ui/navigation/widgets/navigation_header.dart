@@ -15,6 +15,7 @@ class NavigationHeader extends StatelessWidget {
     required this.distanceMeters,
     required this.arrived,
     required this.offRoute,
+    this.recalculating = false,
     required this.hasLocationError,
     required this.onEnd,
     this.drivesOnRight = true,
@@ -27,6 +28,9 @@ class NavigationHeader extends StatelessWidget {
   final double? distanceMeters;
   final bool arrived;
   final bool offRoute;
+
+  /// A way back onto the route is being looked for.
+  final bool recalculating;
   final bool hasLocationError;
   final VoidCallback onEnd;
 
@@ -81,6 +85,8 @@ class NavigationHeader extends StatelessWidget {
 
     final status = hasLocationError
         ? l10n.navigationLocationError
+        : recalculating
+        ? l10n.navigationRecalculating
         : (offRoute ? l10n.navigationOffRoute : null);
 
     final etaTime = eta;

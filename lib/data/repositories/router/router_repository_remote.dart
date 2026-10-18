@@ -1,5 +1,6 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
+import '../../../domain/models/route/rejoin.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/result.dart';
 import '../../services/api/router_api_client.dart';
@@ -30,4 +31,8 @@ class RouterRepositoryRemote implements RouterRepository {
       language: language,
     ),
   );
+
+  @override
+  Future<Result<RejoinResult>> rejoin(RejoinRequest request) =>
+      _authRepository.withAuthRetry(() => _routerApiClient.rejoin(request));
 }

@@ -235,8 +235,9 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   route with a forward-only window (800 m), so an out-and-back road is never
   matched to the return pass early. The first fix searches the whole route, and
   a fix far ahead (after a GPS gap) is accepted if it is within 40 m of the
-  line. Fixes more than 150 m off the line never advance progress. There is no
-  re-routing yet: off route, the dot follows the raw GPS and the header says so.
+  line. Fixes more than 150 m off the line never advance progress. Off route,
+  the dot follows the raw GPS and the header says so, while the way back is
+  asked for (see "Getting back on route").
 - **Prompts:** `Announcer` speaks each maneuver in up to four stages, each at
   most once: a *far* warning for motorway exits, ramps, stays and merges
   (Valhalla types 17-25, `RouteManeuver.isHighwayType`) from 80 km/h up, ~60 s
@@ -280,6 +281,26 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   distance and instruction. The ETA is now plus the router's remaining travel
   time (`remainingSeconds`, from each maneuver's `time`), shown in the phone's
   12/24-hour setting; it does not adapt to the rider's own pace.
+- **Getting back on route:** `OffRouteDetector` decides when the rider has
+  really left (further than max(50 m, 2 x GPS accuracy) for 4 s, or 120 m at
+  once). `RejoinPlanner` then picks up to five rejoin points on the original
+  route ahead of the rider (at 1, 2.5, 6, 14 and 30 x max(300 m, 15 s of
+  travel), never skipping a via point), each with the route's heading and the
+  travel time left after it. The server (`POST /api/v1/route/rejoin`, own queue
+  lane) calculates a connector to each, leaving in the rider's direction of
+  travel and arriving in the route's, penalizes connectors that start with a
+  turn-back, and compares the best with a fresh route to the remaining stops;
+  it answers with the connector or the fresh route. `stitchRejoin` glues a
+  connector to the rest of the original route, so the maneuvers, lanes and
+  speech after the rejoin point stay as planned. The road just ahead of where
+  the rider left (30 to 400 m, doubled when it happens at the same place again)
+  is sent as an exclusion, since leaving the route there often means it is
+  closed; rejoin points start beyond it and earlier exclusions stay in force
+  for the ride. One request at a time, 10 / 20 / 40 s backoff after failures,
+  an answer that arrives after the rider is back on the route is ignored.
+  `NavigationViewModel` swaps the plan (`routeVersion`), the screen redraws
+  the line, and "Recalculating" is shown and spoken once. `RouterRepository` is
+  the seam where a local router can replace the server later.
 - **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
   `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
   per lane under the header, the lanes to use highlighted, within 400 m of a
@@ -293,7 +314,7 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   and each band edge has a 10 km/h margin, so the zoom doesn't flip while the
   speed wobbles; the screen eases between levels. Pan, rotate, tilt and pinch
   gestures are off. `wakelock_plus` keeps the display on.
-- **Not done yet:** re-routing, guidance while the app is in the background or
+- **Not done yet:** guidance while the app is in the background or
   the screen is locked.
 
 ---

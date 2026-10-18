@@ -1,5 +1,6 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
+import '../../../domain/models/route/rejoin.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/result.dart';
 
@@ -16,4 +17,9 @@ abstract class RouterRepository {
     bool isRoundTrip = false,
     String language = 'en-US',
   });
+
+  /// Asks for the way back onto a route a rider left: the best connector to
+  /// one of [request]'s rejoin points, or a fresh route when rejoining is
+  /// clearly worse (see [RejoinResult]).
+  Future<Result<RejoinResult>> rejoin(RejoinRequest request);
 }

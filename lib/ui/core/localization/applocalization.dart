@@ -169,6 +169,7 @@ class AppLocalization {
   String get navigationArrived => _get('navigationArrived');
   String get navigationDone => _get('navigationDone');
   String get navigationEta => _get('navigationEta');
+  String get navigationRecalculating => _get('navigationRecalculating');
   String get navigationStopTitle => _get('navigationStopTitle');
   String get navigationStopYes => _get('navigationStopYes');
   String get navigationStopNo => _get('navigationStopNo');

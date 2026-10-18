@@ -20,6 +20,7 @@ void main() {
     double? distance = 347,
     bool arrived = false,
     bool offRoute = false,
+    bool recalculating = false,
     bool locationError = false,
     VoidCallback? onEnd,
     bool drivesOnRight = true,
@@ -45,6 +46,7 @@ void main() {
           distanceMeters: distance,
           arrived: arrived,
           offRoute: offRoute,
+          recalculating: recalculating,
           hasLocationError: locationError,
           onEnd: onEnd ?? () {},
           drivesOnRight: drivesOnRight,
@@ -173,6 +175,31 @@ void main() {
       final trip = tester.getTopLeft(find.textContaining('ETA'));
       final close = tester.getTopLeft(find.byIcon(Icons.close));
       expect((trip.dy - close.dy).abs(), lessThan(30));
+    });
+  });
+
+  group('way back', () {
+    testWidgets('says that it is recalculating', (tester) async {
+      await pump(tester, offRoute: true, recalculating: true);
+      expect(find.text('Recalculating\u2026'), findsOneWidget);
+      expect(find.text('Off route'), findsNothing);
+    });
+
+    testWidgets('in Dutch too', (tester) async {
+      await pump(
+        tester,
+        offRoute: true,
+        recalculating: true,
+        locale: const Locale('nl'),
+      );
+      expect(find.text('Route herberekenen\u2026'), findsOneWidget);
+    });
+
+    testWidgets('stays "off route" while no answer is being waited for', (
+      tester,
+    ) async {
+      await pump(tester, offRoute: true);
+      expect(find.text('Off route'), findsOneWidget);
     });
   });
 }

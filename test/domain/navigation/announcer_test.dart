@@ -307,6 +307,24 @@ void main() {
     });
   });
 
+  test('a replacement route does not announce the departure again', () {
+    final a = Announcer(
+      language: 'en-US',
+      speakDeparture: false,
+      maneuvers: [
+        maneuver(2, pre: 'Drive north.'),
+        maneuver(15, alert: 'Turn left.', pre: 'Turn left onto A.'),
+        maneuver(4, pre: 'Arrived.'),
+      ],
+      maneuverDistances: [0, 2000, 4000],
+    );
+    expect(a.update(alongMeters: 0, speedMps: 0), isEmpty);
+    a.update(alongMeters: 0, speedMps: 20);
+    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), [
+      'Turn left onto A.',
+    ]);
+  });
+
   test('keeps the capital of street names', () {
     final a = Announcer(
       language: 'nl-NL',

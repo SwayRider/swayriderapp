@@ -38,6 +38,7 @@ class Announcer {
     required this.maneuvers,
     required this.maneuverDistances,
     required this.language,
+    this.speakDeparture = true,
   }) : _farDone = List.filled(maneuvers.length, false),
        _alertDone = List.filled(maneuvers.length, false),
        _preDone = List.filled(maneuvers.length, false),
@@ -52,6 +53,10 @@ class Announcer {
   /// Valhalla language of the verbal instructions, used for the distance
   /// prefix of advance alerts.
   final String language;
+
+  /// Whether the start maneuver ("Head north on ...") is spoken. Off for a
+  /// route that replaces one the rider was already following.
+  final bool speakDeparture;
 
   final List<bool> _farDone;
   final List<bool> _alertDone;
@@ -152,7 +157,7 @@ class Announcer {
         if (!_preDone[i]) {
           _markAll(i);
           final text = m.verbalPre;
-          if (text != null) due.add(Utterance(text));
+          if (text != null && speakDeparture) due.add(Utterance(text));
         }
         continue;
       }

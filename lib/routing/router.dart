@@ -33,6 +33,7 @@ import '../ui/verify_email/view_models/verify_email_viewmodel.dart';
 import '../ui/verify_email/widgets/verify_email_screen.dart';
 import 'routes.dart';
 import '../data/repositories/auth/auth_repository.dart';
+import '../data/repositories/router/router_repository.dart';
 import '../data/services/api/connection_exception.dart';
 import '../data/services/location_service.dart';
 import '../data/services/speech_service.dart';
@@ -202,6 +203,7 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
           locationService: context.read<LocationService>(),
           speechService: context.read<SpeechService>(),
           styleViewModel: context.read<MapStyleViewModel>(),
+          routerRepository: context.read<RouterRepository>(),
         );
       },
     ),

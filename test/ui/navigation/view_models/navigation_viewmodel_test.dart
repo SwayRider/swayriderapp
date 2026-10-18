@@ -1,10 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
+import 'package:swayriderapp/domain/models/route/rejoin.dart';
 import 'package:swayriderapp/domain/models/route/route_lane.dart';
 import 'package:swayriderapp/domain/models/route/route_maneuver.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/domain/navigation/camera_zoom.dart';
 import 'package:swayriderapp/ui/navigation/view_models/navigation_viewmodel.dart';
+
+import 'package:swayriderapp/utils/result.dart';
 
 import '../../../helpers/fakes.dart';
 
@@ -316,6 +319,248 @@ void main() {
 
       expect(viewModel.arrived, isTrue);
       expect(viewModel.eta, now);
+    });
+  });
+
+  group('getting back on the route', () {
+    late FakeRouterRepository router;
+    late DateTime now;
+
+    // 200 m east of the road, level with 500 m.
+    final beside = LatLng(51.0045, 4.0029);
+
+    NavigationViewModel startWithRouter() {
+      viewModel.dispose();
+      router = FakeRouterRepository();
+      now = DateTime(2026, 10, 18, 12);
+      return viewModel = NavigationViewModel(
+        plan: buildPlan(),
+        locationService: location,
+        speechService: speech,
+        routerRepository: router,
+        clock: () => now,
+      )..start();
+    }
+
+    /// A connector from the rider to the first rejoin point: start, a
+    /// right turn, arrival.
+    RejoinResult connectorTo(RejoinRequest request, {int index = 0}) {
+      final target = request.points[index].position;
+      final middle = LatLng(request.from.latitude, target.longitude);
+      return RejoinResult(
+        kind: RejoinKind.rejoin,
+        rejoinIndex: index,
+        plan: RoutePlan(
+          path: [request.from, middle, target],
+          distanceMeters: 400,
+          durationSeconds: 30,
+          language: 'nl-NL',
+          maneuvers: const [
+            RouteManeuver(
+              type: 2,
+              instruction: 'Rij.',
+              beginShapeIndex: 0,
+              endShapeIndex: 1,
+              verbalPre: 'Rij.',
+            ),
+            RouteManeuver(
+              type: 10,
+              instruction: 'Sla rechtsaf.',
+              beginShapeIndex: 1,
+              endShapeIndex: 2,
+              verbalPre: 'Sla rechtsaf.',
+            ),
+            RouteManeuver(
+              type: 4,
+              instruction: 'Aangekomen.',
+              beginShapeIndex: 2,
+              endShapeIndex: 2,
+              verbalPre: 'Aangekomen.',
+            ),
+          ],
+        ),
+      );
+    }
+
+    Future<void> driveOffRoute() async {
+      location.emit(at(4), speedMps: 12, course: 0);
+      await pump();
+      location.emit(at(5), speedMps: 12, course: 0);
+      await pump();
+      location.emit(beside, speedMps: 12, course: 0);
+      await pump();
+    }
+
+    test('leaving the route asks for the way back, once', () async {
+      startWithRouter();
+      await driveOffRoute();
+
+      expect(router.requests, hasLength(1));
+      final request = router.requests.single;
+      expect(request.from, beside);
+      expect(request.heading, 0);
+      expect(request.points, isNotEmpty);
+      expect(request.stops, [buildPlan().path.last]);
+      // The road ahead of where the rider left is suspected closed.
+      expect(request.exclusions, isNotEmpty);
+      expect(viewModel.rerouteStatus, RerouteStatus.pending);
+
+      // More fixes while waiting do not ask again.
+      location.emit(LatLng(51.0046, 4.0029), speedMps: 12);
+      await pump();
+      expect(router.requests, hasLength(1));
+    });
+
+    test('says that it is recalculating, once', () async {
+      startWithRouter();
+      await driveOffRoute();
+      location.emit(LatLng(51.0046, 4.0029), speedMps: 12);
+      await pump();
+
+      expect(
+        speech.spoken.where((t) => t == 'Route wordt herberekend.'),
+        hasLength(1),
+      );
+    });
+
+    test('a connector is glued to the rest of the route', () async {
+      startWithRouter();
+      await driveOffRoute();
+      final request = router.requests.single;
+
+      router.answer(Result.ok(connectorTo(request)));
+      await pump();
+
+      expect(viewModel.routeVersion, 1);
+      expect(viewModel.rerouteStatus, RerouteStatus.idle);
+      expect(viewModel.plan.path.first, beside);
+      // The connector's turn comes first, then the original left turn.
+      expect(viewModel.upcoming?.instruction, 'Sla rechtsaf.');
+      expect(viewModel.plan.maneuvers.map((m) => m.instruction), [
+        'Sla rechtsaf.',
+        'Sla linksaf.',
+        'U bent aangekomen.',
+      ]);
+      // The way back is planned from here: the old route is not needed.
+      expect(viewModel.plan.request!.points.first, beside);
+    });
+
+    test('the departure is not announced again', () async {
+      startWithRouter();
+      await driveOffRoute();
+      speech.spoken.clear();
+
+      router.answer(Result.ok(connectorTo(router.requests.single)));
+      await pump();
+
+      expect(speech.spoken, isNot(contains('Rij naar het noorden.')));
+    });
+
+    test('a fresh route replaces the old one', () async {
+      startWithRouter();
+      await driveOffRoute();
+      final request = router.requests.single;
+      final fresh = RoutePlan(
+        path: [request.from, const LatLng(51.02, 4.003)],
+        distanceMeters: 2000,
+        durationSeconds: 120,
+        language: 'nl-NL',
+        maneuvers: const [
+          RouteManeuver(
+            type: 2,
+            instruction: 'Rij naar het oosten.',
+            beginShapeIndex: 0,
+            endShapeIndex: 1,
+            verbalPre: 'Rij naar het oosten.',
+          ),
+          RouteManeuver(
+            type: 4,
+            instruction: 'Aangekomen.',
+            beginShapeIndex: 1,
+            endShapeIndex: 1,
+          ),
+        ],
+      );
+
+      router.answer(
+        Result.ok(RejoinResult(kind: RejoinKind.fresh, plan: fresh)),
+      );
+      await pump();
+
+      expect(viewModel.routeVersion, 1);
+      expect(viewModel.plan.path, fresh.path);
+      expect(speech.spoken, isNot(contains('Rij naar het oosten.')));
+    });
+
+    test('an answer that comes after the rider is back is ignored', () async {
+      startWithRouter();
+      await driveOffRoute();
+      final request = router.requests.single;
+
+      location.emit(at(6), speedMps: 12); // back on the road
+      await pump();
+      router.answer(Result.ok(connectorTo(request)));
+      await pump();
+
+      expect(viewModel.routeVersion, 0);
+      expect(viewModel.rerouteStatus, RerouteStatus.idle);
+    });
+
+    test('a failure is retried after a pause, with a growing delay', () async {
+      startWithRouter();
+      await driveOffRoute();
+      router.answer(Result.error(Exception('no route')));
+      await pump();
+      expect(viewModel.rerouteStatus, RerouteStatus.failed);
+
+      // Too soon: nothing new.
+      location.emit(beside, speedMps: 12);
+      await pump();
+      expect(router.requests, hasLength(1));
+
+      // After 10 s the next attempt.
+      now = now.add(const Duration(seconds: 11));
+      location.emit(beside, speedMps: 12);
+      await pump();
+      expect(router.requests, hasLength(2));
+      expect(viewModel.rerouteStatus, RerouteStatus.pending);
+
+      router.answer(Result.error(Exception('no route')));
+      await pump();
+      // The second failure waits 20 s.
+      now = now.add(const Duration(seconds: 15));
+      location.emit(beside, speedMps: 12);
+      await pump();
+      expect(router.requests, hasLength(2));
+      now = now.add(const Duration(seconds: 6));
+      location.emit(beside, speedMps: 12);
+      await pump();
+      expect(router.requests, hasLength(3));
+    });
+
+    test('without a router nothing is asked', () async {
+      // The default view model of the other tests has no router.
+      location.emit(at(5), speedMps: 12);
+      location.emit(beside, speedMps: 12);
+      await pump();
+      expect(viewModel.rerouteStatus, RerouteStatus.idle);
+      expect(viewModel.routeVersion, 0);
+    });
+
+    test('a short excursion is not a reason to ask', () async {
+      startWithRouter();
+      location.emit(at(5), speedMps: 12);
+      await pump();
+      // 70 m beside the road for 2 s.
+      location.emit(LatLng(51.0045, 4.0010), speedMps: 12);
+      await pump();
+      now = now.add(const Duration(seconds: 2));
+      location.emit(LatLng(51.0046, 4.0010), speedMps: 12);
+      await pump();
+      location.emit(at(5.2), speedMps: 12);
+      await pump();
+
+      expect(router.requests, isEmpty);
     });
   });
 }

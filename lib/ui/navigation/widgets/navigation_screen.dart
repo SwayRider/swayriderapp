@@ -12,6 +12,7 @@ import '../../../data/services/speech_service.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/geo.dart';
+import '../../../data/repositories/router/router_repository.dart';
 import '../../core/themes/colors.dart';
 import '../../core/themes/route_map_colors.dart';
 import '../../home/view_models/map_style_view_model.dart';
@@ -34,12 +35,17 @@ class NavigationScreen extends StatefulWidget {
     required this.locationService,
     required this.speechService,
     required this.styleViewModel,
+    this.routerRepository,
   });
 
   final RoutePlan plan;
   final LocationService locationService;
   final SpeechService speechService;
   final MapStyleViewModel styleViewModel;
+
+  /// Asks for the way back when the rider leaves the route; without it the
+  /// route is only followed.
+  final RouterRepository? routerRepository;
 
   @override
   State<NavigationScreen> createState() => _NavigationScreenState();
@@ -63,6 +69,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
   late final NavigationViewModel _viewModel;
   MapLibreMapController? _map;
   Line? _routeLine;
+  Line? _routeCasing;
+  int _drawnRouteVersion = 0;
+  bool _redrawing = false;
   Circle? _dot;
   Timer? _timer;
   bool _busy = false;
@@ -80,6 +89,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     super.initState();
     _viewModel = NavigationViewModel(
       plan: widget.plan,
+      routerRepository: widget.routerRepository,
       locationService: widget.locationService,
       speechService: widget.speechService,
     );
@@ -107,7 +117,29 @@ class _NavigationScreenState extends State<NavigationScreen> {
   }
 
   void _onViewModelChanged() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    // A new route (the way back): draw it in place of the old one.
+    if (_viewModel.routeVersion != _drawnRouteVersion && !_redrawing) {
+      unawaited(_redrawRoute());
+    }
+  }
+
+  Future<void> _redrawRoute() async {
+    final controller = _map;
+    if (controller == null || _routeLine == null) return;
+    _redrawing = true;
+    try {
+      final casing = _routeCasing;
+      final line = _routeLine;
+      _routeCasing = null;
+      _routeLine = null;
+      if (casing != null) await controller.removeLine(casing);
+      if (line != null) await controller.removeLine(line);
+      await _drawRoute(controller);
+    } finally {
+      _redrawing = false;
+    }
   }
 
   // A new style wipes every annotation; drop the stale handles and add
@@ -118,12 +150,20 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _appliedCenter = null;
     final controller = _map;
     if (controller == null) return;
-    // Petrol on a white edge on the light map, orange on a dark edge on the
-    // dark one: it stands out from the roads either way.
+    _routeCasing = null;
+    await _drawRoute(controller);
+  }
+
+  /// Draws the route of the view model: petrol on a white edge on the light
+  /// map, orange on a dark edge on the dark one, so it stands out from the
+  /// roads either way.
+  Future<void> _drawRoute(MapLibreMapController controller) async {
+    _drawnRouteVersion = _viewModel.routeVersion;
+    final path = _viewModel.plan.path;
     final colors = RouteMapColors.of(widget.styleViewModel.variant);
-    await controller.addLine(
+    _routeCasing = await controller.addLine(
       LineOptions(
-        geometry: widget.plan.path,
+        geometry: path,
         lineColor: colors.casing,
         lineWidth: 16,
         lineJoin: 'round',
@@ -131,7 +171,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
     _routeLine = await controller.addLine(
       LineOptions(
-        geometry: widget.plan.path,
+        geometry: path,
         lineColor: colors.line,
         lineWidth: 12,
         lineJoin: 'round',
@@ -315,6 +355,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   distanceMeters: _viewModel.distanceToUpcomingMeters,
                   arrived: _viewModel.arrived,
                   offRoute: _viewModel.offRoute,
+                  recalculating:
+                      _viewModel.rerouteStatus == RerouteStatus.pending,
                   hasLocationError: _viewModel.locationError != null,
                   onEnd: _confirmEnd,
                 ),

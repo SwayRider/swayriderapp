@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/data/services/api/router_api_client.dart';
+import 'package:swayriderapp/domain/models/route/rejoin.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/utils/result.dart';
 
@@ -56,10 +57,13 @@ Map<String, dynamic> _maneuver(
   'roundabout_exit_count': ?exitCount,
 };
 
-FakeHttpClient _sseClient(Map<String, dynamic> trip) {
+FakeHttpClient _sseClient(
+  Map<String, dynamic> trip, {
+  Map<String, dynamic> extra = const {},
+}) {
   final result = jsonEncode({
     'success': true,
-    'data': {'trip': trip},
+    'data': {'trip': trip, ...extra},
   });
   return FakeHttpClient(
     FakeHttpClientResponse(
@@ -254,6 +258,165 @@ void main() {
       final body = jsonDecode(client.lastRequest!.bodyText) as Map;
       expect(body['language'], 'nl-NL');
       expect(body['unit'], 'km');
+    });
+  });
+
+  group('RouterApiClient.rejoin', () {
+    Map<String, dynamic> connectorTrip() => {
+      'language': 'nl-NL',
+      'summary': {'length': 0.3, 'time': 30.0},
+      'legs': [
+        {
+          'shape': _encode([a, b, c]),
+          'maneuvers': [_maneuver(1, 0, 1), _maneuver(4, 2, 2)],
+        },
+      ],
+    };
+
+    RejoinRequest request({int? heading = 90}) => RejoinRequest(
+      from: a,
+      heading: heading,
+      stops: [b, d],
+      language: 'nl-NL',
+      exclusions: [
+        [a, b, c],
+      ],
+      points: [
+        RejoinPoint(
+          position: c,
+          heading: 45,
+          remainingSeconds: 600,
+          alongMeters: 1500,
+        ),
+        RejoinPoint(
+          position: d,
+          heading: 50,
+          remainingSeconds: 300,
+          alongMeters: 3000,
+        ),
+      ],
+    );
+
+    test(
+      'posts the rider, the stops, the heading and the rejoin points',
+      () async {
+        final client = _sseClient(
+          connectorTrip(),
+          extra: {'choice': 'rejoin', 'rejoin_index': 1},
+        );
+        final api = RouterApiClient(clientFactory: () => client);
+
+        await api.rejoin(request());
+
+        expect(client.lastRequest!.uri.path, '/route/rejoin');
+        final body = jsonDecode(client.lastRequest!.bodyText) as Map;
+        expect(body['from'], {'lat': a.latitude, 'lon': a.longitude});
+        expect(body['to'], {'lat': d.latitude, 'lon': d.longitude});
+        expect(body['waypoints'], [
+          {'lat': b.latitude, 'lon': b.longitude, 'type': 'through'},
+        ]);
+        expect(body['fromHeading'], 90);
+        expect(body['vehicle'], 'motorcycle');
+        expect(body['unit'], 'km');
+        expect(body['language'], 'nl-NL');
+        expect(body['exclusions'], [
+          [
+            {'lat': a.latitude, 'lon': a.longitude},
+            {'lat': b.latitude, 'lon': b.longitude},
+            {'lat': c.latitude, 'lon': c.longitude},
+          ],
+        ]);
+        final rejoin = body['rejoin'] as List;
+        expect(rejoin, hasLength(2));
+        expect(rejoin[0], {
+          'lat': c.latitude,
+          'lon': c.longitude,
+          'heading': 45,
+          'remainingSeconds': 600,
+        });
+      },
+    );
+
+    test(
+      'leaves out heading, waypoints and exclusions when there are none',
+      () async {
+        final client = _sseClient(connectorTrip(), extra: {'choice': 'fresh'});
+        final api = RouterApiClient(clientFactory: () => client);
+
+        await api.rejoin(RejoinRequest(from: a, stops: [d], points: const []));
+
+        final body = jsonDecode(client.lastRequest!.bodyText) as Map;
+        expect(body.containsKey('fromHeading'), isFalse);
+        expect(body.containsKey('waypoints'), isFalse);
+        expect(body.containsKey('exclusions'), isFalse);
+        expect(body['rejoin'], isEmpty);
+      },
+    );
+
+    test(
+      'a rejoin answer carries the connector and the chosen point',
+      () async {
+        final client = _sseClient(
+          connectorTrip(),
+          extra: {'choice': 'rejoin', 'rejoin_index': 1},
+        );
+        final api = RouterApiClient(clientFactory: () => client);
+
+        final result = await api.rejoin(request());
+
+        final value = (result as Ok<RejoinResult>).value;
+        expect(value.kind, RejoinKind.rejoin);
+        expect(value.rejoinIndex, 1);
+        expect(value.plan.path, hasLength(3));
+        expect(value.plan.maneuvers, hasLength(2));
+      },
+    );
+
+    test('a fresh answer is a fresh route', () async {
+      final client = _sseClient(connectorTrip(), extra: {'choice': 'fresh'});
+      final api = RouterApiClient(clientFactory: () => client);
+
+      final result = await api.rejoin(request());
+
+      final value = (result as Ok<RejoinResult>).value;
+      expect(value.kind, RejoinKind.fresh);
+      expect(value.rejoinIndex, 0);
+    });
+
+    test('an error frame is an error', () async {
+      final client = FakeHttpClient(
+        FakeHttpClientResponse(
+          200,
+          'event: queued\ndata: {}\n\nevent: error\ndata: {"message":"no route"}\n\n',
+        ),
+      );
+      final api = RouterApiClient(clientFactory: () => client);
+
+      expect(await api.rejoin(request()), isA<Error<RejoinResult>>());
+    });
+
+    test('a route request remembers what it was asked', () async {
+      final client = _sseClient({
+        'legs': [
+          {
+            'shape': _encode([a, b]),
+            'maneuvers': <Object>[],
+          },
+        ],
+      });
+      final api = RouterApiClient(clientFactory: () => client);
+
+      final result = await api.calculateRoute(
+        points: const [a, b, c],
+        isRoundTrip: true,
+        language: 'nl-NL',
+      );
+
+      final spec = (result as Ok<RoutePlan>).value.request!;
+      expect(spec.points, const [a, b, c]);
+      expect(spec.isRoundTrip, isTrue);
+      expect(spec.language, 'nl-NL');
+      expect(spec.stops, const [b, c, a]);
     });
   });
 

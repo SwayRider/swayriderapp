@@ -33,6 +33,9 @@ class PromptQueue {
   /// Tells the queue where the rider is, so stale prompts can be dropped.
   void update(double alongMeters) => _alongMeters = alongMeters;
 
+  /// Drops the prompts that are waiting; the one being spoken is finished.
+  void clear() => _pending.clear();
+
   /// Clears the queue and silences the current prompt.
   Future<void> stop() {
     _generation++;

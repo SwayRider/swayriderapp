@@ -80,3 +80,21 @@ bool? isClockwise(List<LatLng> points, {double minDegrees = 10}) {
   if (total.abs() < minDegrees) return null;
   return total > 0;
 }
+
+/// A thin polygon around [centerline]: every point moved [halfWidthMeters] to
+/// the left and to the right of the direction of travel, left side forward
+/// and right side back. At most `2 x centerline.length` points; the ring is
+/// open (the last point is not repeated).
+List<LatLng> corridorPolygon(List<LatLng> centerline, double halfWidthMeters) {
+  if (centerline.length < 2) return const [];
+  final left = <LatLng>[];
+  final right = <LatLng>[];
+  for (var i = 0; i < centerline.length; i++) {
+    final from = centerline[math.max(0, i - 1)];
+    final to = centerline[math.min(centerline.length - 1, i + 1)];
+    final bearing = bearingDegrees(from, to);
+    left.add(destinationPoint(centerline[i], bearing - 90, halfWidthMeters));
+    right.add(destinationPoint(centerline[i], bearing + 90, halfWidthMeters));
+  }
+  return [...left, ...right.reversed];
+}
