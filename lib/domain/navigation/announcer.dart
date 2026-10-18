@@ -72,6 +72,11 @@ class Announcer {
   static const _minPreMetersWithLanes = 150.0;
   static const _maxPreMeters = 250.0;
   static const _arrivalMeters = 50.0;
+
+  /// The destination is announced ahead of time: about 30 s of travel,
+  /// 250 to 500 m.
+  static const _minArrivalAlertMeters = 250.0;
+  static const _maxArrivalAlertMeters = 500.0;
   static const _postAfterMeters = 30.0;
 
   /// A post-transition phrase is skipped when the next maneuver is closer
@@ -112,6 +117,11 @@ class Announcer {
         )
       : (_cruiseMps * _alertSeconds).clamp(_minAlertMeters, _maxAlertMeters);
 
+  double _arrivalAlertAt() => (_cruiseMps * _alertSeconds).clamp(
+    _minArrivalAlertMeters,
+    _maxArrivalAlertMeters,
+  );
+
   double _preAt(RouteManeuver m) => (_cruiseMps * _preSeconds).clamp(
     m.lanes.isEmpty ? _minPreMeters : _minPreMetersWithLanes,
     _maxPreMeters,
@@ -149,9 +159,17 @@ class Announcer {
 
       if (toManeuver > 0 || m.isArrival) {
         if (m.isArrival) {
+          final alertAt = _arrivalAlertAt();
           if (!_preDone[i] && toManeuver <= _arrivalMeters) {
             _markAll(i);
             due.add(Utterance(m.verbalPre ?? m.instruction, isArrival: true));
+          } else if (!_alertDone[i] && !blocked && toManeuver <= alertAt) {
+            // "In 500 meters, your destination is on the left."
+            _alertDone[i] = true;
+            final text = m.verbalAlert ?? m.verbalPre ?? m.instruction;
+            due.add(
+              Utterance('${inDistancePrefix(toManeuver, language)}$text'),
+            );
           }
           continue;
         }

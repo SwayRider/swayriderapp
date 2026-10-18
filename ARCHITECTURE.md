@@ -245,7 +245,9 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   meters, ...", 30 s of travel, 300 m to 1.5 km; ~25 s and 500 m to 1 km for
   motorway maneuvers); the *pre*-transition instruction (~8 s, 120 to 250 m,
   at least 150 m when the maneuver has lane data); and the *post*-transition
-  instruction. Distances use the *cruise* speed (current speed or a slowly
+  instruction. The destination gets an early announcement too ("In 500 meters,
+your destination is on the left", 250 to 500 m ahead) besides the one within
+50 m. Distances use the *cruise* speed (current speed or a slowly
   decaying peak), so braking for an exit or a light does not pull prompts
   closer. A maneuver within 500 m of the one being announced is chained onto
   its prompt ("... Daarna: links afslaan"), a pre prompt names the lanes to use
