@@ -1,5 +1,6 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
+import '../../../domain/models/route/reroute_request.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/result.dart';
 
@@ -16,4 +17,10 @@ abstract class RouterRepository {
     bool isRoundTrip = false,
     String language = 'en-US',
   });
+
+  /// Calculates a new route for a rider who left the route they were
+  /// following: from [request]'s position through its remaining stops,
+  /// preferring the direction of travel and avoiding the exclusions unless
+  /// that is much slower than the best route.
+  Future<Result<RoutePlan>> reroute(RerouteRequest request);
 }

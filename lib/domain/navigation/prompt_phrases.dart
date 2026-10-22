@@ -57,3 +57,8 @@ String _number(int n, bool dutch) {
 
 String _stripPeriod(String text) =>
     text.endsWith('.') ? text.substring(0, text.length - 1) : text;
+
+/// Spoken when the rider has left the route and a new way is being worked
+/// out.
+String recalculatingPhrase(String language) =>
+    _dutch(language) ? 'Route wordt herberekend.' : 'Recalculating.';

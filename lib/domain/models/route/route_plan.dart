@@ -1,6 +1,7 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
 import 'route_maneuver.dart';
+import 'route_request_spec.dart';
 
 /// A calculated route: the merged path geometry of all legs plus the
 /// turn-by-turn maneuvers needed for navigation.
@@ -15,6 +16,7 @@ class RoutePlan {
     this.durationSeconds = 0,
     this.language = 'en-US',
     this.drivesOnRight = true,
+    this.request,
   });
 
   /// Path-only plan, e.g. for callers that have no maneuver data.
@@ -23,7 +25,8 @@ class RoutePlan {
       distanceMeters = 0,
       durationSeconds = 0,
       language = 'en-US',
-      drivesOnRight = true;
+      drivesOnRight = true,
+      request = null;
 
   final List<LatLng> path;
   final List<RouteManeuver> maneuvers;
@@ -37,6 +40,21 @@ class RoutePlan {
   /// not say, so it is inferred from the direction roundabouts are taken in
   /// (see `RouterApiClient`); `true` when the route has none.
   final bool drivesOnRight;
+
+  /// What the route was requested with; `null` for plans that were not
+  /// calculated from a request (tests, connectors).
+  final RouteRequestSpec? request;
+
+  /// This plan, remembering [spec] as the request it stands for.
+  RoutePlan withRequest(RouteRequestSpec spec) => RoutePlan(
+    path: path,
+    maneuvers: maneuvers,
+    distanceMeters: distanceMeters,
+    durationSeconds: durationSeconds,
+    language: language,
+    drivesOnRight: drivesOnRight,
+    request: spec,
+  );
 
   bool get canNavigate => path.length >= 2 && maneuvers.isNotEmpty;
 }

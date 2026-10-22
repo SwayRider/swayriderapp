@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:collection';
 
+import 'package:logging/logging.dart';
+
 import '../../data/services/speech_service.dart';
 import 'announcer.dart';
 
@@ -13,6 +15,7 @@ class PromptQueue {
   final SpeechService _speech;
   final String _language;
   final _pending = Queue<Utterance>();
+  final _log = Logger('PromptQueue');
 
   double _alongMeters = 0;
   bool _speaking = false;
@@ -30,6 +33,9 @@ class PromptQueue {
   /// Tells the queue where the rider is, so stale prompts can be dropped.
   void update(double alongMeters) => _alongMeters = alongMeters;
 
+  /// Drops the prompts that are waiting; the one being spoken is finished.
+  void clear() => _pending.clear();
+
   /// Clears the queue and silences the current prompt.
   Future<void> stop() {
     _generation++;
@@ -46,6 +52,7 @@ class PromptQueue {
       while (_pending.isNotEmpty && generation == _generation) {
         final next = _pending.removeFirst();
         if (next.validUntilMeters < _alongMeters) continue;
+        _log.info('Speaking: ${next.text}');
         await _speech.speak(next.text, language: _language);
       }
     } finally {

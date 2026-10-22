@@ -245,6 +245,86 @@ void main() {
     expect(u.single.isArrival, isTrue);
   });
 
+  group('arrival', () {
+    Announcer home({double turnAt = 2000}) => Announcer(
+      language: 'en-US',
+      maneuvers: [
+        maneuver(2, pre: 'Drive.'),
+        maneuver(15, alert: 'Turn left.', pre: 'Turn left onto A.'),
+        maneuver(
+          6,
+          alert: 'Your destination is on the left.',
+          pre: 'Your destination is on the left.',
+        ),
+      ],
+      maneuverDistances: [0, turnAt, 5000],
+    );
+
+    test('is announced 500 m ahead, then again within 50 m', () {
+      final a = home();
+      a.update(alongMeters: 0, speedMps: 20);
+      a.update(alongMeters: 2100, speedMps: 20); // past the turn
+
+      expect(a.update(alongMeters: 4400, speedMps: 20), isEmpty);
+      final early = a.update(alongMeters: 4500, speedMps: 20);
+      expect(texts(early), ['In 500 meters, Your destination is on the left.']);
+      expect(early.single.isArrival, isFalse);
+      expect(a.update(alongMeters: 4600, speedMps: 20), isEmpty);
+
+      final last = a.update(alongMeters: 4960, speedMps: 5);
+      expect(texts(last), ['Your destination is on the left.']);
+      expect(last.single.isArrival, isTrue);
+    });
+
+    test('a slow rider hears it from 250 m', () {
+      final a = home();
+      a.update(alongMeters: 0, speedMps: 5);
+      a.update(alongMeters: 2100, speedMps: 5);
+
+      expect(a.update(alongMeters: 4700, speedMps: 5), isEmpty);
+      expect(texts(a.update(alongMeters: 4750, speedMps: 5)), [
+        'In 250 meters, Your destination is on the left.',
+      ]);
+    });
+
+    test('is not announced twice when the first fix is already close', () {
+      final a = home();
+      expect(texts(a.update(alongMeters: 4970, speedMps: 5)), [
+        'Your destination is on the left.',
+      ]);
+      expect(a.update(alongMeters: 4980, speedMps: 5), isEmpty);
+    });
+
+    test('a last turn right before it is chained, not announced twice', () {
+      final a = home(turnAt: 4800);
+      a.update(alongMeters: 0, speedMps: 20);
+
+      expect(texts(a.update(alongMeters: 4200, speedMps: 20)), [
+        'In 600 meters, Turn left. Then: Your destination is on the left.',
+      ]);
+      // The destination's own early announcement is covered by the chain.
+      expect(a.update(alongMeters: 4510, speedMps: 20), isEmpty);
+    });
+  });
+
+  test('a replacement route does not announce the departure again', () {
+    final a = Announcer(
+      language: 'en-US',
+      speakDeparture: false,
+      maneuvers: [
+        maneuver(2, pre: 'Drive north.'),
+        maneuver(15, alert: 'Turn left.', pre: 'Turn left onto A.'),
+        maneuver(4, pre: 'Arrived.'),
+      ],
+      maneuverDistances: [0, 2000, 4000],
+    );
+    expect(a.update(alongMeters: 0, speedMps: 0), isEmpty);
+    a.update(alongMeters: 0, speedMps: 20);
+    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), [
+      'Turn left onto A.',
+    ]);
+  });
+
   test('keeps the capital of street names', () {
     final a = Announcer(
       language: 'nl-NL',

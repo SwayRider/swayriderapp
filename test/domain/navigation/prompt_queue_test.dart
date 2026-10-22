@@ -102,4 +102,23 @@ void main() {
     await settle();
     expect(speech.started, ['one', 'three']);
   });
+
+  test(
+    'clear drops the waiting prompts but not the one being spoken',
+    () async {
+      queue.add(const [Utterance('one'), Utterance('two')]);
+      await settle();
+      queue.clear();
+      expect(queue.pending, 0);
+
+      speech.finishCurrent();
+      await settle();
+      expect(speech.started, ['one']);
+      expect(speech.stops, 0);
+
+      queue.add(const [Utterance('three')]);
+      await settle();
+      expect(speech.started, ['one', 'three']);
+    },
+  );
 }

@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/data/services/api/router_api_client.dart';
+import 'package:swayriderapp/domain/models/route/reroute_request.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:swayriderapp/utils/result.dart';
 
@@ -56,10 +57,13 @@ Map<String, dynamic> _maneuver(
   'roundabout_exit_count': ?exitCount,
 };
 
-FakeHttpClient _sseClient(Map<String, dynamic> trip) {
+FakeHttpClient _sseClient(
+  Map<String, dynamic> trip, {
+  Map<String, dynamic> extra = const {},
+}) {
   final result = jsonEncode({
     'success': true,
-    'data': {'trip': trip},
+    'data': {'trip': trip, ...extra},
   });
   return FakeHttpClient(
     FakeHttpClientResponse(
@@ -254,6 +258,126 @@ void main() {
       final body = jsonDecode(client.lastRequest!.bodyText) as Map;
       expect(body['language'], 'nl-NL');
       expect(body['unit'], 'km');
+    });
+  });
+
+  group('RouterApiClient.reroute', () {
+    Map<String, dynamic> newRouteTrip() => {
+      'language': 'nl-NL',
+      'summary': {'length': 1.5, 'time': 120.0},
+      'legs': [
+        {
+          'shape': _encode([a, b, c]),
+          'maneuvers': [_maneuver(1, 0, 1), _maneuver(4, 2, 2)],
+        },
+      ],
+    };
+
+    RerouteRequest request({int? heading = 90}) => RerouteRequest(
+      from: a,
+      heading: heading,
+      stops: [b, d],
+      language: 'nl-NL',
+      exclusions: [
+        [a, b, c],
+      ],
+    );
+
+    test(
+      'posts the rider, the stops, the heading and the exclusions',
+      () async {
+        final client = _sseClient(newRouteTrip());
+        final api = RouterApiClient(clientFactory: () => client);
+
+        await api.reroute(request());
+
+        expect(client.lastRequest!.uri.path, '/route/reroute');
+        final body = jsonDecode(client.lastRequest!.bodyText) as Map;
+        expect(body['from'], {'lat': a.latitude, 'lon': a.longitude});
+        expect(body['to'], {'lat': d.latitude, 'lon': d.longitude});
+        expect(body['waypoints'], [
+          {'lat': b.latitude, 'lon': b.longitude, 'type': 'through'},
+        ]);
+        expect(body['fromHeading'], 90);
+        expect(body['vehicle'], 'motorcycle');
+        expect(body['unit'], 'km');
+        expect(body['language'], 'nl-NL');
+        expect(body['exclusions'], [
+          [
+            {'lat': a.latitude, 'lon': a.longitude},
+            {'lat': b.latitude, 'lon': b.longitude},
+            {'lat': c.latitude, 'lon': c.longitude},
+          ],
+        ]);
+        expect(body.containsKey('rejoin'), isFalse);
+      },
+    );
+
+    test(
+      'leaves out heading, waypoints and exclusions when there are none',
+      () async {
+        final client = _sseClient(newRouteTrip());
+        final api = RouterApiClient(clientFactory: () => client);
+
+        await api.reroute(RerouteRequest(from: a, stops: [d]));
+
+        final body = jsonDecode(client.lastRequest!.bodyText) as Map;
+        expect(body.containsKey('fromHeading'), isFalse);
+        expect(body.containsKey('waypoints'), isFalse);
+        expect(body.containsKey('exclusions'), isFalse);
+      },
+    );
+
+    test(
+      'the answer is a plan that remembers the stops for the next reroute',
+      () async {
+        final client = _sseClient(newRouteTrip());
+        final api = RouterApiClient(clientFactory: () => client);
+
+        final result = await api.reroute(request());
+
+        final plan = (result as Ok<RoutePlan>).value;
+        expect(plan.path, hasLength(3));
+        expect(plan.maneuvers, hasLength(2));
+        expect(plan.request!.points, [a, b, d]);
+        expect(plan.request!.language, 'nl-NL');
+      },
+    );
+
+    test('an error frame is an error', () async {
+      final client = FakeHttpClient(
+        FakeHttpClientResponse(
+          200,
+          'event: queued\ndata: {}\n\nevent: error\ndata: {"message":"no route"}\n\n',
+        ),
+      );
+      final api = RouterApiClient(clientFactory: () => client);
+
+      expect(await api.reroute(request()), isA<Error<RoutePlan>>());
+    });
+
+    test('a route request remembers what it was asked', () async {
+      final client = _sseClient({
+        'legs': [
+          {
+            'shape': _encode([a, b]),
+            'maneuvers': <Object>[],
+          },
+        ],
+      });
+      final api = RouterApiClient(clientFactory: () => client);
+
+      final result = await api.calculateRoute(
+        points: const [a, b, c],
+        isRoundTrip: true,
+        language: 'nl-NL',
+      );
+
+      final spec = (result as Ok<RoutePlan>).value.request!;
+      expect(spec.points, const [a, b, c]);
+      expect(spec.isRoundTrip, isTrue);
+      expect(spec.language, 'nl-NL');
+      expect(spec.stops, const [b, c, a]);
     });
   });
 

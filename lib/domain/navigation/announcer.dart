@@ -38,6 +38,7 @@ class Announcer {
     required this.maneuvers,
     required this.maneuverDistances,
     required this.language,
+    this.speakDeparture = true,
   }) : _farDone = List.filled(maneuvers.length, false),
        _alertDone = List.filled(maneuvers.length, false),
        _preDone = List.filled(maneuvers.length, false),
@@ -52,6 +53,10 @@ class Announcer {
   /// Valhalla language of the verbal instructions, used for the distance
   /// prefix of advance alerts.
   final String language;
+
+  /// Whether the start maneuver ("Head north on ...") is spoken. Off for a
+  /// route that replaces one the rider was already following.
+  final bool speakDeparture;
 
   final List<bool> _farDone;
   final List<bool> _alertDone;
@@ -72,6 +77,11 @@ class Announcer {
   static const _minPreMetersWithLanes = 150.0;
   static const _maxPreMeters = 250.0;
   static const _arrivalMeters = 50.0;
+
+  /// The destination is announced ahead of time: about 30 s of travel,
+  /// 250 to 500 m.
+  static const _minArrivalAlertMeters = 250.0;
+  static const _maxArrivalAlertMeters = 500.0;
   static const _postAfterMeters = 30.0;
 
   /// A post-transition phrase is skipped when the next maneuver is closer
@@ -112,6 +122,11 @@ class Announcer {
         )
       : (_cruiseMps * _alertSeconds).clamp(_minAlertMeters, _maxAlertMeters);
 
+  double _arrivalAlertAt() => (_cruiseMps * _alertSeconds).clamp(
+    _minArrivalAlertMeters,
+    _maxArrivalAlertMeters,
+  );
+
   double _preAt(RouteManeuver m) => (_cruiseMps * _preSeconds).clamp(
     m.lanes.isEmpty ? _minPreMeters : _minPreMetersWithLanes,
     _maxPreMeters,
@@ -142,16 +157,24 @@ class Announcer {
         if (!_preDone[i]) {
           _markAll(i);
           final text = m.verbalPre;
-          if (text != null) due.add(Utterance(text));
+          if (text != null && speakDeparture) due.add(Utterance(text));
         }
         continue;
       }
 
       if (toManeuver > 0 || m.isArrival) {
         if (m.isArrival) {
+          final alertAt = _arrivalAlertAt();
           if (!_preDone[i] && toManeuver <= _arrivalMeters) {
             _markAll(i);
             due.add(Utterance(m.verbalPre ?? m.instruction, isArrival: true));
+          } else if (!_alertDone[i] && !blocked && toManeuver <= alertAt) {
+            // "In 500 meters, your destination is on the left."
+            _alertDone[i] = true;
+            final text = m.verbalAlert ?? m.verbalPre ?? m.instruction;
+            due.add(
+              Utterance('${inDistancePrefix(toManeuver, language)}$text'),
+            );
           }
           continue;
         }

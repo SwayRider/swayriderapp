@@ -182,6 +182,7 @@ class AppLocalizationEn extends AppLocalization {
     'navigationArrived': 'You have arrived',
     'navigationDone': 'Done',
     'navigationEta': 'ETA',
+    'navigationRecalculating': 'Recalculating\u2026',
     'navigationStopTitle': 'Stop navigation?',
     'navigationStopYes': 'Yes',
     'navigationStopNo': 'No',

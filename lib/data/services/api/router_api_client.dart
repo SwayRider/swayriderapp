@@ -5,7 +5,9 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
 import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/models/route/route_maneuver.dart';
+import '../../../domain/models/route/reroute_request.dart';
 import '../../../domain/models/route/route_plan.dart';
+import '../../../domain/models/route/route_request_spec.dart';
 import '../../../domain/navigation/geo.dart' show isClockwise;
 import '../../../utils/polyline_codec.dart';
 import '../../../utils/result.dart';
@@ -88,7 +90,15 @@ class RouterApiClient {
           .join()
           .timeout(_routeResponseTimeout);
       if (response.statusCode == 200) {
-        return _parseSse(stringData, language);
+        return _parseSse(
+          stringData,
+          language,
+          request: RouteRequestSpec(
+            points: points,
+            isRoundTrip: isRoundTrip,
+            language: language,
+          ),
+        );
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {
@@ -101,6 +111,70 @@ class RouterApiClient {
     } finally {
       client.close();
     }
+  }
+
+  /// Asks for a new route after the rider left theirs
+  /// (`POST /api/v1/route/reroute`): from [request.from] through the
+  /// remaining stops, preferring the direction of travel and avoiding the
+  /// exclusions unless that is much slower than the best route.
+  Future<Result<RoutePlan>> reroute(RerouteRequest request) async {
+    final client = _newClient();
+    try {
+      final httpRequest = await client
+          .postUrl(_uri('/route/reroute'))
+          .timeout(_connectTimeout);
+      await _authHeader(httpRequest.headers);
+      httpRequest.headers.contentType = ContentType.json;
+      httpRequest.write(jsonEncode(_rerouteBody(request)));
+      final response = await httpRequest.close().timeout(_routeResponseTimeout);
+      final stringData = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(_routeResponseTimeout);
+      if (response.statusCode == 200) {
+        return _parseSse(
+          stringData,
+          request.language,
+          request: RouteRequestSpec(
+            points: [request.from, ...request.stops],
+            language: request.language,
+          ),
+        );
+      } else if (response.statusCode == 401) {
+        return const Result.error(UnauthorizedException());
+      } else {
+        return Result.error(
+          HttpException("Reroute error: HTTP ${response.statusCode}"),
+        );
+      }
+    } on Exception catch (e) {
+      return Result.error(e);
+    } finally {
+      client.close();
+    }
+  }
+
+  Map<String, dynamic> _rerouteBody(RerouteRequest request) {
+    final stops = request.stops;
+    final heading = request.heading;
+    return {
+      'from': _coord(request.from),
+      'to': _coord(stops.last),
+      if (stops.length > 1)
+        'waypoints': [
+          for (final point in stops.sublist(0, stops.length - 1))
+            _waypoint(point),
+        ],
+      'vehicle': 'motorcycle',
+      'unit': 'km',
+      'language': request.language,
+      'fromHeading': ?heading,
+      if (request.exclusions.isNotEmpty)
+        'exclusions': [
+          for (final ring in request.exclusions)
+            [for (final point in ring) _coord(point)],
+        ],
+    };
   }
 
   /// Builds the `POST /api/v1/route` request body — a flattened
@@ -156,7 +230,23 @@ class RouterApiClient {
   /// `JobResult` envelope (`{success, data, error}`), or surfaces the
   /// message from a terminal `error` frame (queue-full, timeout, not
   /// found).
-  Result<RoutePlan> _parseSse(String body, String requestedLanguage) {
+  Result<RoutePlan> _parseSse(
+    String body,
+    String requestedLanguage, {
+    RouteRequestSpec? request,
+  }) {
+    final data = _sseResultData(body);
+    if (data is Error<Map<String, dynamic>>) return Result.error(data.error);
+    return _tripPlan(
+      (data as Ok<Map<String, dynamic>>).value,
+      requestedLanguage,
+      request: request,
+    );
+  }
+
+  /// The `data` of the final `result` frame of an SSE body, or the error of
+  /// a failed job or terminal `error` frame.
+  Result<Map<String, dynamic>> _sseResultData(String body) {
     Map<String, dynamic>? result;
     Map<String, dynamic>? sseError;
     for (final block in body.split('\n\n')) {
@@ -181,20 +271,29 @@ class RouterApiClient {
         final message = (result['error'] as Map<String, dynamic>?)?['message'];
         return Result.error(Exception('Route error: ${message ?? 'unknown'}'));
       }
-      final trip =
-          (result['data'] as Map<String, dynamic>?)?['trip']
-              as Map<String, dynamic>?;
-      final legs = trip?['legs'] as List<dynamic>? ?? [];
-      if (legs.isEmpty) {
-        return Result.error(Exception('No route found'));
-      }
-      return Result.ok(_planFromTrip(trip!, legs, requestedLanguage));
+      return Result.ok(
+        (result['data'] as Map<String, dynamic>?) ?? <String, dynamic>{},
+      );
     }
 
     if (sseError != null) {
       return Result.error(Exception('Route error: ${sseError['message']}'));
     }
     return Result.error(Exception('No route result received'));
+  }
+
+  /// The plan in a result's `trip`.
+  Result<RoutePlan> _tripPlan(
+    Map<String, dynamic> data,
+    String requestedLanguage, {
+    RouteRequestSpec? request,
+  }) {
+    final trip = data['trip'] as Map<String, dynamic>?;
+    final legs = trip?['legs'] as List<dynamic>? ?? [];
+    if (legs.isEmpty) {
+      return Result.error(Exception('No route found'));
+    }
+    return Result.ok(_planFromTrip(trip!, legs, requestedLanguage, request));
   }
 
   /// Merges the trip's legs into one [RoutePlan]. Each leg has its own
@@ -205,6 +304,7 @@ class RouterApiClient {
     Map<String, dynamic> trip,
     List<dynamic> legs,
     String requestedLanguage,
+    RouteRequestSpec? request,
   ) {
     final path = <LatLng>[];
     final maneuvers = <RouteManeuver>[];
@@ -230,6 +330,7 @@ class RouterApiClient {
       distanceMeters: ((summary?['length'] as num?) ?? 0) * 1000.0,
       durationSeconds: ((summary?['time'] as num?) ?? 0).toDouble(),
       language: _nonEmpty(trip['language']) ?? requestedLanguage,
+      request: request,
     );
   }
 
