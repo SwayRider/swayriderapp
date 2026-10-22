@@ -281,26 +281,23 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   distance and instruction. The ETA is now plus the router's remaining travel
   time (`remainingSeconds`, from each maneuver's `time`), shown in the phone's
   12/24-hour setting; it does not adapt to the rider's own pace.
-- **Getting back on route:** `OffRouteDetector` decides when the rider has
+- **Leaving the route:** `OffRouteDetector` decides when the rider has
   really left (further than max(50 m, 2 x GPS accuracy) for 4 s, or 120 m at
-  once). `RejoinPlanner` then picks up to five rejoin points on the original
-  route ahead of the rider (at 1, 2.5, 6, 14 and 30 x max(300 m, 15 s of
-  travel), never skipping a via point), each with the route's heading and the
-  travel time left after it. The server (`POST /api/v1/route/rejoin`, own queue
-  lane) calculates a connector to each, leaving in the rider's direction of
-  travel and arriving in the route's, penalizes connectors that start with a
-  turn-back, and compares the best with a fresh route to the remaining stops;
-  it answers with the connector or the fresh route. `stitchRejoin` glues a
-  connector to the rest of the original route, so the maneuvers, lanes and
-  speech after the rejoin point stay as planned. The road just ahead of where
-  the rider left (30 to 400 m, doubled when it happens at the same place again)
-  is sent as an exclusion, since leaving the route there often means it is
-  closed; rejoin points start beyond it and earlier exclusions stay in force
-  for the ride. One request at a time, 10 / 20 / 40 s backoff after failures,
-  an answer that arrives after the rider is back on the route is ignored.
-  `NavigationViewModel` swaps the plan (`routeVersion`), the screen redraws
-  the line, and "Recalculating" is shown and spoken once. `RouterRepository` is
-  the seam where a local router can replace the server later.
+  once). `ReroutePlanner` then prepares a request for a **new route** from the
+  rider's position to the stops still ahead (via points not yet passed, then
+  the destination; the start again for a round trip), with the rider's
+  direction of travel (GPS course at 8 km/h or more) and the road just ahead of
+  where the rider left (30 to 400 m, doubled when it happens at the same place
+  again, earlier ones kept) as an area to avoid, since leaving a route there
+  often means it is closed. The server (`POST /api/v1/route/reroute`, own
+  queue lane) calculates the route with and without those preferences and uses
+  the one that keeps the direction of travel and avoids the closure unless it
+  is more than five minutes slower than the best route; the answer is a normal
+  route that replaces the plan (`routeVersion`; the screen redraws the line,
+  the departure is not announced again). One request at a time, 10 / 20 / 40 s
+  backoff after failures, an answer that arrives after the rider is back on the
+  route is ignored; "Recalculating" is shown and spoken once. `RouterRepository`
+  is the seam where a local router can replace the server later.
 - **Lane guidance:** Valhalla's `lanes` (a direction bitmask per lane, from
   `turnlanes.h`) are parsed into `RouteLane`. `LaneGuidance` draws one arrow
   per lane under the header, the lanes to use highlighted, within 400 m of a

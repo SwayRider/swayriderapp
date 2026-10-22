@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:swayriderapp/data/repositories/router/router_repository.dart';
 import 'package:swayriderapp/data/services/ambient_light_service.dart';
-import 'package:swayriderapp/domain/models/route/rejoin.dart';
+import 'package:swayriderapp/domain/models/route/reroute_request.dart';
 import 'package:swayriderapp/domain/models/route/route_plan.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/data/services/compass_service.dart';
@@ -109,20 +109,20 @@ class FakeSpeechService implements SpeechService {
   Future<void> stop() async => stops++;
 }
 
-/// A [RouterRepository] whose way-back answers are controlled by the test:
-/// [rejoin] records the request and waits for [answer].
+/// A [RouterRepository] whose reroute answers are controlled by the test:
+/// [reroute] records the request and waits for [answer].
 class FakeRouterRepository implements RouterRepository {
-  final requests = <RejoinRequest>[];
-  final _pending = <Completer<Result<RejoinResult>>>[];
+  final requests = <RerouteRequest>[];
+  final _pending = <Completer<Result<RoutePlan>>>[];
 
   /// Answers the oldest request that has not been answered yet.
-  void answer(Result<RejoinResult> result) =>
+  void answer(Result<RoutePlan> result) =>
       _pending.removeAt(0).complete(result);
 
   @override
-  Future<Result<RejoinResult>> rejoin(RejoinRequest request) {
+  Future<Result<RoutePlan>> reroute(RerouteRequest request) {
     requests.add(request);
-    final completer = Completer<Result<RejoinResult>>();
+    final completer = Completer<Result<RoutePlan>>();
     _pending.add(completer);
     return completer.future;
   }

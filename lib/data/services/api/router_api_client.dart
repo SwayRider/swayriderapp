@@ -5,7 +5,7 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
 import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/models/route/route_maneuver.dart';
-import '../../../domain/models/route/rejoin.dart';
+import '../../../domain/models/route/reroute_request.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../domain/models/route/route_request_spec.dart';
 import '../../../domain/navigation/geo.dart' show isClockwise;
@@ -113,34 +113,38 @@ class RouterApiClient {
     }
   }
 
-  /// Asks for the way back onto a route (`POST /api/v1/route/rejoin`): the
-  /// server calculates connectors from [request.from] to the candidate
-  /// rejoin points and a fresh route to the remaining stops, and answers
-  /// with the best of them.
-  ///
-  /// The returned plan is only the connector for [RejoinKind.rejoin]; gluing
-  /// it to the rest of the original route is up to the caller.
-  Future<Result<RejoinResult>> rejoin(RejoinRequest request) async {
+  /// Asks for a new route after the rider left theirs
+  /// (`POST /api/v1/route/reroute`): from [request.from] through the
+  /// remaining stops, preferring the direction of travel and avoiding the
+  /// exclusions unless that is much slower than the best route.
+  Future<Result<RoutePlan>> reroute(RerouteRequest request) async {
     final client = _newClient();
     try {
       final httpRequest = await client
-          .postUrl(_uri('/route/rejoin'))
+          .postUrl(_uri('/route/reroute'))
           .timeout(_connectTimeout);
       await _authHeader(httpRequest.headers);
       httpRequest.headers.contentType = ContentType.json;
-      httpRequest.write(jsonEncode(_rejoinBody(request)));
+      httpRequest.write(jsonEncode(_rerouteBody(request)));
       final response = await httpRequest.close().timeout(_routeResponseTimeout);
       final stringData = await response
           .transform(utf8.decoder)
           .join()
           .timeout(_routeResponseTimeout);
       if (response.statusCode == 200) {
-        return _parseRejoin(stringData, request.language);
+        return _parseSse(
+          stringData,
+          request.language,
+          request: RouteRequestSpec(
+            points: [request.from, ...request.stops],
+            language: request.language,
+          ),
+        );
       } else if (response.statusCode == 401) {
         return const Result.error(UnauthorizedException());
       } else {
         return Result.error(
-          HttpException("Rejoin error: HTTP ${response.statusCode}"),
+          HttpException("Reroute error: HTTP ${response.statusCode}"),
         );
       }
     } on Exception catch (e) {
@@ -150,7 +154,7 @@ class RouterApiClient {
     }
   }
 
-  Map<String, dynamic> _rejoinBody(RejoinRequest request) {
+  Map<String, dynamic> _rerouteBody(RerouteRequest request) {
     final stops = request.stops;
     final heading = request.heading;
     return {
@@ -170,31 +174,7 @@ class RouterApiClient {
           for (final ring in request.exclusions)
             [for (final point in ring) _coord(point)],
         ],
-      'rejoin': [
-        for (final point in request.points)
-          {
-            ..._coord(point.position),
-            'heading': point.heading,
-            'remainingSeconds': point.remainingSeconds,
-          },
-      ],
     };
-  }
-
-  Result<RejoinResult> _parseRejoin(String body, String language) {
-    final data = _sseResultData(body);
-    if (data is Error<Map<String, dynamic>>) return Result.error(data.error);
-    final map = (data as Ok<Map<String, dynamic>>).value;
-    final plan = _tripPlan(map, language);
-    if (plan is Error<RoutePlan>) return Result.error(plan.error);
-    final rejoin = map['choice'] == 'rejoin';
-    return Result.ok(
-      RejoinResult(
-        kind: rejoin ? RejoinKind.rejoin : RejoinKind.fresh,
-        rejoinIndex: rejoin ? (map['rejoin_index'] as num?)?.toInt() ?? 0 : 0,
-        plan: (plan as Ok<RoutePlan>).value,
-      ),
-    );
   }
 
   /// Builds the `POST /api/v1/route` request body — a flattened

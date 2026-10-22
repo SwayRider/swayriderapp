@@ -8,17 +8,14 @@ import '../../../data/repositories/router/router_repository.dart';
 import '../../../data/services/location_service.dart';
 import '../../../data/services/speech_service.dart';
 import '../../../domain/models/location/location_fix.dart';
-import '../../../domain/models/route/rejoin.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
-import '../../../domain/models/route/route_request_spec.dart';
 import '../../../domain/models/route/route_lane.dart';
 import '../../../domain/navigation/announcer.dart';
 import '../../../domain/navigation/geo.dart';
 import '../../../domain/navigation/off_route_detector.dart';
 import '../../../domain/navigation/prompt_phrases.dart';
-import '../../../domain/navigation/rejoin_planner.dart';
-import '../../../domain/navigation/rejoin_stitcher.dart';
+import '../../../domain/navigation/reroute_planner.dart';
 import '../../../utils/result.dart';
 import '../../../domain/navigation/prompt_queue.dart';
 import '../../../domain/navigation/camera_zoom.dart';
@@ -45,11 +42,10 @@ enum RerouteStatus {
 /// should be.
 ///
 /// When the rider leaves the route (see [OffRouteDetector]) and a
-/// [RouterRepository] is given, the way back is asked for from the server:
-/// usually a short connector to a point further along the original route,
-/// which is glued to the rest of the route, or else a fresh route. Until it
-/// arrives the old route stays; [routeVersion] changes when the plan is
-/// replaced.
+/// [RouterRepository] is given, a new route is asked for from the server: from
+/// where the rider is to the stops still ahead, preferring the direction of
+/// travel. Until it arrives the old route stays; [routeVersion] changes when
+/// the plan is replaced.
 class NavigationViewModel extends ChangeNotifier {
   NavigationViewModel({
     required RoutePlan plan,
@@ -85,7 +81,7 @@ class NavigationViewModel extends ChangeNotifier {
 
   // Getting back onto the route.
   final _detector = OffRouteDetector();
-  final _planner = const RejoinPlanner();
+  final _planner = const ReroutePlanner();
   RerouteStatus _rerouteStatus = RerouteStatus.idle;
   int _routeVersion = 0;
   int _requestSerial = 0;
@@ -300,7 +296,7 @@ class NavigationViewModel extends ChangeNotifier {
   }
 
   /// Follows whether the rider is on the route and, once clearly off it, asks
-  /// for the way back.
+  /// for a new route.
   void _watchRoute(LocationFix fix, ProgressSnapshot snapshot) {
     final state = _detector.update(
       offRouteMeters: snapshot.offRouteMeters,
@@ -323,11 +319,11 @@ class NavigationViewModel extends ChangeNotifier {
       case OffRouteState.suspect:
         break;
       case OffRouteState.off:
-        _askForWayBack(fix, snapshot);
+        _askForNewRoute(fix, snapshot);
     }
   }
 
-  void _askForWayBack(LocationFix fix, ProgressSnapshot snapshot) {
+  void _askForNewRoute(LocationFix fix, ProgressSnapshot snapshot) {
     final router = _routerRepository;
     if (router == null || _rerouteStatus == RerouteStatus.pending) return;
     final retryAt = _retryAt;
@@ -335,7 +331,7 @@ class NavigationViewModel extends ChangeNotifier {
 
     // The same place again: the closure is probably longer than guessed.
     final leftAlong = _leftRouteAlong;
-    var corridorLength = RejoinPlanner.corridorLengthMeters;
+    var corridorLength = ReroutePlanner.corridorLengthMeters;
     LatLng? leftAt;
     if (leftAlong != null) {
       leftAt = _progress.pointAt(leftAlong);
@@ -346,10 +342,9 @@ class NavigationViewModel extends ChangeNotifier {
       }
     }
 
-    final rejoin = _planner.plan(
+    final asked = _planner.plan(
       route: _plan,
       progress: _progress,
-      maneuverDistances: _maneuverDistances,
       fix: fix,
       alongMeters: snapshot.alongMeters,
       leftRouteAlongMeters: leftAlong,
@@ -364,19 +359,27 @@ class NavigationViewModel extends ChangeNotifier {
       _prompts.add([Utterance(recalculatingPhrase(_plan.language))]);
     }
     _log.info(
-      'Off route (${snapshot.offRouteMeters.round()} m): asking for the way '
-      'back, ${rejoin.request.points.length} rejoin points, heading '
-      '${rejoin.request.heading}',
+      'Off route (${snapshot.offRouteMeters.round()} m): asking for a new '
+      'route, ${asked.request.stops.length} stops, heading '
+      '${asked.request.heading}',
     );
     unawaited(
-      router.rejoin(rejoin.request).then((result) {
+      router.reroute(asked.request).then((result) {
         if (serial != _requestSerial) return; // outdated: the rider moved on
         switch (result) {
-          case Ok<RejoinResult>():
+          case Ok<RoutePlan>():
             if (leftAt != null) _deviations.add(leftAt);
-            _applyWayBack(rejoin, result.value);
-          case Error<RejoinResult>():
-            _log.warning('No way back: ${result.error}');
+            if (asked.corridor.isNotEmpty) {
+              _exclusions.add(asked.corridor);
+              if (_exclusions.length > _maxExclusions) _exclusions.removeAt(0);
+            }
+            _log.info(
+              'New route: ${result.value.maneuvers.length} maneuvers, '
+              '${result.value.distanceMeters.round()} m',
+            );
+            _replacePlan(result.value);
+          case Error<RoutePlan>():
+            _log.warning('No new route: ${result.error}');
             _failures++;
             final delay =
                 _retryDelays[(_failures - 1).clamp(0, _retryDelays.length - 1)];
@@ -387,38 +390,6 @@ class NavigationViewModel extends ChangeNotifier {
       }),
     );
     notifyListeners();
-  }
-
-  /// Replaces the route by the way back the server found.
-  void _applyWayBack(RejoinPlan asked, RejoinResult result) {
-    final request = asked.request;
-    final spec = RouteRequestSpec(
-      points: [request.from, ...asked.remainingStops],
-      language: request.language,
-    );
-    final RoutePlan next;
-    if (result.kind == RejoinKind.rejoin &&
-        result.rejoinIndex < request.points.length) {
-      final point = request.points[result.rejoinIndex];
-      next = stitchRejoin(
-        original: _plan,
-        progress: _progress,
-        connector: result.plan,
-        rejoinAlongMeters: point.alongMeters,
-        remainingSeconds: point.remainingSeconds,
-      ).withRequest(spec);
-    } else {
-      next = result.plan.withRequest(spec);
-    }
-    if (asked.corridor.isNotEmpty) {
-      _exclusions.add(asked.corridor);
-      if (_exclusions.length > _maxExclusions) _exclusions.removeAt(0);
-    }
-    _log.info(
-      'Way back found (${result.kind.name}): ${next.maneuvers.length} '
-      'maneuvers, ${next.distanceMeters.round()} m',
-    );
-    _replacePlan(next);
   }
 
   /// Switches to [next]: new progress tracking, new prompts (the departure

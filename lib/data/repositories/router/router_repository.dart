@@ -1,6 +1,6 @@
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 
-import '../../../domain/models/route/rejoin.dart';
+import '../../../domain/models/route/reroute_request.dart';
 import '../../../domain/models/route/route_plan.dart';
 import '../../../utils/result.dart';
 
@@ -18,8 +18,9 @@ abstract class RouterRepository {
     String language = 'en-US',
   });
 
-  /// Asks for the way back onto a route a rider left: the best connector to
-  /// one of [request]'s rejoin points, or a fresh route when rejoining is
-  /// clearly worse (see [RejoinResult]).
-  Future<Result<RejoinResult>> rejoin(RejoinRequest request);
+  /// Calculates a new route for a rider who left the route they were
+  /// following: from [request]'s position through its remaining stops,
+  /// preferring the direction of travel and avoiding the exclusions unless
+  /// that is much slower than the best route.
+  Future<Result<RoutePlan>> reroute(RerouteRequest request);
 }
