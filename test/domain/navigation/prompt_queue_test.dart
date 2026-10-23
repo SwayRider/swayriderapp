@@ -5,6 +5,8 @@ import 'package:swayriderapp/data/services/speech_service.dart';
 import 'package:swayriderapp/domain/navigation/announcer.dart';
 import 'package:swayriderapp/domain/navigation/prompt_queue.dart';
 
+import '../../helpers/memory_telemetry.dart';
+
 /// Speech whose phrases only end when the test says so.
 class _ManualSpeech implements SpeechService {
   final started = <String>[];
@@ -33,6 +35,8 @@ class _ManualSpeech implements SpeechService {
 Future<void> settle() => Future<void>.delayed(Duration.zero);
 
 void main() {
+  group('telemetry', telemetryTests);
+
   late _ManualSpeech speech;
   late PromptQueue queue;
 
@@ -121,4 +125,60 @@ void main() {
       expect(speech.started, ['one', 'three']);
     },
   );
+}
+
+void telemetryTests() {
+  late _ManualSpeech speech;
+  late MemoryTelemetryService telemetry;
+  late PromptQueue queue;
+
+  setUp(() {
+    speech = _ManualSpeech();
+    telemetry = MemoryTelemetryService();
+    queue = PromptQueue(
+      speech: speech,
+      language: 'nl-NL',
+      telemetry: telemetry,
+    );
+  });
+
+  test(
+    'records enqueue, start and end of each prompt with the same id',
+    () async {
+      queue.add(const [Utterance('one', validUntilMeters: 100)]);
+      await settle();
+      speech.finishCurrent();
+      await settle();
+
+      expect(telemetry.types, [
+        'prompt_enqueued',
+        'prompt_start',
+        'prompt_end',
+      ]);
+      final id = telemetry.of('prompt_enqueued').single['id'];
+      expect(telemetry.of('prompt_start').single['id'], id);
+      expect(telemetry.of('prompt_end').single['id'], id);
+      expect(telemetry.of('prompt_enqueued').single['text'], 'one');
+      expect(telemetry.of('prompt_enqueued').single['validUntilM'], 100);
+    },
+  );
+
+  test('records stale prompts as dropped and never as started', () async {
+    queue.update(500);
+    queue.add(const [Utterance('late', validUntilMeters: 100)]);
+    await settle();
+
+    expect(telemetry.of('prompt_dropped').single['reason'], 'stale');
+    expect(telemetry.of('prompt_start'), isEmpty);
+  });
+
+  test('records queued prompts dropped by clear', () async {
+    queue.add(const [Utterance('one'), Utterance('two')]);
+    await settle();
+    queue.clear();
+
+    final dropped = telemetry.of('prompt_dropped');
+    expect(dropped.single['reason'], 'cleared');
+    expect(dropped.single['id'], telemetry.of('prompt_enqueued').last['id']);
+  });
 }

@@ -1,16 +1,26 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 
 import '../data/repositories/auth/auth_repository.dart';
 import '../data/repositories/auth/auth_repository_remote.dart';
+import '../data/repositories/feedback/feedback_repository.dart';
+import '../data/repositories/feedback/feedback_repository_remote.dart';
 import '../data/repositories/router/router_repository.dart';
 import '../data/repositories/router/router_repository_remote.dart';
+import '../data/repositories/router/telemetry_router_repository.dart';
 import '../data/repositories/search/search_repository.dart';
 import '../data/repositories/search/search_repository_remote.dart';
+import '../data/repositories/search/telemetry_search_repository.dart';
 import '../data/repositories/tiles/tiles_repository.dart';
 import '../data/repositories/tiles/tiles_repository_remote.dart';
 import '../data/services/api/auth_api_client.dart';
+import '../data/services/api/feedback_api_client.dart';
 import '../data/services/api/router_api_client.dart';
 import '../data/services/api/search_api_client.dart';
 import '../data/services/ambient_light_service.dart';
@@ -20,11 +30,35 @@ import '../data/services/location_service.dart';
 import '../data/services/speech_service.dart';
 import '../data/services/map_style_preference_service.dart';
 import '../data/services/secure_token_storage_service.dart';
+import '../data/services/telemetry/telemetry_service.dart';
 import '../data/services/tile_cache.dart';
 import '../ui/home/view_models/follow_heading_controller.dart';
 import '../ui/home/view_models/home_viewmodel.dart';
 import '../ui/home/view_models/map_style_view_model.dart';
 import 'app_config.dart';
+
+/// What the backend needs to interpret a telemetry trace.
+Map<String, Object?> _sessionMeta() => <String, Object?>{
+  'schema': telemetrySchemaVersion,
+  'platform': Platform.operatingSystem,
+  'osVersion': Platform.operatingSystemVersion,
+  'locale': Platform.localeName,
+  'debugBuild': kDebugMode,
+  'routerHost': AppConfig.routerApiHost,
+  'searchHost': AppConfig.searchApiHost,
+};
+
+Future<void> _startTelemetry(TelemetryService telemetry) async {
+  final meta = _sessionMeta();
+  try {
+    final info = await PackageInfo.fromPlatform();
+    meta['appVersion'] = info.version;
+    meta['buildNumber'] = info.buildNumber;
+  } on Object {
+    // The version is nice to have; the trace is useful without it.
+  }
+  await telemetry.start(meta: meta);
+}
 
 /// Shared providers for all configurations.
 List<SingleChildWidget> _sharedProviders = [];
@@ -40,6 +74,17 @@ List<SingleChildWidget> get providerDev {
         port: AppConfig.authApiPort,
         pathPrefix: AppConfig.authApiPathPrefix,
       ),
+    ),
+    Provider<TelemetryService>(
+      // Not lazy: the session file is opened at app start, not on first use.
+      lazy: false,
+      create: (context) {
+        if (!AppConfig.debugTelemetry) return const NoopTelemetryService();
+        final telemetry = FileTelemetryService();
+        unawaited(_startTelemetry(telemetry));
+        return telemetry;
+      },
+      dispose: (context, telemetry) => telemetry.flush(),
     ),
     Provider(create: (context) => SecureTokenStorageService()),
     ChangeNotifierProvider(
@@ -68,10 +113,16 @@ List<SingleChildWidget> get providerDev {
       ),
     ),
     Provider<SearchRepository>(
-      create: (context) => SearchRepositoryRemote(
-        searchApiClient: context.read(),
-        authRepository: context.read(),
-      ),
+      create: (context) {
+        final remote = SearchRepositoryRemote(
+          searchApiClient: context.read(),
+          authRepository: context.read(),
+        );
+        final telemetry = context.read<TelemetryService>();
+        return telemetry.enabled
+            ? TelemetrySearchRepository(inner: remote, telemetry: telemetry)
+            : remote;
+      },
     ),
     Provider(
       create: (context) => RouterApiClient(
@@ -82,8 +133,30 @@ List<SingleChildWidget> get providerDev {
       ),
     ),
     Provider<RouterRepository>(
-      create: (context) => RouterRepositoryRemote(
-        routerApiClient: context.read(),
+      create: (context) {
+        final remote = RouterRepositoryRemote(
+          routerApiClient: context.read(),
+          authRepository: context.read(),
+        );
+        final telemetry = context.read<TelemetryService>();
+        return telemetry.enabled
+            ? TelemetryRouterRepository(inner: remote, telemetry: telemetry)
+            : remote;
+      },
+    ),
+    Provider(
+      // The feedback endpoint is served by the same gateway as the router.
+      create: (context) => FeedbackApiClient(
+        scheme: AppConfig.routerApiScheme,
+        host: AppConfig.routerApiHost,
+        port: AppConfig.routerApiPort,
+        path: AppConfig.feedbackApiPath,
+      ),
+    ),
+    Provider<FeedbackRepository>(
+      create: (context) => FeedbackRepositoryRemote(
+        feedbackApiClient: context.read(),
+        telemetry: context.read(),
         authRepository: context.read(),
       ),
     ),

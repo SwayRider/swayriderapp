@@ -7,6 +7,8 @@ import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import '../../../data/repositories/router/router_repository.dart';
 import '../../../data/services/location_service.dart';
 import '../../../data/services/speech_service.dart';
+import '../../../data/services/telemetry/telemetry_encoders.dart';
+import '../../../data/services/telemetry/telemetry_service.dart';
 import '../../../domain/models/location/location_fix.dart';
 import '../../../domain/models/route/route_maneuver.dart';
 import '../../../domain/models/route/route_plan.dart';
@@ -52,6 +54,7 @@ class NavigationViewModel extends ChangeNotifier {
     required this._locationService,
     required this._speechService,
     this._routerRepository,
+    this._telemetry = const NoopTelemetryService(),
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now,
        _plan = plan,
@@ -63,13 +66,18 @@ class NavigationViewModel extends ChangeNotifier {
       maneuverDistances: _maneuverDistances,
       language: plan.language,
     );
-    _prompts = PromptQueue(speech: _speechService, language: plan.language);
+    _prompts = PromptQueue(
+      speech: _speechService,
+      language: plan.language,
+      telemetry: _telemetry,
+    );
   }
 
   RoutePlan _plan;
   final LocationService _locationService;
   final SpeechService _speechService;
   final RouterRepository? _routerRepository;
+  final TelemetryService _telemetry;
   final DateTime Function() _clock;
   final _log = Logger('NavigationViewModel');
 
@@ -119,6 +127,12 @@ class NavigationViewModel extends ChangeNotifier {
   ];
 
   StreamSubscription<LocationFix>? _subscription;
+
+  // Telemetry bookkeeping.
+  static const _fixLogInterval = Duration(seconds: 1);
+  DateTime? _lastFixLoggedAt;
+  OffRouteState? _lastOffRouteState;
+  bool _endRecorded = false;
 
   /// Within this distance of the route line the dot is drawn snapped to the
   /// line; further away it follows the raw GPS position instead.
@@ -252,6 +266,17 @@ class NavigationViewModel extends ChangeNotifier {
 
   /// Starts listening to GPS fixes.
   void start() {
+    if (_subscription == null) {
+      _telemetry.record('nav_start', {
+        'plan': encodeRoutePlan(_plan),
+        'request': _plan.request == null
+            ? null
+            : {
+                'points': _plan.request!.points.map(encodeLatLng).toList(),
+                'isRoundTrip': _plan.request!.isRoundTrip,
+              },
+      });
+    }
     _subscription ??= _locationService.positions().listen(
       _onFix,
       onError: (Object error) {
@@ -273,6 +298,7 @@ class NavigationViewModel extends ChangeNotifier {
     final snapshot = _progress.update(fix.position);
     _snapshot = snapshot;
     _watchRoute(fix, snapshot);
+    _recordFix(fix, snapshot);
 
     _targetZoom = _cameraZoom.update(
       speedMps: fix.speedMps,
@@ -289,10 +315,26 @@ class NavigationViewModel extends ChangeNotifier {
 
     if (snapshot.remainingMeters <= arrivalMeters) {
       _arrived = true;
+      _telemetry.record('arrived', {'remainingM': snapshot.remainingMeters});
       unawaited(_subscription?.cancel());
       _subscription = null;
     }
     notifyListeners();
+  }
+
+  void _recordFix(LocationFix fix, ProgressSnapshot snapshot) {
+    final now = _clock();
+    final last = _lastFixLoggedAt;
+    if (last != null && now.difference(last) < _fixLogInterval) return;
+    _lastFixLoggedAt = now;
+    _telemetry.record('gps_fix', {
+      ...encodeFix(fix),
+      'alongM': snapshot.alongMeters,
+      'remainingM': snapshot.remainingMeters,
+      'offRouteM': snapshot.offRouteMeters,
+      'routeVersion': _routeVersion,
+      'upcomingManeuver': _upcomingIndex,
+    });
   }
 
   /// Follows whether the rider is on the route and, once clearly off it, asks
@@ -303,6 +345,16 @@ class NavigationViewModel extends ChangeNotifier {
       accuracyMeters: fix.accuracyMeters,
       now: _clock(),
     );
+    if (state != _lastOffRouteState) {
+      _lastOffRouteState = state;
+      _telemetry.record('offroute_state', {
+        'state': state.name,
+        'offRouteM': snapshot.offRouteMeters,
+        'accuracyM': fix.accuracyMeters,
+        'alongM': snapshot.alongMeters,
+        ...encodeFix(fix),
+      });
+    }
     switch (state) {
       case OffRouteState.onRoute:
         if (snapshot.offRouteMeters <= snapToRouteMeters) {
@@ -354,6 +406,13 @@ class NavigationViewModel extends ChangeNotifier {
 
     final serial = ++_requestSerial;
     _rerouteStatus = RerouteStatus.pending;
+    _telemetry.record('reroute_asked', {
+      'serial': serial,
+      'offRouteM': snapshot.offRouteMeters,
+      'leftRouteAlongM': leftAlong,
+      'corridorLengthM': corridorLength,
+      'failuresSoFar': _failures,
+    });
     if (!_recalculatingAnnounced) {
       _recalculatingAnnounced = true;
       _prompts.add([Utterance(recalculatingPhrase(_plan.language))]);
@@ -365,7 +424,11 @@ class NavigationViewModel extends ChangeNotifier {
     );
     unawaited(
       router.reroute(asked.request).then((result) {
-        if (serial != _requestSerial) return; // outdated: the rider moved on
+        if (serial != _requestSerial) {
+          // Outdated: the rider moved on.
+          _telemetry.record('reroute_discarded', {'serial': serial});
+          return;
+        }
         switch (result) {
           case Ok<RoutePlan>():
             if (leftAt != null) _deviations.add(leftAt);
@@ -380,6 +443,10 @@ class NavigationViewModel extends ChangeNotifier {
             _replacePlan(result.value);
           case Error<RoutePlan>():
             _log.warning('No new route: ${result.error}');
+            _telemetry.record('reroute_failed', {
+              'serial': serial,
+              'error': '${result.error}',
+            });
             _failures++;
             final delay =
                 _retryDelays[(_failures - 1).clamp(0, _retryDelays.length - 1)];
@@ -395,6 +462,11 @@ class NavigationViewModel extends ChangeNotifier {
   /// Switches to [next]: new progress tracking, new prompts (the departure
   /// is not announced again), and a new [routeVersion].
   void _replacePlan(RoutePlan next) {
+    _telemetry.record('plan_replaced', {
+      'routeVersion': _routeVersion + 1,
+      'distanceM': next.distanceMeters,
+      'maneuvers': next.maneuvers.length,
+    });
     _plan = next;
     _progress = RouteProgress(next.path);
     _maneuvers = next.maneuvers;
@@ -433,6 +505,14 @@ class NavigationViewModel extends ChangeNotifier {
 
   /// Stops guidance: no more fixes, and any phrase being spoken is cut off.
   Future<void> stop() async {
+    if (!_endRecorded) {
+      _endRecorded = true;
+      _telemetry.record('nav_end', {
+        'reason': _arrived ? 'arrived' : 'user_stop',
+        'alongM': _snapshot?.alongMeters,
+        'remainingM': _snapshot?.remainingMeters,
+      });
+    }
     final subscription = _subscription;
     _subscription = null;
     await subscription?.cancel();

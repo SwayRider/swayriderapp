@@ -173,6 +173,21 @@ class AppLocalization {
   String get navigationStopTitle => _get('navigationStopTitle');
   String get navigationStopYes => _get('navigationStopYes');
   String get navigationStopNo => _get('navigationStopNo');
+  String get feedbackReport => _get('feedbackReport');
+  String get feedbackTitle => _get('feedbackTitle');
+  String get feedbackCommentHint => _get('feedbackCommentHint');
+  String get feedbackReportProblem => _get('feedbackReportProblem');
+  String get feedbackSend => _get('feedbackSend');
+  String get feedbackSkip => _get('feedbackSkip');
+  String get feedbackCancel => _get('feedbackCancel');
+  String get feedbackSent => _get('feedbackSent');
+  String get feedbackFailed => _get('feedbackFailed');
+  String get feedbackTagWrongTurn => _get('feedbackTagWrongTurn');
+  String get feedbackTagLateVoice => _get('feedbackTagLateVoice');
+  String get feedbackTagBadReroute => _get('feedbackTagBadReroute');
+  String get feedbackTagWrongRoute => _get('feedbackTagWrongRoute');
+  String get feedbackTagBadSearch => _get('feedbackTagBadSearch');
+  String get feedbackTagOther => _get('feedbackTagOther');
 }
 
 class AppLocalizationDelegate extends LocalizationsDelegate<AppLocalization> {
