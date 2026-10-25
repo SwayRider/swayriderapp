@@ -9,7 +9,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../data/services/location_service.dart';
 import '../../../data/services/speech_service.dart';
+import '../../../data/services/telemetry/telemetry_service.dart';
+import '../../../domain/models/feedback/feedback_submission.dart';
 import '../../../domain/models/route/route_plan.dart';
+import '../../feedback/widgets/feedback_dialog.dart';
 import '../../../domain/navigation/camera_zoom.dart';
 import '../../../domain/navigation/geo.dart';
 import '../../../data/repositories/router/router_repository.dart';
@@ -36,6 +39,7 @@ class NavigationScreen extends StatefulWidget {
     required this.speechService,
     required this.styleViewModel,
     this.routerRepository,
+    this.telemetry = const NoopTelemetryService(),
   });
 
   final RoutePlan plan;
@@ -46,6 +50,9 @@ class NavigationScreen extends StatefulWidget {
   /// Asks for the way back when the rider leaves the route; without it the
   /// route is only followed.
   final RouterRepository? routerRepository;
+
+  /// Records the navigation trace (GPS fixes, spoken prompts, rerouting).
+  final TelemetryService telemetry;
 
   @override
   State<NavigationScreen> createState() => _NavigationScreenState();
@@ -90,6 +97,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _viewModel = NavigationViewModel(
       plan: widget.plan,
       routerRepository: widget.routerRepository,
+      telemetry: widget.telemetry,
       locationService: widget.locationService,
       speechService: widget.speechService,
     );
@@ -290,6 +298,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// right away.
   Future<void> _confirmEnd() async {
     if (!_viewModel.arrived && !await confirmStopNavigation(context)) return;
+    if (!mounted) return;
+    // Stop first, so the trace ends with nav_end before it is sent.
+    await _viewModel.stop();
+    if (!mounted) return;
+    await reportFeedback(context, trigger: FeedbackTrigger.navigationEnd);
     if (mounted) _end();
   }
 

@@ -191,6 +191,21 @@ class AppLocalizationNl extends AppLocalization {
     'navigationStopTitle': 'Navigatie stoppen?',
     'navigationStopYes': 'Ja',
     'navigationStopNo': 'Nee',
+    'feedbackReport': 'Een probleem melden',
+    'feedbackTitle': 'Hoe was je rit?',
+    'feedbackCommentHint': 'Wat gebeurde er? (optioneel)',
+    'feedbackReportProblem': 'Meld dit als probleem',
+    'feedbackSend': 'Verstuur',
+    'feedbackSkip': 'Overslaan',
+    'feedbackCancel': 'Annuleren',
+    'feedbackSent': 'Bedankt, je feedback is verstuurd',
+    'feedbackFailed': 'Je feedback kon niet worden verstuurd',
+    'feedbackTagWrongTurn': 'Verkeerde afslag',
+    'feedbackTagLateVoice': 'Late of ontbrekende stem',
+    'feedbackTagBadReroute': 'Slechte herberekening',
+    'feedbackTagWrongRoute': 'Verkeerde route',
+    'feedbackTagBadSearch': 'Slecht zoekresultaat',
+    'feedbackTagOther': 'Anders',
   };
 
   @override

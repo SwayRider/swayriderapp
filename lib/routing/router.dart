@@ -37,6 +37,7 @@ import '../data/repositories/router/router_repository.dart';
 import '../data/services/api/connection_exception.dart';
 import '../data/services/location_service.dart';
 import '../data/services/speech_service.dart';
+import '../data/services/telemetry/telemetry_service.dart';
 import '../domain/models/route/route_plan.dart';
 import '../ui/home/view_models/map_style_view_model.dart';
 
@@ -204,6 +205,7 @@ GoRouter router(AuthRepository authRepository) => GoRouter(
           speechService: context.read<SpeechService>(),
           styleViewModel: context.read<MapStyleViewModel>(),
           routerRepository: context.read<RouterRepository>(),
+          telemetry: context.read<TelemetryService>(),
         );
       },
     ),

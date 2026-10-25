@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Build-time application configuration.
 ///
 /// Values are provided via `--dart-define=KEY=VALUE` at build/run time.
@@ -155,4 +157,21 @@ abstract final class AppConfig {
   static const forceExpiredRefreshToken = bool.fromEnvironment(
     'FORCE_EXPIRED_REFRESH_TOKEN',
   );
+
+  /// Path on the gateway that accepts feedback reports (for example
+  /// `/api/v1/feedback`). Empty by default: without a feedback backend the
+  /// app records nothing and shows no report UI, so builds that have no such
+  /// backend (e.g. a self-hosted open-source deployment) are unaffected.
+  /// `--dart-define=FEEDBACK_API_PATH=...`
+  static const feedbackApiPath = String.fromEnvironment('FEEDBACK_API_PATH');
+
+  /// Records a structured trace of searches, route planning and navigation
+  /// (see `TelemetryService`) so testers can report problems.
+  ///
+  /// Needs a [feedbackApiPath]; with one it is on by default in debug builds.
+  /// Other builds opt in with `--dart-define=DEBUG_TELEMETRY=true`, and debug
+  /// builds opt out with `--dart-define=DEBUG_TELEMETRY=false`.
+  static const debugTelemetry =
+      bool.fromEnvironment('DEBUG_TELEMETRY', defaultValue: kDebugMode) &&
+      feedbackApiPath != '';
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:maplibre_gl/maplibre_gl.dart' show LatLng;
 import 'package:swayriderapp/domain/models/route/reroute_request.dart';
@@ -11,6 +13,7 @@ import 'package:swayriderapp/ui/navigation/view_models/navigation_viewmodel.dart
 import 'package:swayriderapp/utils/result.dart';
 
 import '../../../helpers/fakes.dart';
+import '../../../helpers/memory_telemetry.dart';
 
 /// 3 km straight north (one point per ~100 m): depart at 0, turn left at
 /// 2000 m, arrive at the end.
@@ -320,6 +323,123 @@ void main() {
 
       expect(viewModel.arrived, isTrue);
       expect(viewModel.eta, now);
+    });
+  });
+
+  group('telemetry', () {
+    late MemoryTelemetryService telemetry;
+    late FakeRouterRepository router;
+    late DateTime now;
+    final beside = LatLng(51.0045, 4.0029);
+
+    setUp(() {
+      viewModel.dispose();
+      telemetry = MemoryTelemetryService();
+      router = FakeRouterRepository();
+      now = DateTime(2026, 10, 18, 12);
+      viewModel = NavigationViewModel(
+        plan: buildPlan(),
+        locationService: location,
+        speechService: speech,
+        routerRepository: router,
+        telemetry: telemetry,
+        clock: () => now,
+      )..start();
+    });
+
+    test('records the route at the start', () {
+      final start = telemetry.of('nav_start').single;
+      final plan = start['plan']! as Map<String, Object?>;
+      expect(plan['maneuvers'], hasLength(3));
+      expect((plan['path']! as List).length, 31 * 2);
+    });
+
+    test('records at most one GPS fix per second', () async {
+      location.emit(at(1));
+      await pump();
+      now = now.add(const Duration(milliseconds: 400));
+      location.emit(at(2));
+      await pump();
+      now = now.add(const Duration(milliseconds: 700));
+      location.emit(at(3));
+      await pump();
+
+      final fixes = telemetry.of('gps_fix');
+      expect(fixes, hasLength(2));
+      expect(fixes.last['alongM'], closeTo(300, 5));
+      expect(fixes.last['offRouteM'], closeTo(0, 1));
+    });
+
+    test('records leaving the route and the way back', () async {
+      location.emit(at(4), speedMps: 12, course: 0);
+      await pump();
+      now = now.add(const Duration(seconds: 2));
+      location.emit(beside, speedMps: 12, course: 0);
+      await pump();
+      now = now.add(const Duration(seconds: 5));
+      location.emit(beside, speedMps: 12, course: 0);
+      await pump();
+
+      expect(
+        telemetry.of('offroute_state').map((e) => e['state']),
+        containsAllInOrder(['onRoute', 'off']),
+      );
+      expect(telemetry.of('reroute_asked'), hasLength(1));
+      expect(telemetry.types, contains('prompt_enqueued'));
+
+      router.answer(
+        Result.ok(
+          RoutePlan(
+            path: [beside, LatLng(51.0045, 4.004), const LatLng(51.027, 4.0)],
+            language: 'nl-NL',
+            maneuvers: const [
+              RouteManeuver(
+                type: 2,
+                instruction: 'Rij.',
+                beginShapeIndex: 0,
+                endShapeIndex: 1,
+              ),
+              RouteManeuver(
+                type: 4,
+                instruction: 'Aangekomen.',
+                beginShapeIndex: 2,
+                endShapeIndex: 2,
+              ),
+            ],
+          ),
+        ),
+      );
+      await pump();
+      expect(telemetry.of('plan_replaced').single['routeVersion'], 1);
+    });
+
+    test('records why navigation ended, once', () async {
+      await viewModel.stop();
+      await viewModel.stop();
+
+      expect(telemetry.of('nav_end'), hasLength(1));
+      expect(telemetry.of('nav_end').single['reason'], 'user_stop');
+    });
+
+    test('records arrival', () async {
+      location.emit(at(30));
+      await pump();
+      await viewModel.stop();
+
+      expect(telemetry.types, contains('arrived'));
+      expect(telemetry.of('nav_end').single['reason'], 'arrived');
+    });
+
+    test('every event can be written as JSON', () async {
+      location.emit(at(4), speedMps: 12, course: 0);
+      await pump();
+      location.emit(at(30));
+      await pump();
+      await viewModel.stop();
+
+      for (final e in telemetry.events) {
+        expect(() => jsonEncode(e.data), returnsNormally, reason: e.type);
+      }
     });
   });
 

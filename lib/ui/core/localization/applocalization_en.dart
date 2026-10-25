@@ -186,6 +186,21 @@ class AppLocalizationEn extends AppLocalization {
     'navigationStopTitle': 'Stop navigation?',
     'navigationStopYes': 'Yes',
     'navigationStopNo': 'No',
+    'feedbackReport': 'Report a problem',
+    'feedbackTitle': 'How was your ride?',
+    'feedbackCommentHint': 'What happened? (optional)',
+    'feedbackReportProblem': 'Report this as a problem',
+    'feedbackSend': 'Send',
+    'feedbackSkip': 'Skip',
+    'feedbackCancel': 'Cancel',
+    'feedbackSent': 'Thanks, your feedback was sent',
+    'feedbackFailed': 'Could not send your feedback',
+    'feedbackTagWrongTurn': 'Wrong turn',
+    'feedbackTagLateVoice': 'Late or missing voice',
+    'feedbackTagBadReroute': 'Bad reroute',
+    'feedbackTagWrongRoute': 'Wrong route',
+    'feedbackTagBadSearch': 'Bad search result',
+    'feedbackTagOther': 'Other',
   };
 
   @override

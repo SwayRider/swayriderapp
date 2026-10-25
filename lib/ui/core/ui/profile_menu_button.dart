@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 
+import '../../../data/services/telemetry/telemetry_service.dart';
+import '../../../domain/models/feedback/feedback_submission.dart';
 import '../../../routing/routes.dart';
+import '../../feedback/widgets/feedback_dialog.dart';
 import '../localization/applocalization.dart';
 import '../themes/colors.dart';
 
-enum _ProfileMenuAction { profile, account, logout }
+enum _ProfileMenuAction { profile, account, report, logout }
 
-/// Person-icon popup menu (Profile / Account / Logout) shared by the home
+/// Person-icon popup menu (Profile / Account / Report a problem / Logout) shared by the home
 /// screen and every [SectionScaffold]-based screen, so any of those pages
 /// can be reached directly from any other without detouring through Home.
 class ProfileMenuButton extends StatelessWidget {
@@ -30,6 +36,8 @@ class ProfileMenuButton extends StatelessWidget {
             context.push(Routes.profile);
           case _ProfileMenuAction.account:
             context.push(Routes.account);
+          case _ProfileMenuAction.report:
+            unawaited(reportFeedback(context, trigger: FeedbackTrigger.manual));
           case _ProfileMenuAction.logout:
             onLogout();
         }
@@ -45,6 +53,12 @@ class ProfileMenuButton extends StatelessWidget {
           Icons.manage_accounts,
           localization.account,
         ),
+        if (context.read<TelemetryService>().enabled)
+          _item(
+            _ProfileMenuAction.report,
+            Icons.bug_report_outlined,
+            localization.feedbackReport,
+          ),
         _item(_ProfileMenuAction.logout, Icons.logout, localization.logout),
       ],
     );
