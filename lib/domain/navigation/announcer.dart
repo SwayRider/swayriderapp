@@ -35,8 +35,8 @@ class Utterance {
 /// Distances scale with the rider's *cruise* speed (the current speed or a
 /// slowly decaying peak, whichever is higher) so braking for an exit or a
 /// traffic light does not pull the prompts closer to the maneuver. A
-/// maneuver that follows closely is chained onto the far and alert prompts
-/// of the one before it ("Take the exit. Then: turn left"). The alert and
+/// maneuver that follows closely is chained onto the alert prompt of the one
+/// before it ("Take the exit. Then: turn left"). The alert and
 /// the pre prompt name the lanes to use when the road data has them. The
 /// pre prompt has no chain, so it is over well before the maneuver: the
 /// short text, or for motorway exits and ramps the text that names where
@@ -303,8 +303,9 @@ class Announcer {
       _farDone[i] = true;
       final text = m.verbalPre ?? m.verbalAlert;
       if (text == null) return null;
+      // The far warning is the full text alone; the alert chains the next move.
       return Utterance(
-        _chained(i, '${inDistancePrefix(toManeuver, language)}$text'),
+        '${inDistancePrefix(toManeuver, language)}$text',
         validUntilMeters: maneuverDistances[i],
       );
     }
@@ -319,7 +320,8 @@ class Announcer {
 
   /// Appends the maneuver after [i] to [text] when it follows closely, and
   /// marks its far and alert prompts as done so they are not repeated. Its
-  /// pre prompt is still spoken.
+  /// pre prompt is still spoken. Only the alert chains; the far warning of a
+  /// motorway exit is the full text alone.
   String _chained(int i, String text) {
     final j = i + 1;
     if (j >= maneuvers.length) return text;

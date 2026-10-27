@@ -252,7 +252,8 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
 50 m. Distances use the *cruise* speed (current speed or a slowly
   decaying peak), so braking for an exit or a light does not pull prompts
   closer. A maneuver within 500 m of the one being announced is chained onto
-  its far and alert prompts ("... Daarna: links afslaan"). The alert and the pre
+  its alert prompt ("... Daarna: links afslaan"); the far warning is the full
+  text alone. The alert and the pre
   prompt name the lanes to use when only some are valid (`laneHint`). On a
   motorway exit or ramp the alert is the full text, like the far warning;
   elsewhere it is the short text. The

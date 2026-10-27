@@ -467,11 +467,13 @@ void main() {
       final exit = said.where((s) => s.u.isPre && s.u.text == 'Afslag lang.');
       expect(exit, hasLength(1));
       expect(exit.single.along, greaterThanOrEqualTo(20000));
-      // The junction's alert already carried the exit.
-      expect(
-        said.firstWhere((s) => s.u.text.contains('Knooppunt lang.')).u.text,
-        endsWith('Daarna: Afslag.'),
-      );
+      // The far warning is the junction alone; its alert carries the exit.
+      final spoken = [
+        for (final s in said)
+          if (s.u.text.contains('Knooppunt lang.')) s.u.text,
+      ];
+      expect(spoken.first, 'Over 4 kilometer, Knooppunt lang.');
+      expect(spoken[1], endsWith('Daarna: Afslag.'));
     });
   });
 
@@ -611,21 +613,23 @@ void main() {
       return along > 7900 && along < 62000 ? 33.3 : 20;
     }
 
-    test('warns about Knooppunt Lummen about 4 km ahead and chains the '
-        'second move', () {
+    test('warns about Knooppunt Lummen about 4 km ahead, the alert chains '
+        'the second move', () {
       final said = ride(route, motorwaySpeed);
-      final lummen = said.firstWhere((s) => s.text.contains('Lummen'));
-      expect(lummen.toNext, inInclusiveRange(3800, 4100));
-      expect(lummen.text, startsWith('Over 4 kilometer'));
-      expect(lummen.text, contains('Rechts aanhouden om E314 op te gaan'));
+      final lummen = said.where((s) => s.text.contains('Lummen')).toList();
+      expect(lummen.first.toNext, inInclusiveRange(3800, 4100));
+      expect(lummen.first.text, startsWith('Over 4 kilometer'));
+      expect(lummen.first.text, isNot(contains('Rechts aanhouden')));
+      expect(lummen[1].text, contains('Rechts aanhouden om E314 op te gaan'));
     });
 
-    test('exit 18 is announced about 4 km ahead with the left turn behind '
-        'it', () {
+    test('exit 18 is announced about 4 km ahead, the alert has the left turn '
+        'behind it', () {
       final said = ride(route, motorwaySpeed);
-      final exit18 = said.firstWhere((s) => s.text.contains('Afslag 18'));
-      expect(exit18.toNext, inInclusiveRange(3800, 4100));
-      expect(exit18.text, contains('Links afslaan richting Leuven-Centrum'));
+      final exit18 = said.where((s) => s.text.contains('Afslag 18')).toList();
+      expect(exit18.first.toNext, inInclusiveRange(3800, 4100));
+      expect(exit18.first.text, isNot(contains('Links afslaan')));
+      expect(exit18[1].text, contains('Links afslaan richting Leuven-Centrum'));
     });
 
     test('every maneuver is covered at every steady speed', () {
