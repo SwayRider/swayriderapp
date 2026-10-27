@@ -501,37 +501,43 @@ void main() {
       final a = withLanes();
       a.update(alongMeters: 0, speedMps: 20);
       final alert = a.update(alongMeters: 4400, speedMps: 20);
-      expect(texts(alert), ['Over 600 meter, Links afslaan.']);
+      expect(texts(alert), [
+        'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken',
+      ]);
       expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
         'Links afslaan. Gebruik de linker twee rijstroken',
       ]);
     });
 
-    test('the alert of a turn is the short text and chains, without lanes', () {
-      final a = Announcer(
-        language: 'nl-NL',
-        maneuvers: [
-          maneuver(2, pre: 'Rij.'),
-          maneuver(
-            15,
-            alert: 'Links afslaan.',
-            pre: 'Links afslaan. Daarna rechts.',
-            lanes: threeLanes,
-          ),
-          maneuver(10, alert: 'Rechts afslaan.', pre: 'Rechts afslaan.'),
-          maneuver(4, pre: 'Aangekomen.'),
-        ],
-        maneuverDistances: [0, 5000, 5300, 8000],
-      );
-      a.update(alongMeters: 0, speedMps: 20);
-      expect(texts(a.update(alongMeters: 4400, speedMps: 20)), [
-        'Over 600 meter, Links afslaan. Daarna: Rechts afslaan.',
-      ]);
-      // The pre prompt is the short text and the lanes, without the chain.
-      expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
-        'Links afslaan. Gebruik de linker twee rijstroken',
-      ]);
-    });
+    test(
+      'the alert of a turn is the short text, the lanes, then the chain',
+      () {
+        final a = Announcer(
+          language: 'nl-NL',
+          maneuvers: [
+            maneuver(2, pre: 'Rij.'),
+            maneuver(
+              15,
+              alert: 'Links afslaan.',
+              pre: 'Links afslaan. Daarna rechts.',
+              lanes: threeLanes,
+            ),
+            maneuver(10, alert: 'Rechts afslaan.', pre: 'Rechts afslaan.'),
+            maneuver(4, pre: 'Aangekomen.'),
+          ],
+          maneuverDistances: [0, 5000, 5300, 8000],
+        );
+        a.update(alongMeters: 0, speedMps: 20);
+        expect(texts(a.update(alongMeters: 4400, speedMps: 20)), [
+          'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken. '
+              'Daarna: Rechts afslaan.',
+        ]);
+        // The pre prompt is the short text and the lanes, without the chain.
+        expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
+          'Links afslaan. Gebruik de linker twee rijstroken',
+        ]);
+      },
+    );
 
     test('the alert of a motorway exit is the full text, lanes, then the '
         'chained move', () {
