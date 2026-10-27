@@ -254,8 +254,10 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   closer. A maneuver within 500 m of the one being announced is chained onto
   its far and alert prompts ("... Daarna: links afslaan"); the alert and the
   pre prompt name the lanes to use when only some are valid (`laneHint`). The
-  pre prompt is the short text (`verbalAlert`) without the chain, and it waits
-  until the maneuver before it has been passed. Leaving a roundabout is silent
+  pre prompt has no chain and is the short text (`verbalAlert`: "turn right"),
+  except for motorway exits and ramps, where it is the full text that names
+  where they lead ("take exit 17 towards Leuven"); it waits until the
+  maneuver before it has been passed. Leaving a roundabout is silent
   because the entry prompt names the exit. A later maneuver's early stages
   wait until the earlier one has had its pre prompt. After a GPS jump the
   outdated start phrase is dropped.

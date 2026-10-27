@@ -376,8 +376,30 @@ void main() {
       ]);
       expect(a.update(alongMeters: 19400, speedMps: 33), isEmpty);
       final pre = a.update(alongMeters: 19510, speedMps: 33);
-      expect(texts(pre), ['Afslag nemen.']);
+      // A motorway exit says where it leads.
+      expect(texts(pre), ['Afslag Knooppunt Lummen nemen naar E314.']);
       expect(pre.single.isPre, isTrue);
+    });
+
+    test('the pre prompt of a turn is only the short instruction', () {
+      final a = Announcer(
+        language: 'nl-NL',
+        maneuvers: [
+          maneuver(2, pre: 'Rij.'),
+          maneuver(
+            10,
+            alert: 'Rechts afslaan.',
+            pre: 'Rechts afslaan naar Dorpsstraat richting Leuven.',
+          ),
+          maneuver(4, pre: 'Aangekomen.'),
+        ],
+        maneuverDistances: [0, 20000, 30000],
+      );
+      a.update(alongMeters: 0, speedMps: 33);
+      a.update(alongMeters: 19200, speedMps: 33); // the alert
+      expect(texts(a.update(alongMeters: 19760, speedMps: 33)), [
+        'Rechts afslaan.',
+      ]);
     });
 
     /// Distance to the exit at which its pre prompt is spoken when riding
@@ -438,9 +460,11 @@ void main() {
           said.add((along: along, u: u));
         }
       }
-      final junction = said.where((s) => s.u.isPre && s.u.text == 'Knooppunt.');
+      final junction = said.where(
+        (s) => s.u.isPre && s.u.text == 'Knooppunt lang.',
+      );
       expect(junction, hasLength(1));
-      final exit = said.where((s) => s.u.isPre && s.u.text == 'Afslag.');
+      final exit = said.where((s) => s.u.isPre && s.u.text == 'Afslag lang.');
       expect(exit, hasLength(1));
       expect(exit.single.along, greaterThanOrEqualTo(20000));
       // The junction's alert already carried the exit.

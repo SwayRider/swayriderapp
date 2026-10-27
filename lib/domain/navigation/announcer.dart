@@ -38,8 +38,9 @@ class Utterance {
 /// maneuver that follows closely is chained onto the far and alert prompts
 /// of the one before it ("Take the exit. Then: turn left"). The alert and
 /// the pre prompt name the lanes to use when the road data has them. The
-/// pre prompt is the short text only, so it is over well before the
-/// maneuver, and it waits until the maneuver before it has been passed.
+/// pre prompt has no chain, so it is over well before the maneuver: the
+/// short text, or for motorway exits and ramps the text that names where
+/// they lead. It waits until the maneuver before it has been passed.
 class Announcer {
   Announcer({
     required this.maneuvers,
@@ -268,8 +269,13 @@ class Announcer {
     if (!_preDone[i] && toManeuver <= pre) {
       if (holdPre) return null;
       _markAll(i);
+      // A motorway exit or ramp says where it leads ("take exit 17 towards
+      // Leuven"); every other maneuver is just the short instruction.
+      final text = m.isHighwayType
+          ? m.verbalPre ?? m.verbalAlert ?? m.instruction
+          : m.verbalAlert ?? m.verbalPre ?? m.instruction;
       return Utterance(
-        _withLanes(m, m.verbalAlert ?? m.verbalPre ?? m.instruction),
+        _withLanes(m, text),
         isPre: true,
         validUntilMeters: maneuverDistances[i],
       );
