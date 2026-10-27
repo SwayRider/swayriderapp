@@ -9,11 +9,16 @@ class Utterance {
   const Utterance(
     this.text, {
     this.isArrival = false,
+    this.isPre = false,
     this.validUntilMeters = double.infinity,
   });
 
   final String text;
   final bool isArrival;
+
+  /// The last instruction before a maneuver. It has priority over every
+  /// other prompt in the queue, as it is the one the rider cannot miss.
+  final bool isPre;
 
   /// Distance along the route after which the phrase is stale (the position
   /// of the maneuver it announces) and should no longer be spoken.
@@ -23,16 +28,19 @@ class Utterance {
 /// Decides when each maneuver's spoken instructions are due.
 ///
 /// Per maneuver, at most once each: a *far* warning (highway exits and
-/// ramps only, about 2 km ahead at motorway speed), an *alert* well ahead,
+/// ramps only, up to 4 km ahead at motorway speed), an *alert* well ahead,
 /// the *pre*-transition instruction shortly before the maneuver, and a
 /// *post*-transition instruction ("continue for 5 km") after it.
 ///
 /// Distances scale with the rider's *cruise* speed (the current speed or a
 /// slowly decaying peak, whichever is higher) so braking for an exit or a
 /// traffic light does not pull the prompts closer to the maneuver. A
-/// maneuver that follows closely is chained onto the prompt of the one
-/// before it ("Take the exit. Then: turn left"), and a pre prompt names the
-/// lanes to use when the road data has them.
+/// maneuver that follows closely is chained onto the alert prompt of the one
+/// before it ("Take the exit. Then: turn left"). The alert and
+/// the pre prompt name the lanes to use when the road data has them. The
+/// pre prompt has no chain, so it is over well before the maneuver: the
+/// short text, or for motorway exits and ramps the text that names where
+/// they lead. It waits until the maneuver before it has been passed.
 class Announcer {
   Announcer({
     required this.maneuvers,
@@ -91,19 +99,25 @@ class Announcer {
   /// Highway exits, ramps, stays and merges get an earlier, longer warning
   /// from this cruise speed (80 km/h) up.
   static const _highwayMinMps = 80 / 3.6;
-  static const _farSeconds = 60.0;
-  static const _minFarMeters = 1000.0;
-  static const _maxFarMeters = 2000.0;
-  static const _highwayAlertSeconds = 25.0;
-  static const _minHighwayAlertMeters = 500.0;
-  static const _maxHighwayAlertMeters = 1000.0;
+  static const _farSeconds = 120.0;
+  static const _minFarMeters = 1500.0;
+  static const _maxFarMeters = 4000.0;
+  static const _highwayAlertSeconds = 60.0;
+  static const _minHighwayAlertMeters = 800.0;
+  static const _maxHighwayAlertMeters = 2000.0;
+
+  /// The pre prompt of a motorway maneuver is about 7 s of speech with the
+  /// lanes, so it starts early enough to be over before the maneuver.
+  static const _highwayPreSeconds = 15.0;
+  static const _minHighwayPreMeters = 250.0;
+  static const _maxHighwayPreMeters = 500.0;
 
   /// A maneuver closer than this to the one being announced is chained onto
   /// its prompt.
   static const _chainMeters = 500.0;
 
   /// Nothing is announced earlier than this, so scanning stops here.
-  static const _lookAheadMeters = 2500.0;
+  static const _lookAheadMeters = 4500.0;
 
   /// Leaving a roundabout is not announced: the prompt for entering it
   /// already names the exit to take.
@@ -127,10 +141,16 @@ class Announcer {
     _maxArrivalAlertMeters,
   );
 
-  double _preAt(RouteManeuver m) => (_cruiseMps * _preSeconds).clamp(
-    m.lanes.isEmpty ? _minPreMeters : _minPreMetersWithLanes,
-    _maxPreMeters,
-  );
+  double _preAt(RouteManeuver m) =>
+      m.isHighwayType && _cruiseMps >= _highwayMinMps
+      ? (_cruiseMps * _highwayPreSeconds).clamp(
+          _minHighwayPreMeters,
+          _maxHighwayPreMeters,
+        )
+      : (_cruiseMps * _preSeconds).clamp(
+          m.lanes.isEmpty ? _minPreMeters : _minPreMetersWithLanes,
+          _maxPreMeters,
+        );
 
   /// Returns the utterances due for the rider at [alongMeters] travelling
   /// at [speedMps], in the order they should be spoken. Everything due is
@@ -148,6 +168,10 @@ class Announcer {
     // so "in 2 km, take the ramp" is not said while exit 18 is still to
     // come.
     var blocked = false;
+
+    // True once an earlier maneuver that is still ahead has been seen: the
+    // pre prompt of a later one then waits until that one has been passed.
+    var priorAhead = false;
 
     for (var i = 0; i < maneuvers.length; i++) {
       final m = maneuvers[i];
@@ -167,7 +191,13 @@ class Announcer {
           final alertAt = _arrivalAlertAt();
           if (!_preDone[i] && toManeuver <= _arrivalMeters) {
             _markAll(i);
-            due.add(Utterance(m.verbalPre ?? m.instruction, isArrival: true));
+            due.add(
+              Utterance(
+                m.verbalPre ?? m.instruction,
+                isArrival: true,
+                isPre: true,
+              ),
+            );
           } else if (!_alertDone[i] && !blocked && toManeuver <= alertAt) {
             // "In 500 meters, your destination is on the left."
             _alertDone[i] = true;
@@ -183,9 +213,15 @@ class Announcer {
           _markAll(i);
           continue;
         }
-        final utterance = _upcoming(i, toManeuver, early: !blocked);
+        final utterance = _upcoming(
+          i,
+          toManeuver,
+          early: !blocked,
+          holdPre: priorAhead,
+        );
         if (utterance != null) due.add(utterance);
         if (utterance != null || !_preDone[i]) blocked = true;
+        priorAhead = true;
         continue;
       }
 
@@ -217,20 +253,30 @@ class Announcer {
     return due;
   }
 
-  /// The prompt now due for the not yet reached maneuver [i], if any.
-  Utterance? _upcoming(int i, double toManeuver, {required bool early}) {
+  /// The prompt now due for the not yet reached maneuver [i], if any. The
+  /// pre prompt is held back while [holdPre] is set.
+  Utterance? _upcoming(
+    int i,
+    double toManeuver, {
+    required bool early,
+    required bool holdPre,
+  }) {
     final m = maneuvers[i];
     final far = _farAt(m);
     final alert = _alertAt(m);
     final pre = _preAt(m);
 
     if (!_preDone[i] && toManeuver <= pre) {
+      if (holdPre) return null;
       _markAll(i);
-      var text = m.verbalPre ?? m.instruction;
-      final hint = laneHint(m.lanes, language);
-      if (hint != null) text = '${_stripPeriod(text)}. $hint';
+      // A motorway exit or ramp says where it leads ("take exit 17 towards
+      // Leuven"); every other maneuver is just the short instruction.
+      final text = m.isHighwayType
+          ? m.verbalPre ?? m.verbalAlert ?? m.instruction
+          : m.verbalAlert ?? m.verbalPre ?? m.instruction;
       return Utterance(
-        _chained(i, text, atPre: true),
+        _withLanes(m, text),
+        isPre: true,
         validUntilMeters: maneuverDistances[i],
       );
     }
@@ -238,14 +284,15 @@ class Announcer {
     if (!_alertDone[i] && toManeuver <= alert && toManeuver > pre) {
       _alertDone[i] = true;
       _farDone[i] = true;
-      final text = m.verbalAlert ?? m.verbalPre;
+      // On the motorway the alert says where the exit leads; elsewhere it is
+      // the short text. Both name the lanes.
+      final text = m.isHighwayType
+          ? m.verbalPre ?? m.verbalAlert
+          : m.verbalAlert ?? m.verbalPre;
       if (text == null) return null;
+      final prefixed = '${inDistancePrefix(toManeuver, language)}$text';
       return Utterance(
-        _chained(
-          i,
-          '${inDistancePrefix(toManeuver, language)}$text',
-          atPre: false,
-        ),
+        _chained(i, _withLanes(m, prefixed)),
         validUntilMeters: maneuverDistances[i],
       );
     }
@@ -256,35 +303,36 @@ class Announcer {
       _farDone[i] = true;
       final text = m.verbalPre ?? m.verbalAlert;
       if (text == null) return null;
+      // The far warning is the full text alone; the alert chains the next move.
       return Utterance(
-        _chained(
-          i,
-          '${inDistancePrefix(toManeuver, language)}$text',
-          atPre: false,
-        ),
+        '${inDistancePrefix(toManeuver, language)}$text',
         validUntilMeters: maneuverDistances[i],
       );
     }
     return null;
   }
 
+  /// [text] followed by the lanes to use, when the road data has them.
+  String _withLanes(RouteManeuver m, String text) {
+    final hint = laneHint(m.lanes, language);
+    return hint == null ? text : '${_stripPeriod(text)}. $hint';
+  }
+
   /// Appends the maneuver after [i] to [text] when it follows closely, and
-  /// marks its early prompts as done so they are not repeated. At the pre
-  /// stage that only makes sense when the next maneuver's own pre prompt
-  /// would be due right away; its pre prompt is then covered as well.
-  String _chained(int i, String text, {required bool atPre}) {
+  /// marks its far and alert prompts as done so they are not repeated. Its
+  /// pre prompt is still spoken. Only the alert chains; the far warning of a
+  /// motorway exit is the full text alone.
+  String _chained(int i, String text) {
     final j = i + 1;
     if (j >= maneuvers.length) return text;
     final next = maneuvers[j];
     final gap = maneuverDistances[j] - maneuverDistances[i];
     if (gap > _chainMeters) return text;
     if (_isSilent(next)) return text;
-    if (atPre && gap > _preAt(next)) return text;
-    final nextText = next.verbalPre ?? next.instruction;
+    final nextText = next.verbalAlert ?? next.verbalPre ?? next.instruction;
     if (nextText.isEmpty) return text;
     _farDone[j] = true;
     _alertDone[j] = true;
-    if (atPre) _preDone[j] = true;
     return thenPhrase(text, nextText, language);
   }
 

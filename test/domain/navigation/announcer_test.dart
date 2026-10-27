@@ -147,7 +147,9 @@ void main() {
     expect(a.update(alongMeters: 1500, speedMps: 20), isEmpty);
 
     final pre = a.update(alongMeters: 1850, speedMps: 20);
-    expect(texts(pre), ['Turn left onto A.']);
+    expect(texts(pre), ['Turn left.']);
+    expect(pre.single.isPre, isTrue);
+    expect(alert.single.isPre, isFalse);
     expect(a.update(alongMeters: 1900, speedMps: 20), isEmpty);
   });
 
@@ -173,20 +175,16 @@ void main() {
     a.update(alongMeters: 0, speedMps: 20);
 
     expect(texts(a.update(alongMeters: 1400, speedMps: 20)), [
-      'In 600 meters, Turn left. Then: Turn right onto B.',
+      'In 600 meters, Turn left. Then: Turn right.',
     ]);
     // The second maneuver's alert is covered by the chain...
     expect(a.update(alongMeters: 1700, speedMps: 20), isEmpty);
     // ...but both still get their own pre prompt.
-    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), [
-      'Turn left onto A.',
-    ]);
-    expect(texts(a.update(alongMeters: 2150, speedMps: 20)), [
-      'Turn right onto B.',
-    ]);
+    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), ['Turn left.']);
+    expect(texts(a.update(alongMeters: 2150, speedMps: 20)), ['Turn right.']);
   });
 
-  test('at the pre stage only an immediate follow-up is chained', () {
+  test('a pre prompt is not chained and waits for the maneuver before it', () {
     final a = Announcer(
       language: 'en-US',
       maneuvers: [
@@ -199,10 +197,13 @@ void main() {
     );
     a.update(alongMeters: 0, speedMps: 20);
     expect(texts(a.update(alongMeters: 1850, speedMps: 20)), [
-      'Turn left onto A. Then: Turn right onto B.',
+      'Turn left onto A.',
     ]);
-    // The second pre prompt was part of it.
+    // The second one is due (150 m ahead) but the first is still ahead.
     expect(a.update(alongMeters: 1950, speedMps: 20), isEmpty);
+    expect(texts(a.update(alongMeters: 2010, speedMps: 20)), [
+      'Turn right onto B.',
+    ]);
   });
 
   test('post instruction only when the next maneuver is far enough', () {
@@ -231,9 +232,7 @@ void main() {
 
   test('a GPS jump drops the outdated start phrase', () {
     final a = build();
-    expect(texts(a.update(alongMeters: 1900, speedMps: 20)), [
-      'Turn left onto A.',
-    ]);
+    expect(texts(a.update(alongMeters: 1900, speedMps: 20)), ['Turn left.']);
     expect(a.update(alongMeters: 1905, speedMps: 20), isEmpty);
   });
 
@@ -243,6 +242,7 @@ void main() {
     final u = a.update(alongMeters: 4960, speedMps: 5);
     expect(texts(u), ['You have arrived.']);
     expect(u.single.isArrival, isTrue);
+    expect(u.single.isPre, isTrue);
   });
 
   group('arrival', () {
@@ -320,9 +320,7 @@ void main() {
     );
     expect(a.update(alongMeters: 0, speedMps: 0), isEmpty);
     a.update(alongMeters: 0, speedMps: 20);
-    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), [
-      'Turn left onto A.',
-    ]);
+    expect(texts(a.update(alongMeters: 1850, speedMps: 20)), ['Turn left.']);
   });
 
   test('keeps the capital of street names', () {
@@ -357,27 +355,75 @@ void main() {
       maneuverDistances: [0, 20000, 30000],
     );
 
-    test('warn about 2 km ahead with the descriptive text', () {
+    test('warn about 4 km ahead with the descriptive text', () {
       final a = motorway();
       a.update(alongMeters: 0, speedMps: 33);
-      expect(a.update(alongMeters: 17000, speedMps: 33), isEmpty);
-      final far = a.update(alongMeters: 18100, speedMps: 33);
+      expect(a.update(alongMeters: 15000, speedMps: 33), isEmpty);
+      final far = a.update(alongMeters: 16100, speedMps: 33);
       expect(texts(far), [
+        'Over 4 kilometer, Afslag Knooppunt Lummen nemen naar E314.',
+      ]);
+      expect(far.single.isPre, isFalse);
+    });
+
+    test('then alert at about 2 km and pre at about 500 m', () {
+      final a = motorway();
+      a.update(alongMeters: 0, speedMps: 33);
+      a.update(alongMeters: 16100, speedMps: 33);
+      expect(a.update(alongMeters: 17000, speedMps: 33), isEmpty);
+      expect(texts(a.update(alongMeters: 18100, speedMps: 33)), [
         'Over 2 kilometer, Afslag Knooppunt Lummen nemen naar E314.',
+      ]);
+      expect(a.update(alongMeters: 19400, speedMps: 33), isEmpty);
+      final pre = a.update(alongMeters: 19510, speedMps: 33);
+      // A motorway exit says where it leads.
+      expect(texts(pre), ['Afslag Knooppunt Lummen nemen naar E314.']);
+      expect(pre.single.isPre, isTrue);
+    });
+
+    test('the pre prompt of a turn is only the short instruction', () {
+      final a = Announcer(
+        language: 'nl-NL',
+        maneuvers: [
+          maneuver(2, pre: 'Rij.'),
+          maneuver(
+            10,
+            alert: 'Rechts afslaan.',
+            pre: 'Rechts afslaan naar Dorpsstraat richting Leuven.',
+          ),
+          maneuver(4, pre: 'Aangekomen.'),
+        ],
+        maneuverDistances: [0, 20000, 30000],
+      );
+      a.update(alongMeters: 0, speedMps: 33);
+      a.update(alongMeters: 19200, speedMps: 33); // the alert
+      expect(texts(a.update(alongMeters: 19760, speedMps: 33)), [
+        'Rechts afslaan.',
       ]);
     });
 
-    test('then alert at about 800 m and pre at 250 m', () {
+    /// Distance to the exit at which its pre prompt is spoken when riding
+    /// at [kmh], one fix every 5 m.
+    double preDistance(double kmh) {
       final a = motorway();
-      a.update(alongMeters: 0, speedMps: 33);
-      a.update(alongMeters: 18100, speedMps: 33);
-      expect(a.update(alongMeters: 18800, speedMps: 33), isEmpty);
-      expect(texts(a.update(alongMeters: 19200, speedMps: 33)), [
-        'Over 800 meter, Afslag nemen.',
-      ]);
-      expect(texts(a.update(alongMeters: 19760, speedMps: 33)), [
-        'Afslag Knooppunt Lummen nemen naar E314.',
-      ]);
+      for (var along = 0.0; along < 20000; along += 5) {
+        for (final u in a.update(alongMeters: along, speedMps: kmh / 3.6)) {
+          if (u.isPre) return 20000 - along;
+        }
+      }
+      fail('no pre prompt at $kmh km/h');
+    }
+
+    test('the pre prompt comes at least 12 s ahead at 118 km/h', () {
+      expect(preDistance(118) / (118 / 3.6), greaterThanOrEqualTo(12));
+      expect(preDistance(118), lessThanOrEqualTo(500));
+    });
+
+    test('the pre prompt distance scales with the speed', () {
+      expect(preDistance(80), inInclusiveRange(325, 340));
+      expect(preDistance(100), inInclusiveRange(410, 425));
+      expect(preDistance(118), inInclusiveRange(485, 500));
+      expect(preDistance(160), inInclusiveRange(495, 500));
     });
 
     test('are not warned about early when riding slowly', () {
@@ -389,10 +435,45 @@ void main() {
     test('braking for the exit does not pull the warnings closer', () {
       final a = motorway();
       for (var i = 0; i < 5; i++) {
-        a.update(alongMeters: 17000.0 + i * 30, speedMps: 33);
+        a.update(alongMeters: 15000.0 + i * 30, speedMps: 33);
       }
       // 90 km/h on the exit, but the cruise speed is still remembered.
-      expect(a.update(alongMeters: 18150, speedMps: 25), isNotEmpty);
+      expect(a.update(alongMeters: 16300, speedMps: 25), isNotEmpty);
+    });
+
+    test('the pre prompt of a close exit waits for the junction before it', () {
+      final a = Announcer(
+        language: 'nl-NL',
+        maneuvers: [
+          maneuver(2, pre: 'Rij.'),
+          maneuver(20, alert: 'Knooppunt.', pre: 'Knooppunt lang.'),
+          maneuver(20, alert: 'Afslag.', pre: 'Afslag lang.'),
+          maneuver(4, pre: 'Aangekomen.'),
+        ],
+        // The exit is 422 m behind the junction: its 500 m pre prompt would
+        // come before the junction otherwise.
+        maneuverDistances: [0, 20000, 20422, 30000],
+      );
+      final said = <({double along, Utterance u})>[];
+      for (var along = 0.0; along < 20600; along += 33) {
+        for (final u in a.update(alongMeters: along, speedMps: 33)) {
+          said.add((along: along, u: u));
+        }
+      }
+      final junction = said.where(
+        (s) => s.u.isPre && s.u.text == 'Knooppunt lang.',
+      );
+      expect(junction, hasLength(1));
+      final exit = said.where((s) => s.u.isPre && s.u.text == 'Afslag lang.');
+      expect(exit, hasLength(1));
+      expect(exit.single.along, greaterThanOrEqualTo(20000));
+      // The far warning is the junction alone; its alert carries the exit.
+      final spoken = [
+        for (final s in said)
+          if (s.u.text.contains('Knooppunt lang.')) s.u.text,
+      ];
+      expect(spoken.first, 'Over 4 kilometer, Knooppunt lang.');
+      expect(spoken[1], endsWith('Daarna: Afslag.'));
     });
   });
 
@@ -421,9 +502,72 @@ void main() {
     test('the pre prompt names the lanes', () {
       final a = withLanes();
       a.update(alongMeters: 0, speedMps: 20);
-      a.update(alongMeters: 4400, speedMps: 20);
+      final alert = a.update(alongMeters: 4400, speedMps: 20);
+      expect(texts(alert), [
+        'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken',
+      ]);
       expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
-        'Links afslaan richting Leuven. Gebruik de linker twee rijstroken',
+        'Links afslaan. Gebruik de linker twee rijstroken',
+      ]);
+    });
+
+    test(
+      'the alert of a turn is the short text, the lanes, then the chain',
+      () {
+        final a = Announcer(
+          language: 'nl-NL',
+          maneuvers: [
+            maneuver(2, pre: 'Rij.'),
+            maneuver(
+              15,
+              alert: 'Links afslaan.',
+              pre: 'Links afslaan. Daarna rechts.',
+              lanes: threeLanes,
+            ),
+            maneuver(10, alert: 'Rechts afslaan.', pre: 'Rechts afslaan.'),
+            maneuver(4, pre: 'Aangekomen.'),
+          ],
+          maneuverDistances: [0, 5000, 5300, 8000],
+        );
+        a.update(alongMeters: 0, speedMps: 20);
+        expect(texts(a.update(alongMeters: 4400, speedMps: 20)), [
+          'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken. '
+              'Daarna: Rechts afslaan.',
+        ]);
+        // The pre prompt is the short text and the lanes, without the chain.
+        expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
+          'Links afslaan. Gebruik de linker twee rijstroken',
+        ]);
+      },
+    );
+
+    test('the alert of a motorway exit is the full text, lanes, then the '
+        'chained move', () {
+      final a = Announcer(
+        language: 'nl-NL',
+        maneuvers: [
+          maneuver(2, pre: 'Rij.'),
+          maneuver(
+            20,
+            alert: 'Afslag 18 nemen.',
+            pre: 'Afslag 18 nemen naar N26 richting Leuven.',
+            lanes: threeLanes,
+          ),
+          maneuver(15, alert: 'Links afslaan.', pre: 'Links afslaan lang.'),
+          maneuver(4, pre: 'Aangekomen.'),
+        ],
+        maneuverDistances: [0, 20000, 20400, 30000],
+      );
+      a.update(alongMeters: 0, speedMps: 33);
+      a.update(alongMeters: 16100, speedMps: 33); // the far warning
+      expect(texts(a.update(alongMeters: 18100, speedMps: 33)), [
+        'Over 2 kilometer, Afslag 18 nemen naar N26 richting Leuven. '
+            'Gebruik de linker twee rijstroken. Daarna: Links afslaan.',
+      ]);
+      // The pre prompt: the same full text and the lanes, no chain.
+      expect(texts(a.update(alongMeters: 19510, speedMps: 33)), [
+        'Afslag 18 nemen naar N26 richting Leuven. '
+            'Gebruik de linker twee rijstroken',
       ]);
     });
 
@@ -469,21 +613,23 @@ void main() {
       return along > 7900 && along < 62000 ? 33.3 : 20;
     }
 
-    test('warns about Knooppunt Lummen about 2 km ahead and chains the '
-        'second move', () {
+    test('warns about Knooppunt Lummen about 4 km ahead, the alert chains '
+        'the second move', () {
       final said = ride(route, motorwaySpeed);
-      final lummen = said.firstWhere((s) => s.text.contains('Lummen'));
-      expect(lummen.toNext, inInclusiveRange(1500, 2100));
-      expect(lummen.text, startsWith('Over 2 kilometer'));
-      expect(lummen.text, contains('Rechts aanhouden om E314 op te gaan'));
+      final lummen = said.where((s) => s.text.contains('Lummen')).toList();
+      expect(lummen.first.toNext, inInclusiveRange(3800, 4100));
+      expect(lummen.first.text, startsWith('Over 4 kilometer'));
+      expect(lummen.first.text, isNot(contains('Rechts aanhouden')));
+      expect(lummen[1].text, contains('Rechts aanhouden om E314 op te gaan'));
     });
 
-    test('exit 18 is announced about 2 km ahead with the left turn behind '
-        'it', () {
+    test('exit 18 is announced about 4 km ahead, the alert has the left turn '
+        'behind it', () {
       final said = ride(route, motorwaySpeed);
-      final exit18 = said.firstWhere((s) => s.text.contains('Afslag 18'));
-      expect(exit18.toNext, inInclusiveRange(1500, 2100));
-      expect(exit18.text, contains('Links afslaan richting Leuven-Centrum'));
+      final exit18 = said.where((s) => s.text.contains('Afslag 18')).toList();
+      expect(exit18.first.toNext, inInclusiveRange(3800, 4100));
+      expect(exit18.first.text, isNot(contains('Links afslaan')));
+      expect(exit18[1].text, contains('Links afslaan richting Leuven-Centrum'));
     });
 
     test('every maneuver is covered at every steady speed', () {
@@ -491,15 +637,22 @@ void main() {
         final said = ride(route, (_) => kmh / 3.6);
         for (var i = 1; i < route.raw.length; i++) {
           final m = route.raw[i];
-          final pre = m['pre'] as String?;
+          // The short text, or on the motorway the full one.
+          final highway = (m['type'] as int) >= 17 && m['type'] <= 25;
+          final spoken =
+              ((highway ? m['pre'] : m['alert']) ?? m['pre']) as String?;
           // Leaving a roundabout is covered by the prompt for entering it.
-          if (pre == null || m['type'] == 27) continue;
-          final i0 = said.indexWhere((s) => s.text.contains(pre));
-          expect(i0, isNonNegative, reason: '$kmh km/h: "$pre" is never said');
+          if (spoken == null || m['type'] == 27) continue;
+          final i0 = said.indexWhere((s) => s.text.contains(spoken));
+          expect(
+            i0,
+            isNonNegative,
+            reason: '$kmh km/h: "$spoken" is never said',
+          );
           expect(
             said[i0].along,
             lessThanOrEqualTo(route.distance(i)),
-            reason: '$kmh km/h: "$pre" came too late',
+            reason: '$kmh km/h: "$spoken" came too late',
           );
         }
       }
@@ -515,7 +668,8 @@ void main() {
       }
 
       final said = ride(route, speed, from: turn - 2500, to: turn);
-      final pre = said.firstWhere(
+      // The alert names the lanes too; the last mention is the pre prompt.
+      final pre = said.lastWhere(
         (s) => s.text.contains('Gebruik de linker twee rijstroken'),
       );
       // 150 m is the floor; the fix before the threshold can overshoot it

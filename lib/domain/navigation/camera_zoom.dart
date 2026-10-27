@@ -1,6 +1,6 @@
 /// Map zoom for the navigation camera, in fixed steps.
 ///
-/// While cruising the camera sits at one of three zoom levels chosen by
+/// While cruising the camera sits at one of four zoom levels chosen by
 /// speed band (further out the faster the rider goes), and close to a
 /// maneuver it steps in to [turnZoom]. Because the zoom only changes when a
 /// threshold is crossed, the map stays still while the speed wobbles; the
@@ -12,16 +12,17 @@
 class CameraZoom {
   static const slowZoom = 16.5; // town
   static const mediumZoom = 15.5; // country road
-  static const fastZoom = 14.5; // motorway
+  static const fastZoom = 14.5; // fast road
+  static const motorwayZoom = 13.5; // motorway at cruising speed
   static const turnZoom = 17.5;
 
   /// Speeds (km/h) at which the zoom steps out...
-  static const _upEdgesKmh = [50.0, 95.0];
+  static const _upEdgesKmh = [50.0, 95.0, 110.0];
 
   /// ...and (lower, so there is a margin) at which it steps back in.
-  static const _downEdgesKmh = [40.0, 85.0];
+  static const _downEdgesKmh = [40.0, 85.0, 100.0];
 
-  static const _bandZooms = [slowZoom, mediumZoom, fastZoom];
+  static const _bandZooms = [slowZoom, mediumZoom, fastZoom, motorwayZoom];
 
   /// Zoom in on a maneuver once it is this close.
   static const turnZoomDistanceMeters = 300.0;
