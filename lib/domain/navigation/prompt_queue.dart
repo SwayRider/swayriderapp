@@ -10,6 +10,11 @@ import 'announcer.dart';
 /// Speaks prompts one after the other, so a new prompt never cuts off the
 /// one being spoken, and drops queued prompts that went stale because the
 /// rider has already passed the maneuver they announce.
+///
+/// The exception is a *pre* prompt (see [Utterance.isPre]): it is the last
+/// instruction before a maneuver, so it pushes aside everything that is not
+/// a pre prompt, including the prompt being spoken. Pre prompts never push
+/// each other aside; they are spoken one after the other.
 class PromptQueue {
   PromptQueue({
     required this._speech,
@@ -28,12 +33,16 @@ class PromptQueue {
   double _alongMeters = 0;
   bool _speaking = false;
   int _generation = 0;
+  Utterance? _current;
 
   /// Number of prompts waiting to be spoken (not counting the current one).
   int get pending => _pending.length;
 
   /// Adds [utterances] to the end of the queue and starts speaking if idle.
+  /// A pre prompt first drops the waiting prompts that are not pre prompts
+  /// and cuts off a prompt being spoken that is not one either.
   void add(Iterable<Utterance> utterances) {
+    var interrupt = false;
     for (final u in utterances) {
       final id = _ids[u] = ++_nextId;
       _telemetry.record('prompt_enqueued', {
@@ -44,8 +53,14 @@ class PromptQueue {
         'alongM': _alongMeters,
         'queued': _pending.length + (_speaking ? 1 : 0),
       });
+      if (u.isPre) {
+        _dropWaiting((p) => !p.isPre, 'preempted');
+        final playing = _current;
+        if (_speaking && playing != null && !playing.isPre) interrupt = true;
+      }
       _pending.add(u);
     }
+    if (interrupt) _interrupt();
     unawaited(_pump());
   }
 
@@ -67,6 +82,21 @@ class PromptQueue {
     return _speech.stop();
   }
 
+  /// Cuts off the prompt being spoken. The pump that was speaking it ends
+  /// with its generation, and a new one takes over the queue.
+  void _interrupt() {
+    _recordDropped([?_current], 'preempted');
+    _generation++;
+    _speaking = false;
+    unawaited(_speech.stop());
+  }
+
+  void _dropWaiting(bool Function(Utterance) test, String reason) {
+    final dropped = _pending.where(test).toList();
+    _recordDropped(dropped, reason);
+    _pending.removeWhere(test);
+  }
+
   Future<void> _pump() async {
     if (_speaking) return;
     _speaking = true;
@@ -78,12 +108,14 @@ class PromptQueue {
           _recordDropped([next], 'stale');
           continue;
         }
+        _current = next;
         _log.info('Speaking: ${next.text}');
         _telemetry.record('prompt_start', {
           'id': _ids[next],
           'alongM': _alongMeters,
         });
         await _speech.speak(next.text, language: _language);
+        if (identical(_current, next)) _current = null;
         _telemetry.record('prompt_end', {
           'id': _ids[next],
           'alongM': _alongMeters,

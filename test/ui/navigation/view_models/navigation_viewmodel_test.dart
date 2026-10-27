@@ -119,7 +119,7 @@ void main() {
     location.emit(at(19));
     location.emit(at(19.2));
     await pump();
-    expect(speech.spoken.last, 'Sla linksaf naar Zijstraat.');
+    expect(speech.spoken.last, 'Sla linksaf.');
     expect(speech.spoken, hasLength(3));
   });
 

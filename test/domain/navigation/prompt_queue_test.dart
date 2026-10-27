@@ -125,6 +125,73 @@ void main() {
       expect(speech.started, ['one', 'three']);
     },
   );
+
+  group('pre prompts', () {
+    test(
+      'interrupt a playing alert and clear the other waiting prompts',
+      () async {
+        queue.add(const [Utterance('alert'), Utterance('post')]);
+        await settle();
+        queue.add(const [Utterance('pre', isPre: true)]);
+        await settle();
+
+        expect(speech.stops, 1);
+        expect(speech.started, ['alert', 'pre']);
+        expect(queue.pending, 0);
+      },
+    );
+
+    test('speak before waiting non-pre prompts, which are dropped', () async {
+      queue.add(const [Utterance('one'), Utterance('two')]);
+      await settle();
+      queue.add(const [Utterance('pre', isPre: true), Utterance('three')]);
+      await settle();
+      speech.finishCurrent();
+      await settle();
+
+      expect(speech.started, ['one', 'pre', 'three']);
+    });
+
+    test('never interrupt a pre that is playing, and wait behind it', () async {
+      queue.add(const [Utterance('first', isPre: true)]);
+      await settle();
+      queue.add(const [Utterance('second', isPre: true)]);
+      await settle();
+
+      expect(speech.stops, 0);
+      expect(speech.started, ['first']);
+      expect(queue.pending, 1);
+
+      speech.finishCurrent();
+      await settle();
+      expect(speech.started, ['first', 'second']);
+    });
+
+    test('do not remove a pre that is waiting', () async {
+      queue.add(const [Utterance('one')]);
+      await settle();
+      queue.add(const [Utterance('pre 1', isPre: true)]);
+      await settle();
+      // 'one' was interrupted by the first pre; a second pre then arrives
+      // while the first plays.
+      queue.add(const [Utterance('alert'), Utterance('pre 2', isPre: true)]);
+      await settle();
+
+      expect(speech.started, ['one', 'pre 1']);
+      expect(queue.pending, 1);
+      speech.finishCurrent();
+      await settle();
+      expect(speech.started, ['one', 'pre 1', 'pre 2']);
+    });
+
+    test('speak at once when nothing is playing', () async {
+      queue.add(const [Utterance('pre', isPre: true)]);
+      await settle();
+
+      expect(speech.stops, 0);
+      expect(speech.started, ['pre']);
+    });
+  });
 }
 
 void telemetryTests() {
@@ -180,5 +247,20 @@ void telemetryTests() {
     final dropped = telemetry.of('prompt_dropped');
     expect(dropped.single['reason'], 'cleared');
     expect(dropped.single['id'], telemetry.of('prompt_enqueued').last['id']);
+  });
+
+  test('records the prompts a pre prompt pushed aside as preempted', () async {
+    queue.add(const [Utterance('one'), Utterance('two')]);
+    await settle();
+    queue.add(const [Utterance('pre', isPre: true)]);
+    await settle();
+
+    final ids = {
+      for (final e in telemetry.of('prompt_enqueued')) e['text']: e['id'],
+    };
+    final dropped = telemetry.of('prompt_dropped');
+    expect({for (final d in dropped) d['id']}, {ids['one'], ids['two']});
+    expect({for (final d in dropped) d['reason']}, {'preempted'});
+    expect(telemetry.of('prompt_start').last['id'], ids['pre']);
   });
 }

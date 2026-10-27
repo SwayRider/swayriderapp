@@ -240,19 +240,22 @@ exists) pushes `/navigation` with the `RoutePlan` as `extra`.
   asked for (see "Getting back on route").
 - **Prompts:** `Announcer` speaks each maneuver in up to four stages, each at
   most once: a *far* warning for motorway exits, ramps, stays and merges
-  (Valhalla types 17-25, `RouteManeuver.isHighwayType`) from 80 km/h up, ~60 s
-  of travel and 1 to 2 km, with the descriptive text ("Over 2 kilometer, neem
+  (Valhalla types 17-25, `RouteManeuver.isHighwayType`) from 80 km/h up, ~120 s
+  of travel and 1.5 to 4 km, with the descriptive text ("Over 4 kilometer, neem
   afslag Knooppunt Lummen naar E314 richting Brussel"); an *alert* ("In 500
-  meters, ...", 30 s of travel, 300 m to 1.5 km; ~25 s and 500 m to 1 km for
+  meters, ...", 30 s of travel, 300 m to 1.5 km; ~60 s and 800 m to 2 km for
   motorway maneuvers); the *pre*-transition instruction (~8 s, 120 to 250 m,
-  at least 150 m when the maneuver has lane data); and the *post*-transition
-  instruction. The destination gets an early announcement too ("In 500 meters,
+  at least 150 m when the maneuver has lane data; ~15 s and 250 to 500 m for
+  motorway maneuvers, so it is spoken before the exit); and the
+  *post*-transition instruction. The destination gets an early announcement too ("In 500 meters,
 your destination is on the left", 250 to 500 m ahead) besides the one within
 50 m. Distances use the *cruise* speed (current speed or a slowly
   decaying peak), so braking for an exit or a light does not pull prompts
   closer. A maneuver within 500 m of the one being announced is chained onto
-  its prompt ("... Daarna: links afslaan"), a pre prompt names the lanes to use
-  when only some are valid (`laneHint`), and leaving a roundabout is silent
+  its far and alert prompts ("... Daarna: links afslaan"); the alert and the
+  pre prompt name the lanes to use when only some are valid (`laneHint`). The
+  pre prompt is the short text (`verbalAlert`) without the chain, and it waits
+  until the maneuver before it has been passed. Leaving a roundabout is silent
   because the entry prompt names the exit. A later maneuver's early stages
   wait until the earlier one has had its pre prompt. After a GPS jump the
   outdated start phrase is dropped.
@@ -262,7 +265,9 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   project (same reason as the compass). Other audio is ducked while speaking.
   `speak` completes when the phrase has been spoken; `PromptQueue` feeds it one
   prompt at a time so nothing is cut off, and drops queued prompts whose
-  maneuver the rider has already passed.
+  maneuver the rider has already passed. A pre prompt is the exception: it
+  interrupts a prompt that is being spoken and clears the waiting ones that
+  are not pre prompts, but never cuts off another pre prompt.
 - **Maneuver icons:** drawn by the app (`maneuver_glyph.dart` builds a list of
   parts in a 64 x 64 box, `ManeuverIcon` paints them): the route bold in the
   app orange with an arrowhead, the other roads light grey without one. Exits,
@@ -307,7 +312,8 @@ your destination is on the left", 250 to 500 m ahead) besides the one within
   part of the screen (`maplibre_gl` has no camera padding). A 100 ms timer
   glides the dot and camera between fixes. The camera zooms by itself in
   fixed steps (`CameraZoom`): zoom 16.5 below ~45 km/h, 15.5 on country roads,
-  14.5 above ~90 km/h, and 17.5 within 300 m of a maneuver. Speed is averaged
+  14.5 above ~90 km/h, 13.5 above ~110 km/h, and 17.5 within 300 m of a
+  maneuver. Speed is averaged
   and each band edge has a 10 km/h margin, so the zoom doesn't flip while the
   speed wobbles; the screen eases between levels. Pan, rotate, tilt and pinch
   gestures are off. `wakelock_plus` keeps the display on.

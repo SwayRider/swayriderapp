@@ -27,9 +27,36 @@ void main() {
       CameraZoom.mediumZoom,
     );
     expect(
-      CameraZoom().update(speedMps: kmh(120), distanceToManeuverMeters: null),
+      CameraZoom().update(speedMps: kmh(100), distanceToManeuverMeters: null),
       CameraZoom.fastZoom,
     );
+    expect(
+      CameraZoom().update(speedMps: kmh(120), distanceToManeuverMeters: null),
+      CameraZoom.motorwayZoom,
+    );
+  });
+
+  test('the motorway zoom is the furthest out and zooms in for a turn', () {
+    expect(CameraZoom.motorwayZoom, lessThan(CameraZoom.fastZoom));
+    expect(settle(120), CameraZoom.motorwayZoom);
+    expect(settle(120, distance: 250), CameraZoom.turnZoom);
+    expect(settle(120, distance: 900), CameraZoom.motorwayZoom);
+  });
+
+  test('hysteresis: 105 km/h does not leave or enter the motorway zoom', () {
+    settle(120);
+    // 98 and 112 km/h average out around the 100 / 110 km/h edges.
+    final levels = <double>{};
+    for (var i = 0; i < 40; i++) {
+      levels.add(
+        zoom.update(
+          speedMps: kmh(i.isEven ? 112 : 102),
+          distanceToManeuverMeters: null,
+        ),
+      );
+    }
+    expect(levels, {CameraZoom.motorwayZoom});
+    expect(settle(95), CameraZoom.fastZoom);
   });
 
   test('zooms in on a maneuver within 300 m, out of it beyond', () {
