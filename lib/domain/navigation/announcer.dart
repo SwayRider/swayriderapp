@@ -36,8 +36,9 @@ class Utterance {
 /// slowly decaying peak, whichever is higher) so braking for an exit or a
 /// traffic light does not pull the prompts closer to the maneuver. A
 /// maneuver that follows closely is chained onto the far and alert prompts
-/// of the one before it ("Take the exit. Then: turn left"). The alert and
-/// the pre prompt name the lanes to use when the road data has them. The
+/// of the one before it ("Take the exit. Then: turn left"). The pre prompt
+/// and, on the motorway, the alert name the lanes to use when the road data
+/// has them. The
 /// pre prompt has no chain, so it is over well before the maneuver: the
 /// short text, or for motorway exits and ramps the text that names where
 /// they lead. It waits until the maneuver before it has been passed.
@@ -284,13 +285,15 @@ class Announcer {
     if (!_alertDone[i] && toManeuver <= alert && toManeuver > pre) {
       _alertDone[i] = true;
       _farDone[i] = true;
-      final text = m.verbalAlert ?? m.verbalPre;
+      // On the motorway the alert says where the exit leads and names the
+      // lanes; elsewhere it is the short text.
+      final text = m.isHighwayType
+          ? m.verbalPre ?? m.verbalAlert
+          : m.verbalAlert ?? m.verbalPre;
       if (text == null) return null;
+      final prefixed = '${inDistancePrefix(toManeuver, language)}$text';
       return Utterance(
-        _chained(
-          i,
-          _withLanes(m, '${inDistancePrefix(toManeuver, language)}$text'),
-        ),
+        _chained(i, m.isHighwayType ? _withLanes(m, prefixed) : prefixed),
         validUntilMeters: maneuverDistances[i],
       );
     }

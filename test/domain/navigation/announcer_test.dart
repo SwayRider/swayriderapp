@@ -372,7 +372,7 @@ void main() {
       a.update(alongMeters: 16100, speedMps: 33);
       expect(a.update(alongMeters: 17000, speedMps: 33), isEmpty);
       expect(texts(a.update(alongMeters: 18100, speedMps: 33)), [
-        'Over 2 kilometer, Afslag nemen.',
+        'Over 2 kilometer, Afslag Knooppunt Lummen nemen naar E314.',
       ]);
       expect(a.update(alongMeters: 19400, speedMps: 33), isEmpty);
       final pre = a.update(alongMeters: 19510, speedMps: 33);
@@ -469,7 +469,7 @@ void main() {
       expect(exit.single.along, greaterThanOrEqualTo(20000));
       // The junction's alert already carried the exit.
       expect(
-        said.firstWhere((s) => s.u.text.contains('Knooppunt.')).u.text,
+        said.firstWhere((s) => s.u.text.contains('Knooppunt lang.')).u.text,
         endsWith('Daarna: Afslag.'),
       );
     });
@@ -501,15 +501,13 @@ void main() {
       final a = withLanes();
       a.update(alongMeters: 0, speedMps: 20);
       final alert = a.update(alongMeters: 4400, speedMps: 20);
-      expect(texts(alert), [
-        'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken',
-      ]);
+      expect(texts(alert), ['Over 600 meter, Links afslaan.']);
       expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
         'Links afslaan. Gebruik de linker twee rijstroken',
       ]);
     });
 
-    test('the alert names the lanes before it chains the next move', () {
+    test('the alert of a turn is the short text and chains, without lanes', () {
       final a = Announcer(
         language: 'nl-NL',
         maneuvers: [
@@ -527,12 +525,41 @@ void main() {
       );
       a.update(alongMeters: 0, speedMps: 20);
       expect(texts(a.update(alongMeters: 4400, speedMps: 20)), [
-        'Over 600 meter, Links afslaan. Gebruik de linker twee rijstroken. '
-            'Daarna: Rechts afslaan.',
+        'Over 600 meter, Links afslaan. Daarna: Rechts afslaan.',
       ]);
       // The pre prompt is the short text and the lanes, without the chain.
       expect(texts(a.update(alongMeters: 4850, speedMps: 20)), [
         'Links afslaan. Gebruik de linker twee rijstroken',
+      ]);
+    });
+
+    test('the alert of a motorway exit is the full text, lanes, then the '
+        'chained move', () {
+      final a = Announcer(
+        language: 'nl-NL',
+        maneuvers: [
+          maneuver(2, pre: 'Rij.'),
+          maneuver(
+            20,
+            alert: 'Afslag 18 nemen.',
+            pre: 'Afslag 18 nemen naar N26 richting Leuven.',
+            lanes: threeLanes,
+          ),
+          maneuver(15, alert: 'Links afslaan.', pre: 'Links afslaan lang.'),
+          maneuver(4, pre: 'Aangekomen.'),
+        ],
+        maneuverDistances: [0, 20000, 20400, 30000],
+      );
+      a.update(alongMeters: 0, speedMps: 33);
+      a.update(alongMeters: 16100, speedMps: 33); // the far warning
+      expect(texts(a.update(alongMeters: 18100, speedMps: 33)), [
+        'Over 2 kilometer, Afslag 18 nemen naar N26 richting Leuven. '
+            'Gebruik de linker twee rijstroken. Daarna: Links afslaan.',
+      ]);
+      // The pre prompt: the same full text and the lanes, no chain.
+      expect(texts(a.update(alongMeters: 19510, speedMps: 33)), [
+        'Afslag 18 nemen naar N26 richting Leuven. '
+            'Gebruik de linker twee rijstroken',
       ]);
     });
 
@@ -600,7 +627,10 @@ void main() {
         final said = ride(route, (_) => kmh / 3.6);
         for (var i = 1; i < route.raw.length; i++) {
           final m = route.raw[i];
-          final spoken = (m['alert'] ?? m['pre']) as String?;
+          // The short text, or on the motorway the full one.
+          final highway = (m['type'] as int) >= 17 && m['type'] <= 25;
+          final spoken =
+              ((highway ? m['pre'] : m['alert']) ?? m['pre']) as String?;
           // Leaving a roundabout is covered by the prompt for entering it.
           if (spoken == null || m['type'] == 27) continue;
           final i0 = said.indexWhere((s) => s.text.contains(spoken));
