@@ -114,7 +114,7 @@ class Announcer {
 
   /// A maneuver closer than this to the one being announced is chained onto
   /// its prompt.
-  static const _chainMeters = 500.0;
+  static const chainMeters = 500.0;
 
   /// Nothing is announced earlier than this, so scanning stops here.
   static const _lookAheadMeters = 4500.0;
@@ -327,7 +327,7 @@ class Announcer {
     if (j >= maneuvers.length) return text;
     final next = maneuvers[j];
     final gap = maneuverDistances[j] - maneuverDistances[i];
-    if (gap > _chainMeters) return text;
+    if (gap > chainMeters) return text;
     if (_isSilent(next)) return text;
     final nextText = next.verbalAlert ?? next.verbalPre ?? next.instruction;
     if (nextText.isEmpty) return text;

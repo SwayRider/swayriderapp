@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
@@ -141,10 +142,22 @@ class NavigationViewModel extends ChangeNotifier {
   /// The rider counts as arrived this close to the end of the route.
   static const arrivalMeters = 25.0;
 
-  /// The lane strip appears this far before a maneuver (1 km before a
-  /// motorway exit, which is taken at speed).
+  /// The lane strip appears at least this far before a maneuver.
   static const laneGuidanceMeters = 400.0;
+
+  /// Motorway exits, ramps and stays are taken at speed: their strip appears
+  /// this many seconds ahead, between [laneGuidanceMeters] and
+  /// [laneGuidanceHighwayMeters].
+  static const laneGuidanceHighwaySeconds = 20.0;
   static const laneGuidanceHighwayMeters = 1000.0;
+
+  /// A maneuver that follows another within [Announcer.chainMeters] gets its
+  /// strip at least this many seconds ahead, even if the first is still ahead.
+  static const laneChainWarningSeconds = 15.0;
+
+  /// Per-fix decay of the remembered peak speed, as in the announcer, so
+  /// braking for an exit does not shorten the lead of its strip.
+  static const _cruiseDecay = 0.95;
 
   /// A maneuver counts as reached this close to its position.
   static const _reachedMeters = 5.0;
@@ -153,6 +166,7 @@ class NavigationViewModel extends ChangeNotifier {
   ProgressSnapshot? _snapshot;
   bool _arrived = false;
   double? _displaySpeedMps;
+  double _cruiseMps = 0;
 
   /// Weight of the newest fix in the displayed speed.
   static const _displaySpeedSmoothing = 0.3;
@@ -223,19 +237,47 @@ class NavigationViewModel extends ChangeNotifier {
   /// Side of the road driven on along the route.
   bool get drivesOnRight => plan.drivesOnRight;
 
-  /// Lanes to show for [upcoming]: only when the road data says which lanes
-  /// to use, and only once the maneuver is near enough (earlier for
-  /// motorway exits, which are taken at speed).
+  /// Lanes to show: only when the road data says which lanes to use, and
+  /// only once the maneuver is near enough (see [_laneLeadMeters]). When the
+  /// maneuver after [upcoming] follows closely and has lanes, its strip
+  /// replaces the current one as soon as it is due, so it is not shown only
+  /// after the first maneuver has been passed.
   List<RouteLane> get laneGuidance {
-    final maneuver = upcoming;
+    final index = _upcomingIndex;
     final distance = distanceToUpcomingMeters;
-    if (maneuver == null || distance == null) return const [];
-    if (!maneuver.lanes.any((lane) => lane.isActive)) return const [];
-    final limit = maneuver.isHighwayType
-        ? laneGuidanceHighwayMeters
-        : laneGuidanceMeters;
-    return distance <= limit ? maneuver.lanes : const [];
+    if (index == null || distance == null) return const [];
+
+    final nextIndex = index + 1;
+    if (nextIndex < _maneuvers.length) {
+      final next = _maneuvers[nextIndex];
+      final gap = _maneuverDistances[nextIndex] - _maneuverDistances[index];
+      final lead = math.max(
+        _laneLeadMeters(next),
+        _cruiseMps * laneChainWarningSeconds,
+      );
+      if (gap <= Announcer.chainMeters &&
+          _hasActiveLane(next) &&
+          distance + gap <= lead) {
+        return next.lanes;
+      }
+    }
+
+    final maneuver = _maneuvers[index];
+    if (!_hasActiveLane(maneuver)) return const [];
+    return distance <= _laneLeadMeters(maneuver) ? maneuver.lanes : const [];
   }
+
+  static bool _hasActiveLane(RouteManeuver m) =>
+      m.lanes.any((lane) => lane.isActive);
+
+  /// How far before [m] its lane strip appears: 400 m, and for motorway
+  /// exits and ramps 20 s of travel at the cruise speed, up to 1 km.
+  double _laneLeadMeters(RouteManeuver m) => m.isHighwayType
+      ? (_cruiseMps * laneGuidanceHighwaySeconds).clamp(
+          laneGuidanceMeters,
+          laneGuidanceHighwayMeters,
+        )
+      : laneGuidanceMeters;
 
   /// Distance to [upcoming] along the route, in meters.
   double? get distanceToUpcomingMeters {
@@ -295,6 +337,7 @@ class NavigationViewModel extends ChangeNotifier {
     _displaySpeedMps = shown == null
         ? fix.speedMps
         : shown + (fix.speedMps - shown) * _displaySpeedSmoothing;
+    _cruiseMps = math.max(fix.speedMps, _cruiseMps * _cruiseDecay);
     final snapshot = _progress.update(fix.position);
     _snapshot = snapshot;
     _watchRoute(fix, snapshot);
