@@ -266,11 +266,172 @@ void main() {
       expect(viewModel.laneGuidance, lanes);
     });
 
-    test('a motorway exit shows its lanes from 1 km', () async {
-      startWith(buildPlan(lanes: lanes, turnType: 20));
-      location.emit(at(11));
+    Future<void> emitAt(num hundredMeters, {double speedMps = 10}) async {
+      location.emit(at(hundredMeters), speedMps: speedMps);
       await pump();
+    }
+
+    test(
+      'a highway-type maneuver shows its lanes 20 s ahead, at least 400 m',
+      () async {
+        startWith(buildPlan(lanes: lanes, turnType: 20));
+        // 56 km/h: 20 s is 311 m, so the 400 m minimum applies.
+        await emitAt(15.5, speedMps: 56 / 3.6); // 450 m to go
+        expect(viewModel.laneGuidance, isEmpty);
+        await emitAt(16.1, speedMps: 56 / 3.6); // 390 m to go
+        expect(viewModel.laneGuidance, lanes);
+      },
+    );
+
+    test(
+      'a highway-type maneuver at 118 km/h shows lanes from 656 m, never before 1 km',
+      () async {
+        startWith(buildPlan(lanes: lanes, turnType: 20));
+        await emitAt(13, speedMps: 118 / 3.6); // 700 m to go
+        expect(viewModel.laneGuidance, isEmpty);
+        await emitAt(13.5, speedMps: 118 / 3.6); // 650 m to go
+        expect(viewModel.laneGuidance, lanes);
+      },
+    );
+
+    test('the highway lead is capped at 1 km', () async {
+      startWith(buildPlan(lanes: lanes, turnType: 20));
+      await emitAt(9, speedMps: 60); // 1100 m to go, 20 s would be 1200 m
+      expect(viewModel.laneGuidance, isEmpty);
+      await emitAt(10.2, speedMps: 60); // 980 m to go
       expect(viewModel.laneGuidance, lanes);
+    });
+
+    test('the strip stays up when the rider brakes for the exit', () async {
+      startWith(buildPlan(lanes: lanes, turnType: 20));
+      await emitAt(14, speedMps: 118 / 3.6); // 600 m to go
+      expect(viewModel.laneGuidance, lanes);
+      await emitAt(15, speedMps: 10); // 500 m to go, slowing
+      expect(viewModel.laneGuidance, lanes);
+    });
+
+    group('a maneuver right behind another', () {
+      const nextLanes = [
+        RouteLane(directions: RouteLane.left, active: RouteLane.left),
+        RouteLane(directions: RouteLane.left, active: RouteLane.left),
+        RouteLane(directions: RouteLane.right),
+      ];
+
+      // Points every 50 m. Exit at 2000 m, the next maneuver [gap] later.
+      RoutePlan chained({
+        required int gapPoints,
+        int nextType = 24,
+        List<RouteLane> next = nextLanes,
+      }) {
+        final path = [
+          for (var i = 0; i <= 80; i++) LatLng(51.0 + i * 0.00045, 4.0),
+        ];
+        final nextIndex = 40 + gapPoints;
+        return RoutePlan(
+          path: path,
+          language: 'nl-NL',
+          distanceMeters: 4000,
+          durationSeconds: 0,
+          maneuvers: [
+            const RouteManeuver(
+              type: 2,
+              instruction: 'Rij naar het noorden.',
+              beginShapeIndex: 0,
+              endShapeIndex: 40,
+            ),
+            RouteManeuver(
+              type: 20,
+              instruction: 'Neem de afrit.',
+              lanes: lanes,
+              beginShapeIndex: 40,
+              endShapeIndex: nextIndex,
+            ),
+            RouteManeuver(
+              type: nextType,
+              instruction: 'Houd links aan.',
+              lanes: next,
+              beginShapeIndex: nextIndex,
+              endShapeIndex: 80,
+            ),
+            const RouteManeuver(
+              type: 4,
+              instruction: 'U bent aangekomen.',
+              beginShapeIndex: 80,
+              endShapeIndex: 80,
+            ),
+          ],
+        );
+      }
+
+      Future<void> emitMeters(double meters, double speedMps) async {
+        location.emit(
+          LatLng(51.0 + meters / 50 * 0.00045, 4.0),
+          speedMps: speedMps,
+        );
+        await pump();
+      }
+
+      test(
+        'shows the next strip at least 15 s ahead, while the first is still ahead',
+        () async {
+          startWith(chained(gapPoints: 4)); // 200 m apart
+          const speed = 75 / 3.6;
+          await emitMeters(
+            1700,
+            speed,
+          ); // 500 m before the next, 300 m before the exit
+          expect(viewModel.laneGuidance, lanes);
+          await emitMeters(
+            1850,
+            speed,
+          ); // 350 m before the next, 150 m before the exit
+          expect(viewModel.laneGuidance, nextLanes);
+        },
+      );
+
+      test(
+        'uses 15 s when that is longer than the lead of the next maneuver',
+        () async {
+          startWith(chained(gapPoints: 4, nextType: 15));
+          await emitMeters(1550, 40); // 650 m before the next, 15 s is 600 m
+          expect(viewModel.laneGuidance, lanes);
+          await emitMeters(1650, 40); // 550 m before the next
+          expect(viewModel.laneGuidance, nextLanes);
+        },
+      );
+
+      test(
+        'does not jump ahead when the next is more than 500 m away',
+        () async {
+          startWith(chained(gapPoints: 12)); // 600 m apart
+          await emitMeters(
+            1900,
+            20,
+          ); // 100 m before the exit, 700 m before the next
+          expect(viewModel.laneGuidance, lanes);
+        },
+      );
+
+      test('keeps the first strip when the next has no lane marked', () async {
+        startWith(
+          chained(
+            gapPoints: 4,
+            next: const [
+              RouteLane(directions: RouteLane.left),
+              RouteLane(directions: RouteLane.right),
+            ],
+          ),
+        );
+        await emitMeters(1900, 20);
+        expect(viewModel.laneGuidance, lanes);
+      });
+    });
+
+    test('a turn counts as reached within 5 m', () async {
+      startWith(buildPlan(lanes: lanes));
+      await emitAt(19.97); // 3 m before the turn: the arrival is upcoming
+      expect(viewModel.upcoming?.type, 4);
+      expect(viewModel.laneGuidance, isEmpty);
     });
 
     test('stays empty when no lane is marked for the route', () async {
