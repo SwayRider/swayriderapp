@@ -76,6 +76,7 @@ class NavigationHeader extends StatelessWidget {
       icon = ManeuverIcon(
         type: maneuver!.type,
         exitNumber: maneuver!.roundaboutExitCount,
+        exitAngles: maneuver!.roundaboutExitAngles,
         drivesOnRight: drivesOnRight,
         size: _iconSize,
       );

@@ -345,6 +345,7 @@ class RouterApiClient {
           entry.roundaboutExitCount != null) {
         maneuvers[i] = maneuvers[i].withRoundaboutExit(
           entry.roundaboutExitCount!,
+          exitAngles: entry.roundaboutExitAngles,
         );
       }
     }
@@ -368,6 +369,10 @@ class RouterApiClient {
     return counterClockwise >= clockwise;
   }
 
+  List<int> _angles(Object? value) => [
+    for (final a in value as List<dynamic>? ?? const []) (a as num).toInt(),
+  ];
+
   RouteManeuver _maneuver(Map<String, dynamic> m) => RouteManeuver(
     type: (m['type'] as num?)?.toInt() ?? 0,
     instruction: (m['instruction'] as String?) ?? '',
@@ -383,6 +388,7 @@ class RouterApiClient {
     lengthMeters: ((m['length'] as num?) ?? 0) * 1000.0,
     timeSeconds: ((m['time'] as num?) ?? 0).toDouble(),
     roundaboutExitCount: (m['roundabout_exit_count'] as num?)?.toInt(),
+    roundaboutExitAngles: _angles(m['roundabout_exit_angles']),
     lanes: [
       for (final l in m['lanes'] as List<dynamic>? ?? const [])
         RouteLane(

@@ -12,6 +12,7 @@ class ManeuverIcon extends StatelessWidget {
     super.key,
     required this.type,
     this.exitNumber,
+    this.exitAngles = const [],
     this.drivesOnRight = true,
     this.size = 56,
     this.routeColor = AppColors.apexOrange,
@@ -23,6 +24,10 @@ class ManeuverIcon extends StatelessWidget {
 
   /// The roundabout exit to take (1 = first), for types 26 and 27.
   final int? exitNumber;
+
+  /// The exits of the roundabout when the router knows them (see
+  /// [RouteManeuver.roundaboutExitAngles]); empty draws a generic roundabout.
+  final List<int> exitAngles;
   final bool drivesOnRight;
   final double size;
   final Color routeColor;
@@ -33,6 +38,7 @@ class ManeuverIcon extends StatelessWidget {
     final spec = buildGlyph(
       type,
       exitNumber: exitNumber,
+      exitAngles: exitAngles,
       drivesOnRight: drivesOnRight,
     );
     final fallback = spec.fallback;
@@ -63,12 +69,21 @@ class _GlyphPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / glyphBox, size.height / glyphBox);
-    // Roads first, so the route is drawn on top of them.
+    // Roads first, so the route is drawn on top of them. The roads are
+    // semi-transparent, so they are drawn solid in a layer that is made
+    // transparent as a whole: where roads cross, they must not add up to a
+    // brighter spot.
+    canvas.saveLayer(
+      null,
+      Paint()..color = Color.fromRGBO(0, 0, 0, roadColor.a),
+    );
+    final solidRoad = roadColor.withValues(alpha: 1);
     for (final part in parts) {
-      if (!_isRoute(part)) _paintPart(canvas, part);
+      if (!_isRoute(part)) _paintPart(canvas, part, solidRoad);
     }
+    canvas.restore();
     for (final part in parts) {
-      if (_isRoute(part)) _paintPart(canvas, part);
+      if (_isRoute(part)) _paintPart(canvas, part, routeColor);
     }
   }
 
@@ -79,42 +94,46 @@ class _GlyphPainter extends CustomPainter {
     GlyphRing() => false,
   };
 
-  Paint _stroke(bool route, [double width = _strokeWidth]) => Paint()
-    ..color = route ? routeColor : roadColor
+  Paint _stroke(Color color, [double width = _strokeWidth]) => Paint()
+    ..color = color
     ..style = PaintingStyle.stroke
     ..strokeWidth = width
     ..strokeCap = StrokeCap.round
     ..strokeJoin = StrokeJoin.round
     ..isAntiAlias = true;
 
-  void _paintPart(Canvas canvas, GlyphPart part) {
+  void _paintPart(Canvas canvas, GlyphPart part, Color color) {
     switch (part) {
       case GlyphLine():
-        _paintLine(canvas, part);
+        _paintLine(canvas, part, color);
       case GlyphArc():
         canvas.drawArc(
           Rect.fromCircle(center: part.center, radius: part.radius),
           part.startAngle,
           part.sweep,
           false,
-          _stroke(part.route),
+          _stroke(color, part.width ?? _strokeWidth),
         );
       case GlyphRing():
-        canvas.drawCircle(part.center, part.radius, _stroke(false, _ringWidth));
+        canvas.drawCircle(
+          part.center,
+          part.radius,
+          _stroke(color, part.width ?? _ringWidth),
+        );
       case GlyphDot():
         canvas.drawCircle(
           part.at,
           5,
           Paint()
-            ..color = routeColor
+            ..color = color
             ..isAntiAlias = true,
         );
       case GlyphFlag():
-        _paintFlag(canvas, part);
+        _paintFlag(canvas, part, color);
     }
   }
 
-  void _paintLine(Canvas canvas, GlyphLine line) {
+  void _paintLine(Canvas canvas, GlyphLine line, Color color) {
     final points = [...line.points];
     final headLength = line.smallHead ? _smallHeadLength : _headLength;
     final headHalfWidth = line.smallHead ? _smallHeadHalfWidth : _headHalfWidth;
@@ -131,7 +150,7 @@ class _GlyphPainter extends CustomPainter {
     for (final p in points.skip(1)) {
       path.lineTo(p.dx, p.dy);
     }
-    canvas.drawPath(path, _stroke(line.route));
+    canvas.drawPath(path, _stroke(color, line.width ?? _strokeWidth));
     if (tip != null && direction != null) {
       final perpendicular = Offset(-direction.dy, direction.dx);
       final base = tip - direction * headLength;
@@ -148,15 +167,15 @@ class _GlyphPainter extends CustomPainter {
           )
           ..close(),
         Paint()
-          ..color = line.route ? routeColor : roadColor
+          ..color = color
           ..isAntiAlias = true,
       );
     }
   }
 
-  void _paintFlag(Canvas canvas, GlyphFlag flag) {
+  void _paintFlag(Canvas canvas, GlyphFlag flag, Color color) {
     final top = flag.base - const Offset(0, 30);
-    canvas.drawLine(flag.base, top, _stroke(true, 5));
+    canvas.drawLine(flag.base, top, _stroke(color, 5));
     canvas.drawPath(
       Path()
         ..moveTo(top.dx, top.dy)
@@ -164,7 +183,7 @@ class _GlyphPainter extends CustomPainter {
         ..lineTo(top.dx, top.dy + 16)
         ..close(),
       Paint()
-        ..color = routeColor
+        ..color = color
         ..isAntiAlias = true,
     );
   }

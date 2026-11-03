@@ -20,6 +20,7 @@ class GlyphLine extends GlyphPart {
     this.route = false,
     this.arrow = false,
     this.smallHead = false,
+    this.width,
   });
 
   final List<Offset> points;
@@ -28,6 +29,9 @@ class GlyphLine extends GlyphPart {
 
   /// A smaller arrowhead, for icons that are drawn tightly (roundabouts).
   final bool smallHead;
+
+  /// Stroke width; the default for lines when `null`.
+  final double? width;
 }
 
 /// A circular arc; angles in radians as on a canvas (0 = east, increasing
@@ -39,6 +43,7 @@ class GlyphArc extends GlyphPart {
     this.startAngle,
     this.sweep, {
     this.route = false,
+    this.width,
   });
 
   final Offset center;
@@ -46,14 +51,20 @@ class GlyphArc extends GlyphPart {
   final double startAngle;
   final double sweep;
   final bool route;
+
+  /// Stroke width; the default for lines when `null`.
+  final double? width;
 }
 
 /// A light ring (the island of a roundabout).
 class GlyphRing extends GlyphPart {
-  const GlyphRing(this.center, this.radius);
+  const GlyphRing(this.center, this.radius, {this.width});
 
   final Offset center;
   final double radius;
+
+  /// Stroke width; the default for rings when `null`.
+  final double? width;
 }
 
 /// A filled dot.
@@ -96,7 +107,19 @@ const _bottom = 60.0;
 /// after it in a light shade. [drivesOnRight] decides which way round the
 /// roundabout is taken: counter-clockwise, first exit on the right, where
 /// people drive on the right, mirrored where they drive on the left.
-GlyphSpec buildGlyph(int type, {int? exitNumber, bool drivesOnRight = true}) {
+///
+/// When the router knows the exits of the roundabout, [exitAngles] (the
+/// heading of each exit lane in degrees clockwise from the direction of
+/// entry, in the order they are passed) draw one spoke per exit, see
+/// [RouteManeuver.roundaboutExitAngles]. Spokes are kept at least
+/// [minSpokeSpacingDegrees] apart by [spreadRoundaboutExits]. Without exits,
+/// or when they do not fit [exitNumber], the generic layout is drawn.
+GlyphSpec buildGlyph(
+  int type, {
+  int? exitNumber,
+  List<int> exitAngles = const [],
+  bool drivesOnRight = true,
+}) {
   switch (type) {
     case 1 || 2 || 3:
       return _spec(_start());
@@ -142,6 +165,8 @@ GlyphSpec buildGlyph(int type, {int? exitNumber, bool drivesOnRight = true}) {
     case 38:
       return _spec(_mergeFromRight());
     case 26 || 27:
+      final armed = _roundaboutWithExits(exitNumber, exitAngles, drivesOnRight);
+      if (armed != null) return _spec(armed);
       final parts = _roundabout(exitNumber ?? 2);
       return _spec(drivesOnRight ? parts : _mirror(parts));
     case 28 || 29:
@@ -291,6 +316,145 @@ List<GlyphPart> _roundabout(int exit) {
   return parts;
 }
 
+/// The least angle between two spokes of a roundabout icon.
+const double minSpokeSpacingDegrees = 22.5;
+
+/// Moves the [exitAngles] of a roundabout apart where they are closer than
+/// [minSpokeSpacingDegrees], so the spokes of the icon can be told apart. The
+/// angles are degrees clockwise from the direction of entry, in the order the
+/// exits are passed (that order is kept, so exit number k is still the k-th).
+///
+/// Going back from the last exit, one that is too close to the next is pushed
+/// away from it, and so on down the line. Then an exit too close to the road
+/// the roundabout was entered from is pushed away from that, and the ones
+/// after it follow. Only when there is no room at all for the spacing (more
+/// than 15 exits) are they spread evenly, each exactly between its
+/// neighbours. Angles that are not in the order the exits are passed are
+/// returned as they are.
+List<double> spreadRoundaboutExits(
+  List<int> exitAngles, {
+  bool drivesOnRight = true,
+}) {
+  // Position along the roundabout from the entry road (0) round to the entry
+  // road again (360), in the direction of travel.
+  double toKey(num angle) => drivesOnRight
+      ? ((180 - angle) % 360 + 360) % 360
+      : ((angle - 180) % 360 + 360) % 360;
+  double toAngle(double key) => drivesOnRight
+      ? ((180 - key) % 360 + 360) % 360
+      : ((180 + key) % 360 + 360) % 360;
+
+  final keys = [for (final a in exitAngles) toKey(a)];
+  for (var i = 1; i < keys.length; i++) {
+    if (keys[i] < keys[i - 1]) {
+      return [for (final a in exitAngles) a.toDouble()];
+    }
+  }
+
+  const gap = minSpokeSpacingDegrees;
+  final n = keys.length;
+  final placed = List<double>.from(keys);
+  for (var i = n - 1; i >= 0; i--) {
+    final next = i == n - 1 ? 360.0 : placed[i + 1];
+    if (next - placed[i] < gap) placed[i] = next - gap;
+  }
+  for (var i = 0; i < n; i++) {
+    final previous = i == 0 ? 0.0 : placed[i - 1];
+    if (placed[i] < previous + gap) placed[i] = previous + gap;
+  }
+  if (n > 0 && placed.last > 360 - gap + 1e-9) {
+    // No room for the spacing: every exit exactly between its neighbours.
+    for (var i = 0; i < n; i++) {
+      placed[i] = 360.0 * (i + 1) / (n + 1);
+    }
+  }
+  return [for (final key in placed) toAngle(key)];
+}
+
+/// A roundabout entered from the bottom with a spoke at each exit, or `null`
+/// when the exits are missing, invalid or do not contain the exit
+/// [exitNumber].
+///
+/// An angle is degrees clockwise from the direction of travel on entry, so 0
+/// points up and 180 is the entry road. The angles already describe the
+/// real roads, so nothing is mirrored for left-hand traffic: only the way
+/// round changes (counter-clockwise for right-hand traffic, clockwise for
+/// left-hand).
+List<GlyphPart>? _roundaboutWithExits(
+  int? exitNumber,
+  List<int> exitAngles,
+  bool drivesOnRight,
+) {
+  if (exitAngles.isEmpty) return null;
+  final k = exitNumber;
+  if (k == null || k < 1 || k > exitAngles.length) return null;
+  if (exitAngles.any((a) => a < 0 || a > 359)) return null;
+
+  const center = Offset(_centerX, 29);
+  // A larger ring and thinner roads than the generic roundabout, so that
+  // spokes 22.5 degrees apart still show as separate roads.
+  const radius = 13.0;
+  const roadWidth = 4.5;
+  const routeWidth = 6.0;
+  const entryAngle = math.pi / 2;
+  // Canvas angle of a road: 0 = east, increasing clockwise on screen, so
+  // straight on (up) is -pi / 2.
+  double canvasAngle(double degrees) => -math.pi / 2 + degrees * math.pi / 180;
+  Offset onCircle(double angle, double r) =>
+      center + Offset(math.cos(angle), math.sin(angle)) * r;
+
+  final spread = spreadRoundaboutExits(
+    exitAngles,
+    drivesOnRight: drivesOnRight,
+  );
+  final taken = canvasAngle(spread[k - 1]);
+  // How far round the roundabout the route goes, in the direction of travel.
+  var sweep = drivesOnRight
+      ? -((entryAngle - taken) % (2 * math.pi))
+      : (taken - entryAngle) % (2 * math.pi);
+  if (sweep.abs() < 0.1) sweep = drivesOnRight ? -2 * math.pi : 2 * math.pi;
+
+  final parts = <GlyphPart>[const GlyphRing(center, radius, width: 4)];
+  for (var i = 0; i < spread.length; i++) {
+    if (i == k - 1) continue;
+    final angle = canvasAngle(spread[i]);
+    parts.add(
+      GlyphLine([
+        onCircle(angle, radius),
+        onCircle(angle, radius + 11),
+      ], width: roadWidth),
+    );
+  }
+  parts
+    ..add(
+      GlyphArc(
+        center,
+        radius,
+        entryAngle,
+        sweep,
+        route: true,
+        width: routeWidth,
+      ),
+    )
+    ..add(
+      GlyphLine(
+        [onCircle(taken, radius), onCircle(taken, radius + 15)],
+        route: true,
+        arrow: true,
+        smallHead: true,
+        width: routeWidth,
+      ),
+    )
+    ..add(
+      const GlyphLine(
+        [Offset(_centerX, _bottom), Offset(_centerX, 42)],
+        route: true,
+        width: routeWidth,
+      ),
+    );
+  return parts;
+}
+
 /// The mirror image (left <-> right) of [parts].
 List<GlyphPart> _mirror(List<GlyphPart> parts) {
   Offset flip(Offset o) => Offset(glyphBox - o.dx, o.dy);
@@ -302,6 +466,7 @@ List<GlyphPart> _mirror(List<GlyphPart> parts) {
           route: part.route,
           arrow: part.arrow,
           smallHead: part.smallHead,
+          width: part.width,
         ),
         GlyphArc() => GlyphArc(
           flip(part.center),
@@ -309,8 +474,13 @@ List<GlyphPart> _mirror(List<GlyphPart> parts) {
           math.pi - part.startAngle,
           -part.sweep,
           route: part.route,
+          width: part.width,
         ),
-        GlyphRing() => GlyphRing(flip(part.center), part.radius),
+        GlyphRing() => GlyphRing(
+          flip(part.center),
+          part.radius,
+          width: part.width,
+        ),
         GlyphDot() => GlyphDot(flip(part.at)),
         GlyphFlag() => GlyphFlag(flip(part.base), pennantDx: -part.pennantDx),
       },
