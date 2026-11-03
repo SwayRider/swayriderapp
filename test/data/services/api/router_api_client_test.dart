@@ -45,6 +45,7 @@ Map<String, dynamic> _maneuver(
   String? pre,
   double length = 0.5,
   int? exitCount,
+  List<int>? exitAngles,
 }) => {
   'type': type,
   'instruction': 'instr $type',
@@ -55,6 +56,7 @@ Map<String, dynamic> _maneuver(
   'street_names': ['Main Street'],
   'verbal_pre_transition_instruction': ?pre,
   'roundabout_exit_count': ?exitCount,
+  'roundabout_exit_angles': ?exitAngles,
 };
 
 FakeHttpClient _sseClient(
@@ -188,6 +190,54 @@ void main() {
 
       test('no roundabout defaults to the right', () async {
         expect((await planWith(circle(0, math.pi), 10)).drivesOnRight, isTrue);
+      });
+
+      test(
+        'the exits of the roundabout are read, and shared with its exit',
+        () async {
+          final shape = circle(0, math.pi);
+          final client = _sseClient({
+            'legs': [
+              {
+                'shape': _encode(shape),
+                'maneuvers': [
+                  _maneuver(
+                    26,
+                    0,
+                    shape.length - 1,
+                    exitCount: 2,
+                    exitAngles: [90, 0, 270],
+                  ),
+                  _maneuver(27, shape.length - 1, shape.length - 1),
+                ],
+              },
+            ],
+          });
+          final api = RouterApiClient(clientFactory: () => client);
+          final plan =
+              ((await api.calculateRoute(points: [shape.first, shape.last]))
+                      as Ok<RoutePlan>)
+                  .value;
+
+          for (final m in plan.maneuvers) {
+            expect(m.roundaboutExitAngles, [90, 0, 270]);
+          }
+          expect(plan.maneuvers.first.shifted(3).roundaboutExitAngles, [
+            90,
+            0,
+            270,
+          ]);
+          expect(plan.maneuvers.first.withoutPost().roundaboutExitAngles, [
+            90,
+            0,
+            270,
+          ]);
+        },
+      );
+
+      test('without exits in the response the list is empty', () async {
+        final plan = await planWith(circle(0, math.pi), 26);
+        expect(plan.maneuvers[0].roundaboutExitAngles, isEmpty);
       });
 
       test('leaving a roundabout takes the exit of the entry', () async {

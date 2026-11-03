@@ -125,6 +125,23 @@ void main() {
     expect(icon.drivesOnRight, isFalse);
   });
 
+  testWidgets('a roundabout icon gets the exits of the roundabout', (
+    tester,
+  ) async {
+    const roundabout = RouteManeuver(
+      type: 26,
+      instruction: 'Enter the roundabout.',
+      beginShapeIndex: 0,
+      endShapeIndex: 0,
+      roundaboutExitCount: 3,
+      roundaboutExitAngles: [90, 0, 270],
+    );
+    await pump(tester, maneuver: roundabout);
+
+    final icon = tester.widget<ManeuverIcon>(find.byType(ManeuverIcon));
+    expect(icon.exitAngles, [90, 0, 270]);
+  });
+
   testWidgets('arrival and waiting states keep their plain icons', (
     tester,
   ) async {

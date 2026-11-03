@@ -14,6 +14,7 @@ class RouteManeuver {
     this.lengthMeters = 0,
     this.timeSeconds = 0,
     this.roundaboutExitCount,
+    this.roundaboutExitAngles = const [],
     this.lanes = const [],
   });
 
@@ -43,6 +44,13 @@ class RouteManeuver {
 
   final int? roundaboutExitCount;
 
+  /// The exits of a roundabout (types 26 and 27), when the router knows them:
+  /// the heading of each exit lane in degrees 0-359 clockwise from the
+  /// direction of entry (0 = straight on, 180 = the road the roundabout was
+  /// entered from), in the order the roundabout is passed, so
+  /// [roundaboutExitCount] picks the one taken. Empty when unknown.
+  final List<int> roundaboutExitAngles;
+
   /// Lane layout at the maneuver; empty when the road data has none.
   final List<RouteLane> lanes;
 
@@ -58,6 +66,7 @@ class RouteManeuver {
     lengthMeters: lengthMeters,
     timeSeconds: timeSeconds,
     roundaboutExitCount: roundaboutExitCount,
+    roundaboutExitAngles: roundaboutExitAngles,
     lanes: lanes,
   );
 
@@ -76,11 +85,16 @@ class RouteManeuver {
     lengthMeters: lengthMeters,
     timeSeconds: timeSeconds,
     roundaboutExitCount: roundaboutExitCount,
+    roundaboutExitAngles: roundaboutExitAngles,
     lanes: lanes,
   );
 
-  /// A copy that names the roundabout exit it belongs to.
-  RouteManeuver withRoundaboutExit(int exit) => RouteManeuver(
+  /// A copy that names the roundabout exit it belongs to, and the exits of
+  /// that roundabout.
+  RouteManeuver withRoundaboutExit(
+    int exit, {
+    List<int> exitAngles = const [],
+  }) => RouteManeuver(
     type: type,
     instruction: instruction,
     beginShapeIndex: beginShapeIndex,
@@ -92,6 +106,7 @@ class RouteManeuver {
     lengthMeters: lengthMeters,
     timeSeconds: timeSeconds,
     roundaboutExitCount: exit,
+    roundaboutExitAngles: exitAngles,
     lanes: lanes,
   );
 

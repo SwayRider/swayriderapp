@@ -50,6 +50,7 @@ Map<String, Object?> encodeManeuver(RouteManeuver m) => {
   'beginShapeIndex': m.beginShapeIndex,
   'endShapeIndex': m.endShapeIndex,
   'roundaboutExit': m.roundaboutExitCount,
+  'roundaboutExitAngles': m.roundaboutExitAngles,
 };
 
 /// The path is flattened to `[lat, lon, lat, lon, ...]` to keep long routes
